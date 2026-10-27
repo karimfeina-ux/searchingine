@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1120"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Grid Lines -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#1e293b" stroke-width="2" stroke-dasharray="6 6"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#334155" stroke-width="2"/>
+  <circle cx="256" cy="256" r="60" fill="none" stroke="#475569" stroke-width="2"/>
+
+  <!-- Radar sweep accent -->
+  <path d="M 256 256 L 380 140 A 180 180 0 0 0 256 76 Z" fill="url(#accentGrad)" opacity="0.15"/>
+
+  <!-- Target Crosshair Lines -->
+  <line x1="256" y1="40" x2="256" y2="472" stroke="url(#accentGrad)" stroke-width="3" opacity="0.4"/>
+  <line x1="40" y1="256" x2="472" y2="256" stroke="url(#accentGrad)" stroke-width="3" opacity="0.4"/>
+
+  <!-- Central Lead Target Badge -->
+  <circle cx="256" cy="256" r="88" fill="#0f172a" stroke="url(#accentGrad)" stroke-width="4" filter="url(#glow)"/>
+  
+  <!-- Stylized "L" & Radar Falcon / Crosshair Icon -->
+  <path d="M 230 190 L 230 320 L 300 320" fill="none" stroke="#38bdf8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="295" cy="215" r="16" fill="#8b5cf6"/>
+  <circle cx="295" cy="215" r="8" fill="#ffffff"/>
+  
+  <!-- Ping Pulse Indicator -->
+  <circle cx="340" cy="180" r="6" fill="#06b6d4">
+    <animate attributeName="opacity" values="1;0.2;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="170" cy="310" r="5" fill="#a855f7" opacity="0.8"/>
+  <circle cx="350" cy="330" r="4" fill="#3b82f6" opacity="0.9"/>
+</svg>
