@@ -27,6 +27,7 @@ interface ProspectsViewProps {
   onUpdateStatus: (id: string, status: LeadStatus) => void;
   onVerifyAgain: (id: string) => void;
   onExportCsv: () => void;
+  onMarkContacted?: (id: string) => void;
 }
 
 export const ProspectsView: React.FC<ProspectsViewProps> = ({
@@ -37,8 +38,10 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
   onUpdateStatus,
   onVerifyAgain,
   onExportCsv,
+  onMarkContacted,
 }) => {
   const [search, setSearch] = useState('');
+  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'uncontacted' | 'contacted' | 'clicked' | 'high_priority'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedWebsiteStatus, setSelectedWebsiteStatus] = useState<string>('all');
   const [selectedLeadStatus, setSelectedLeadStatus] = useState<string>('all');
@@ -52,6 +55,11 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
   // Filter & sort
   const filtered = prospects
     .filter((p) => {
+      if (pipelineFilter === 'uncontacted' && (p.isContacted || p.status === 'contacted')) return false;
+      if (pipelineFilter === 'contacted' && !p.isContacted && p.status !== 'contacted') return false;
+      if (pipelineFilter === 'clicked' && !p.isClicked) return false;
+      if (pipelineFilter === 'high_priority' && p.leadScore < 80) return false;
+
       if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
       if (selectedWebsiteStatus !== 'all' && p.websiteStatus !== selectedWebsiteStatus) return false;
       if (selectedLeadStatus !== 'all' && p.status !== selectedLeadStatus) return false;
@@ -84,6 +92,32 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Pipeline Navigation Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {[
+          { id: 'all', label: 'All Leads', count: prospects.length },
+          { id: 'uncontacted', label: 'Uncontacted', count: prospects.filter((p) => !p.isContacted && p.status !== 'contacted').length },
+          { id: 'contacted', label: 'Contacted', count: prospects.filter((p) => p.isContacted || p.status === 'contacted').length },
+          { id: 'clicked', label: 'Viewed', count: prospects.filter((p) => p.isClicked).length },
+          { id: 'high_priority', label: 'High Score (80+)', count: prospects.filter((p) => p.leadScore >= 80).length },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setPipelineFilter(tab.id as any)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition cursor-pointer select-none ${
+              pipelineFilter === tab.id
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-950'
+                : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+            }`}
+          >
+            <span>{tab.label}</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800/80 text-slate-300 font-mono">
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Search & Filter Toolbar */}
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-md">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -347,6 +381,19 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
                   {/* Actions */}
                   <td className="py-3 pr-4 pl-2 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1.5">
+                      {onMarkContacted && (
+                        <button
+                          onClick={() => onMarkContacted(prospect.id)}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-semibold border transition ${
+                            prospect.isContacted || prospect.status === 'contacted'
+                              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30'
+                              : 'bg-slate-800/80 hover:bg-emerald-950/40 hover:text-emerald-300 text-slate-300 border-slate-700'
+                          }`}
+                          title={prospect.isContacted ? 'Contacted' : 'Mark as Contacted'}
+                        >
+                          {prospect.isContacted || prospect.status === 'contacted' ? '✓ Contacted' : 'Mark Contacted'}
+                        </button>
+                      )}
                       {prospect.brief && (
                         <button
                           onClick={(e) => handleCopyPrompt(e, prospect)}

@@ -160,6 +160,11 @@ export interface Prospect {
   sources: { name: string; url: string; checkedAt: string }[];
   notes: string;
   isStarred: boolean;
+  isClicked?: boolean;
+  clickedAt?: string;
+  isContacted?: boolean;
+  contactedAt?: string;
+  searchQuery?: string;
   excludedReason?: string;
   createdAt: string;
   updatedAt: string;

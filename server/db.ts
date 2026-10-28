@@ -91,6 +91,11 @@ db.exec(`
     sources TEXT NOT NULL,
     notes TEXT DEFAULT '',
     is_starred INTEGER DEFAULT 0,
+    is_clicked INTEGER DEFAULT 0,
+    clicked_at TEXT,
+    is_contacted INTEGER DEFAULT 0,
+    contacted_at TEXT,
+    search_query TEXT,
     excluded_reason TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -175,6 +180,16 @@ db.exec(`
     FOREIGN KEY(prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
   );
 `);
+
+// Safe migrations for tracking fields
+try { db.exec('ALTER TABLE prospects ADD COLUMN is_clicked INTEGER DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE prospects ADD COLUMN clicked_at TEXT'); } catch {}
+try { db.exec('ALTER TABLE prospects ADD COLUMN is_contacted INTEGER DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE prospects ADD COLUMN contacted_at TEXT'); } catch {}
+try { db.exec('ALTER TABLE prospects ADD COLUMN search_query TEXT'); } catch {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_prospects_contacted ON prospects(is_contacted)'); } catch {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_prospects_clicked ON prospects(is_clicked)'); } catch {}
+
 
 // Seed Default Settings if table is empty
 const defaultSettings: AppSettings = {
@@ -373,6 +388,10 @@ export const getProspects = (filter?: {
   websiteStatus?: string;
   category?: string;
   search?: string;
+  isClicked?: boolean | string;
+  isContacted?: boolean | string;
+  hideContacted?: boolean;
+  hideClicked?: boolean;
   limit?: number;
   offset?: number;
 }): { items: Prospect[]; total: number } => {
@@ -391,15 +410,29 @@ export const getProspects = (filter?: {
     query += ' AND category = @category';
     params.category = filter.category;
   }
+  if (filter?.isClicked !== undefined) {
+    query += ' AND is_clicked = @isClicked';
+    params.isClicked = filter.isClicked ? 1 : 0;
+  }
+  if (filter?.isContacted !== undefined) {
+    query += ' AND is_contacted = @isContacted';
+    params.isContacted = filter.isContacted ? 1 : 0;
+  }
+  if (filter?.hideContacted) {
+    query += ' AND (is_contacted = 0 OR is_contacted IS NULL)';
+  }
+  if (filter?.hideClicked) {
+    query += ' AND (is_clicked = 0 OR is_clicked IS NULL)';
+  }
   if (filter?.search) {
-    query += ' AND (name LIKE @search OR address LIKE @search OR category LIKE @search OR notes LIKE @search)';
+    query += ' AND (name LIKE @search OR address LIKE @search OR category LIKE @search OR notes LIKE @search OR search_query LIKE @search)';
     params.search = `%${filter.search}%`;
   }
 
   const countRow: any = db.prepare(query.replace('SELECT *', 'SELECT COUNT(*) as cnt')).get(params);
   const total = countRow ? countRow.cnt : 0;
 
-  query += ' ORDER BY is_starred DESC, lead_score DESC, updated_at DESC';
+  query += ' ORDER BY is_starred DESC, is_contacted ASC, lead_score DESC, updated_at DESC';
 
   if (filter?.limit) {
     query += ` LIMIT ${Number(filter.limit)} OFFSET ${Number(filter.offset || 0)}`;
@@ -448,6 +481,7 @@ export const saveProspect = (p: Prospect): void => {
       recommended_action, review_rating, review_count, last_review_date,
       review_sentiment_summary, positive_themes, negative_themes, customer_complaints,
       stable_operations_evidence, contact_channels, sources, notes, is_starred,
+      is_clicked, clicked_at, is_contacted, contacted_at, search_query,
       excluded_reason, created_at, updated_at, last_verified_at
     ) VALUES (
       @id, @name, @normalized_name, @category, @subcategory, @address, @city, @region, @country,
@@ -456,6 +490,7 @@ export const saveProspect = (p: Prospect): void => {
       @recommended_action, @review_rating, @review_count, @last_review_date,
       @review_sentiment_summary, @positive_themes, @negative_themes, @customer_complaints,
       @stable_operations_evidence, @contact_channels, @sources, @notes, @is_starred,
+      @is_clicked, @clicked_at, @is_contacted, @contacted_at, @search_query,
       @excluded_reason, @created_at, @updated_at, @last_verified_at
     )
     ON CONFLICT(id) DO UPDATE SET
@@ -493,6 +528,11 @@ export const saveProspect = (p: Prospect): void => {
       sources = excluded.sources,
       notes = excluded.notes,
       is_starred = excluded.is_starred,
+      is_clicked = COALESCE(excluded.is_clicked, prospects.is_clicked),
+      clicked_at = COALESCE(excluded.clicked_at, prospects.clicked_at),
+      is_contacted = COALESCE(excluded.is_contacted, prospects.is_contacted),
+      contacted_at = COALESCE(excluded.contacted_at, prospects.contacted_at),
+      search_query = COALESCE(excluded.search_query, prospects.search_query),
       excluded_reason = excluded.excluded_reason,
       updated_at = excluded.updated_at,
       last_verified_at = excluded.last_verified_at
@@ -516,6 +556,7 @@ export const saveProspect = (p: Prospect): void => {
     website_candidate: p.websiteCandidate || null,
     website_status: p.websiteStatus,
     status: p.status,
+    leadScore: p.leadScore,
     lead_score: p.leadScore,
     subscores: JSON.stringify(p.subscores),
     score_reasons: JSON.stringify(p.scoreReasons),
@@ -534,6 +575,11 @@ export const saveProspect = (p: Prospect): void => {
     sources: JSON.stringify(p.sources),
     notes: p.notes || '',
     is_starred: p.isStarred ? 1 : 0,
+    is_clicked: p.isClicked ? 1 : 0,
+    clicked_at: p.clickedAt || null,
+    is_contacted: p.isContacted ? 1 : 0,
+    contacted_at: p.contactedAt || null,
+    search_query: p.searchQuery || null,
     excluded_reason: p.excludedReason || null,
     created_at: p.createdAt,
     updated_at: p.updatedAt,
@@ -551,6 +597,40 @@ export const updateProspectStatus = (id: string, status: string, notes?: string)
   q += ' WHERE id = ?';
   params.push(id);
   db.prepare(q).run(...params);
+};
+
+export const markProspectClicked = (id: string): Prospect | null => {
+  const now = new Date().toISOString();
+  db.prepare('UPDATE prospects SET is_clicked = 1, clicked_at = ?, updated_at = ? WHERE id = ?').run(now, now, id);
+  return getProspectById(id);
+};
+
+export const markProspectContacted = (id: string, notes?: string): Prospect | null => {
+  const now = new Date().toISOString();
+  let q = 'UPDATE prospects SET is_contacted = 1, contacted_at = ?, status = ?, updated_at = ?';
+  const params: any[] = [now, 'contacted', now];
+  if (notes !== undefined) {
+    q += ', notes = ?';
+    params.push(notes);
+  }
+  q += ' WHERE id = ?';
+  params.push(id);
+  db.prepare(q).run(...params);
+  return getProspectById(id);
+};
+
+export const getExcludedBusinessNamesAndPhones = (): { names: Set<string>; phones: Set<string> } => {
+  const rows: any[] = db.prepare('SELECT normalized_name, phone FROM prospects').all();
+  const names = new Set<string>();
+  const phones = new Set<string>();
+  for (const r of rows) {
+    if (r.normalized_name) names.add(r.normalized_name.toLowerCase().trim());
+    if (r.phone) {
+      const cleanPhone = r.phone.replace(/\D/g, '');
+      if (cleanPhone.length >= 6) phones.add(cleanPhone);
+    }
+  }
+  return { names, phones };
 };
 
 export const toggleProspectStar = (id: string): boolean => {
@@ -757,7 +837,8 @@ export const getStats = () => {
   const noWebsiteRow: any = db.prepare("SELECT COUNT(*) as cnt FROM prospects WHERE website_status IN ('no_website', 'possibly_no_website')").get();
   const highPriorityRow: any = db.prepare('SELECT COUNT(*) as cnt FROM prospects WHERE lead_score >= 70').get();
   const readyToContactRow: any = db.prepare("SELECT COUNT(*) as cnt FROM prospects WHERE status = 'ready_to_contact'").get();
-  const contactedRow: any = db.prepare("SELECT COUNT(*) as cnt FROM prospects WHERE status = 'contacted'").get();
+  const clickedRow: any = db.prepare('SELECT COUNT(*) as cnt FROM prospects WHERE is_clicked = 1').get();
+  const contactedRow: any = db.prepare("SELECT COUNT(*) as cnt FROM prospects WHERE is_contacted = 1 OR status = 'contacted'").get();
   const clientsWonRow: any = db.prepare("SELECT COUNT(*) as cnt FROM prospects WHERE status = 'client_signed'").get();
   const avgScoreRow: any = db.prepare('SELECT AVG(lead_score) as avg_score FROM prospects').get();
 
@@ -766,6 +847,7 @@ export const getStats = () => {
     noWebsiteCount: noWebsiteRow?.cnt || 0,
     highPriorityCount: highPriorityRow?.cnt || 0,
     readyToContactCount: readyToContactRow?.cnt || 0,
+    clickedCount: clickedRow?.cnt || 0,
     contactedCount: contactedRow?.cnt || 0,
     clientsWonCount: clientsWonRow?.cnt || 0,
     avgScore: Math.round((avgScoreRow?.avg_score || 0) * 10) / 10
@@ -810,6 +892,11 @@ function hydrateProspect(row: any): Prospect {
     sources: JSON.parse(row.sources || '[]'),
     notes: row.notes || '',
     isStarred: Boolean(row.is_starred),
+    isClicked: Boolean(row.is_clicked),
+    clickedAt: row.clicked_at || undefined,
+    isContacted: Boolean(row.is_contacted),
+    contactedAt: row.contacted_at || undefined,
+    searchQuery: row.search_query || undefined,
     excludedReason: row.excluded_reason,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

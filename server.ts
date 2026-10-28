@@ -19,18 +19,6 @@ app.use('/api', apiRouter);
 initScheduler();
 
 async function startServer() {
-  // Check if initial seed is needed
-  try {
-    const { getProspects } = await import('./server/db.ts');
-    const { runProspectDiscovery } = await import('./server/researchEngine.ts');
-    if (getProspects().total === 0) {
-      console.log('Fresh installation detected: seeding initial verified prospects for target territory...');
-      await runProspectDiscovery('manual');
-    }
-  } catch (err) {
-    console.error('Initial discovery check notice:', err);
-  }
-
   if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -48,6 +36,20 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`LeadHunter AI running on http://localhost:${PORT}`);
+
+    // Check if initial seed is needed (background, non-blocking)
+    (async () => {
+      try {
+        const { getProspects } = await import('./server/db.ts');
+        const { runProspectDiscovery } = await import('./server/researchEngine.ts');
+        if (getProspects().total === 0) {
+          console.log('Fresh installation detected: seeding initial verified prospects for target territory...');
+          await runProspectDiscovery('manual');
+        }
+      } catch (err) {
+        console.error('Initial discovery check notice:', err);
+      }
+    })();
   });
 }
 

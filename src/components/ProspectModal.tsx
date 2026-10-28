@@ -188,10 +188,23 @@ Base Web Price: €${settings.baseWebsitePrice} | Hosting: €${settings.monthly
               </div>
             </div>
 
+            {/* Quick Contact Toggle */}
+            <button
+              onClick={() => onUpdateStatus(prospect.id, prospect.status === 'contacted' ? 'ready_to_contact' : 'contacted')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                prospect.status === 'contacted' || prospect.isContacted
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-950'
+                  : 'bg-slate-800/80 hover:bg-emerald-950/40 hover:text-emerald-300 text-slate-300 border-slate-700'
+              }`}
+            >
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{prospect.status === 'contacted' || prospect.isContacted ? 'Contacted ✓' : 'Mark Contacted'}</span>
+            </button>
+
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>

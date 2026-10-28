@@ -7,6 +7,8 @@ import {
   getRecentJobs,
   getSettings,
   getStats,
+  markProspectClicked,
+  markProspectContacted,
   saveOutreachDraft,
   saveProspect,
   saveVerification,
@@ -20,8 +22,47 @@ import { verifyBusinessWebsite } from './verificationEngine.ts';
 import { calculateLeadScore } from './leadScoring.ts';
 import { generatePersonalizedBrief } from './websiteConceptGenerator.ts';
 import { generateOutreachDraft } from './outreachGenerator.ts';
+import { deepSearchProspects } from './researchEngine.ts';
 
 const router = Router();
+
+// Admin Authentication Gateway
+router.post('/auth/login', (req, res) => {
+  const { email, password } = req.body || {};
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanPassword = (password || '').trim();
+
+  if (cleanEmail === 'karimmazo33@gmail.com' && cleanPassword === 'Motionpro.633') {
+    return res.json({
+      success: true,
+      token: `admin_token_${Date.now()}`,
+      user: {
+        email: 'karimmazo33@gmail.com',
+        name: 'Karim',
+        role: 'Administrator'
+      }
+    });
+  }
+
+  return res.status(401).json({
+    error: 'Access denied: Invalid administrator credentials.'
+  });
+});
+
+router.get('/auth/verify', (_req, res) => {
+  res.json({ verified: true });
+});
+
+// Deep AI Business Search without websites
+router.post('/search/deep-prospect', async (req, res) => {
+  try {
+    const { query, location, category } = req.body || {};
+    const results = await deepSearchProspects({ query, location, category });
+    res.json(results);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Deep search failed.' });
+  }
+});
 
 // Settings
 router.get('/settings', (req, res) => {
@@ -56,12 +97,28 @@ router.get('/stats', (req, res) => {
 // Prospects
 router.get('/prospects', (req, res) => {
   try {
-    const { status, websiteStatus, category, search, limit = '50', offset = '0' } = req.query;
+    const {
+      status,
+      websiteStatus,
+      category,
+      search,
+      isClicked,
+      isContacted,
+      hideContacted,
+      hideClicked,
+      limit = '100',
+      offset = '0'
+    } = req.query;
+
     const result = getProspects({
       status: status as string,
       websiteStatus: websiteStatus as string,
       category: category as string,
       search: search as string,
+      isClicked: isClicked !== undefined ? isClicked === 'true' || isClicked === '1' : undefined,
+      isContacted: isContacted !== undefined ? isContacted === 'true' || isContacted === '1' : undefined,
+      hideContacted: hideContacted === 'true' || hideContacted === '1',
+      hideClicked: hideClicked === 'true' || hideClicked === '1',
       limit: parseInt(limit as string, 10),
       offset: parseInt(offset as string, 10),
     });
@@ -98,6 +155,31 @@ router.post('/prospects/:id/star', (req, res) => {
   try {
     const isStarred = toggleProspectStar(req.params.id);
     res.json({ isStarred });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/prospects/:id/click', (req, res) => {
+  try {
+    const updated = markProspectClicked(req.params.id);
+    if (!updated) {
+      return res.status(404).json({ error: 'Prospect not found' });
+    }
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/prospects/:id/contact', (req, res) => {
+  try {
+    const { notes } = req.body || {};
+    const updated = markProspectContacted(req.params.id, notes);
+    if (!updated) {
+      return res.status(404).json({ error: 'Prospect not found' });
+    }
+    res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -16,9 +16,22 @@ import { ProspectModal } from './components/ProspectModal.tsx';
 import { SetupWizard } from './components/SetupWizard.tsx';
 import { QuickSearchModal } from './components/QuickSearchModal.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
-import { Loader2 } from 'lucide-react';
+import { AdminLogin } from './components/AdminLogin.tsx';
+import { Loader2, AlertCircle, X } from 'lucide-react';
 
 export default function App() {
+  // Authentication state
+  const [adminUser, setAdminUser] = useState<{ email: string; name: string } | null>(() => {
+    try {
+      const savedUser = localStorage.getItem('leadhunter_admin_user');
+      const token = localStorage.getItem('leadhunter_admin_token');
+      if (savedUser && token) {
+        return JSON.parse(savedUser);
+      }
+    } catch {}
+    return null;
+  });
+
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [stats, setStats] = useState({
@@ -26,6 +39,7 @@ export default function App() {
     noWebsiteCount: 0,
     highPriorityCount: 0,
     readyToContactCount: 0,
+    clickedCount: 0,
     contactedCount: 0,
     clientsWonCount: 0,
     avgScore: 0
@@ -51,6 +65,7 @@ export default function App() {
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState<boolean>(false);
   const [isResearchRunning, setIsResearchRunning] = useState<boolean>(false);
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(true);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Fetch initial data
   const loadData = useCallback(async () => {
@@ -86,8 +101,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (adminUser) {
+      loadData();
+    } else {
+      setIsLoadingInitial(false);
+    }
+  }, [adminUser, loadData]);
 
   // Keyboard shortcut listener (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -102,18 +121,44 @@ export default function App() {
   }, []);
 
   // Handlers
+  const handlePerformSearch = async ({ location, query }: { location: string; query: string }) => {
+    setIsResearchRunning(true);
+    setActionError(null);
+    try {
+      const res = await fetch('/api/search/deep-prospect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location, query })
+      });
+      if (res.ok) {
+        await loadData();
+        setCurrentTab('dashboard');
+      } else {
+        const data = await res.json();
+        setActionError(data.error || 'Failed to complete deep search');
+      }
+    } catch (err) {
+      console.error('Error during deep search:', err);
+      setActionError('Network error while running deep search');
+    } finally {
+      setIsResearchRunning(false);
+    }
+  };
+
   const handleTriggerResearch = async () => {
     setIsResearchRunning(true);
+    setActionError(null);
     try {
       const res = await fetch('/api/scheduler/run-now', { method: 'POST' });
       if (res.ok) {
         await loadData();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to trigger discovery run');
+        setActionError(data.error || 'Failed to trigger discovery run');
       }
     } catch (err) {
       console.error('Error triggering research run:', err);
+      setActionError('Network error while triggering discovery run');
     } finally {
       setIsResearchRunning(false);
     }
@@ -156,6 +201,12 @@ export default function App() {
 
   const handleSelectProspectById = async (prospect: Prospect) => {
     try {
+      // Mark as clicked in the background
+      fetch(`/api/prospects/${prospect.id}/click`, { method: 'POST' }).catch(() => {});
+      setProspects((prev) =>
+        prev.map((p) => (p.id === prospect.id ? { ...p, isClicked: true, clickedAt: new Date().toISOString() } : p))
+      );
+
       const res = await fetch(`/api/prospects/${prospect.id}`);
       if (res.ok) {
         const full = await res.json();
@@ -165,6 +216,26 @@ export default function App() {
       }
     } catch {
       setSelectedProspect(prospect);
+    }
+  };
+
+  const handleMarkContacted = async (id: string, notes?: string) => {
+    try {
+      const res = await fetch(`/api/prospects/${id}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setProspects((prev) => prev.map((p) => (p.id === id ? updated : p)));
+        if (selectedProspect?.id === id) {
+          setSelectedProspect(updated);
+        }
+        fetch('/api/stats').then((r) => r.json()).then(setStats);
+      }
+    } catch (err) {
+      console.error('Failed to mark contacted:', err);
     }
   };
 
@@ -250,6 +321,12 @@ export default function App() {
     window.location.href = '/api/export/csv';
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('leadhunter_admin_token');
+    localStorage.removeItem('leadhunter_admin_user');
+    setAdminUser(null);
+  };
+
   const toggleLanguage = () => {
     const nextLang = lang === 'en' ? 'es' : 'en';
     setLang(nextLang);
@@ -266,19 +343,24 @@ export default function App() {
     }
   };
 
+  // Admin gatekeeper: If user is not authenticated, show strictly the login screen
+  if (!adminUser) {
+    return <AdminLogin onLoginSuccess={(user) => setAdminUser(user)} />;
+  }
+
   if (isLoadingInitial || !settings) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#0b1120] text-slate-100">
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#070b14] text-slate-100">
         <Loader2 className="h-10 w-10 animate-spin text-cyan-400 mb-4" />
         <h1 className="text-base font-extrabold tracking-tight">LEADHUNTER<span className="text-cyan-400">.AI</span></h1>
-        <p className="text-xs text-slate-500 mt-1">Initializing Autonomous Prospecting Engine...</p>
+        <p className="text-xs text-slate-500 mt-1 font-mono">Initializing Autonomous Prospecting Engine...</p>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#0b1120] text-slate-100' : 'bg-slate-100 text-slate-900'} antialiased flex flex-col font-sans transition-colors duration-200`}>
-      {/* Top Navigation Header */}
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#070b14] text-slate-100' : 'bg-slate-100 text-slate-900'} antialiased flex flex-col font-sans transition-colors duration-200`}>
+      {/* Top Navigation Header with Centered Search Bar */}
       <Header
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
@@ -286,19 +368,36 @@ export default function App() {
         onToggleLang={toggleLanguage}
         theme={theme}
         onToggleTheme={toggleTheme}
-        isResearchRunning={isResearchRunning}
-        onTriggerResearch={handleTriggerResearch}
-        schedulerActive={schedulerStatus.isActive}
-        nextRunTime={schedulerStatus.nextScheduledRun}
-        onOpenQuickSearch={() => setIsQuickSearchOpen(true)}
+        onPerformSearch={handlePerformSearch}
+        isSearching={isResearchRunning}
+        userEmail={adminUser.email}
+        onLogout={handleLogout}
+        totalLeadsCount={stats.totalLeads}
+        contactedCount={stats.contactedCount}
       />
 
       {/* Main Viewport Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 pb-20">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 pb-20">
+        {actionError && (
+          <div className="mb-4 flex items-center justify-between rounded-xl border border-red-500/30 bg-red-950/40 px-4 py-3 text-red-200 shadow-lg animate-in fade-in">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+              <span className="text-sm font-medium">{actionError}</span>
+            </div>
+            <button
+              onClick={() => setActionError(null)}
+              className="text-red-400 hover:text-red-200 transition-colors p-1 cursor-pointer"
+              aria-label="Dismiss error"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {currentTab === 'dashboard' && (
           <DashboardView
             stats={stats}
-            topProspects={prospects.filter((p) => p.leadScore >= 70).slice(0, 5)}
+            topProspects={prospects}
             latestReport={jobs[0] || null}
             settings={settings}
             lang={lang}
@@ -306,18 +405,22 @@ export default function App() {
             onNavigateTab={setCurrentTab}
             onTriggerResearch={handleTriggerResearch}
             isResearchRunning={isResearchRunning}
+            onPerformSearch={handlePerformSearch}
+            onMarkContacted={handleMarkContacted}
+            onToggleStar={handleToggleStar}
           />
         )}
 
-        {currentTab === 'prospects' && (
+        {(currentTab === 'prospects' || currentTab === 'contacted') && (
           <ProspectsView
-            prospects={prospects}
+            prospects={currentTab === 'contacted' ? prospects.filter((p) => p.isContacted || p.status === 'contacted') : prospects}
             lang={lang}
             onSelectProspect={handleSelectProspectById}
             onToggleStar={handleToggleStar}
             onUpdateStatus={handleUpdateProspectStatus}
             onVerifyAgain={handleReverify}
             onExportCsv={handleExportCsv}
+            onMarkContacted={handleMarkContacted}
           />
         )}
 
