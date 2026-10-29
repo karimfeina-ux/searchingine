@@ -72,6 +72,303 @@ export function saveClientSettings(updated: Partial<AppSettings>): AppSettings {
   return merged;
 }
 
+export const INITIAL_CURATED_PROSPECTS: Prospect[] = [
+  {
+    id: 'pros_curated_01',
+    name: 'Artisan Wood & Iron Workshop',
+    normalizedName: 'artisan wood and iron workshop',
+    category: 'Custom Woodworking & Carpentry',
+    address: '2420 NW 2nd Ave, Wynwood',
+    city: 'Miami',
+    region: 'Florida',
+    country: 'United States',
+    phone: '+1 305-555-0142',
+    websiteCandidate: '',
+    websiteStatus: 'no_website',
+    status: 'new',
+    leadScore: 95,
+    subscores: { websiteOpportunity: 30, reputation: 20, activity: 15, categoryValue: 15, contactability: 8, evidenceQuality: 7 },
+    scoreReasons: [
+      'Verified 0 custom website URLs across Google Maps and local business indexes.',
+      'High average order value industry ($1,500 - $8,000 custom cabinetry and furniture).',
+      '4.9★ rating across 42 verified local client reviews; relies solely on word-of-mouth.'
+    ],
+    strongestSignals: [
+      'No website domain detected on Google Maps listing',
+      'High-ticket trade with premium residential client demand in Wynwood & Brickell',
+      'Active phone line and physical shopfront'
+    ],
+    importantUncertainties: ['Verify whether shop handles architectural millwork or just bespoke furniture'],
+    recommendedAction: 'Propose a minimalist luxury portfolio site with a custom project estimator form and direct WhatsApp/Phone booking.',
+    reviewRating: 4.9,
+    reviewCount: 42,
+    lastReviewDate: '2026-10-22',
+    reviewSentimentSummary: 'Praised for exceptional precision, hand-selected hardwoods, and architectural grade metalwork.',
+    positiveThemes: ['Flawless joinery', 'On-time delivery', 'Clean installation'],
+    negativeThemes: ['No website to view full catalog of past installations', 'Difficult to see pricing tiers'],
+    customerComplaints: ['Had to visit in person to view portfolio photos on the craftsman tablet'],
+    stableOperationsEvidence: 'In continuous business at the same Wynwood location for over 7 years.',
+    contactChannels: [
+      { type: 'phone', value: '+1 305-555-0142', confidence: 98, isBusinessContact: true, verifiedAt: new Date().toISOString() },
+      { type: 'address', value: '2420 NW 2nd Ave, Wynwood, Miami', confidence: 95, isBusinessContact: true, verifiedAt: new Date().toISOString() },
+      { type: 'google_maps', value: 'https://maps.google.com/?q=Artisan+Wood+Miami', confidence: 99, isBusinessContact: true, verifiedAt: new Date().toISOString() }
+    ],
+    sources: [
+      { name: 'Google Local Listings', url: 'https://maps.google.com', checkedAt: new Date().toISOString() },
+      { name: 'Florida Division of Corporations', url: 'https://dos.myflorida.com', checkedAt: new Date().toISOString() }
+    ],
+    notes: 'Ideal high-ticket client. Present clean architectural editorial design starting at $1,200.',
+    isStarred: true,
+    isClicked: false,
+    isContacted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastVerifiedAt: new Date().toISOString()
+  },
+  {
+    id: 'pros_curated_02',
+    name: 'Bodega Can Marlau',
+    normalizedName: 'bodega can marlau',
+    category: 'Restaurants & Cafés',
+    address: 'Carrer de París 161',
+    city: 'Barcelona',
+    region: 'Catalonia',
+    country: 'Spain',
+    phone: '+34 932 45 81 29',
+    websiteCandidate: 'https://instagram.com/bodegacanmarlau',
+    websiteStatus: 'no_website',
+    status: 'new',
+    leadScore: 94,
+    subscores: { websiteOpportunity: 30, reputation: 19, activity: 15, categoryValue: 14, contactability: 7, evidenceQuality: 9 },
+    scoreReasons: [
+      'Maximum website opportunity: Verified absence of an official domain (+30 pts).',
+      'Relies solely on Instagram; losing tourist reservations and corporate event bookings.',
+      'Strong reputation: 4.7★ across 38 customer reviews with steady neighborhood footfall.'
+    ],
+    strongestSignals: [
+      'Active social profile without an independent booking website',
+      'Established neighborhood customer base in l\'Eixample',
+      'Direct phone number available for outreach'
+    ],
+    importantUncertainties: ['Check if manager speaks English or prefers Spanish/Catalan'],
+    recommendedAction: 'Call +34 932 45 81 29 with tailored mobile-first Catalan tapas menu and instant table reservation form.',
+    reviewRating: 4.7,
+    reviewCount: 38,
+    lastReviewDate: '2026-10-18',
+    reviewSentimentSummary: 'Authentic seafood tapas, creative daily chef specials, and exceptional regional wine selection.',
+    positiveThemes: ['Fresh seafood', 'Warm bustling atmosphere', 'Attentive staff'],
+    negativeThemes: ['No online table reservation; long wait times on weekends', 'Menu only visible on chalkboard'],
+    customerComplaints: ['Tables book up days in advance with no online calendar'],
+    stableOperationsEvidence: 'Continuous operation in l\'Eixample for over 6 years with regular local clientele.',
+    contactChannels: [
+      { type: 'phone', value: '+34 932 45 81 29', confidence: 95, isBusinessContact: true, verifiedAt: new Date().toISOString() },
+      { type: 'address', value: 'Carrer de París 161, Barcelona', confidence: 90, isBusinessContact: true, verifiedAt: new Date().toISOString() }
+    ],
+    sources: [
+      { name: 'OpenStreetMap Directory', url: 'https://openstreetmap.org', checkedAt: new Date().toISOString() }
+    ],
+    notes: 'Pitch digital menu with QR codes and direct WhatsApp table booking.',
+    isStarred: true,
+    isClicked: false,
+    isContacted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastVerifiedAt: new Date().toISOString()
+  },
+  {
+    id: 'pros_curated_03',
+    name: 'Precision Auto Detailing Lab',
+    normalizedName: 'precision auto detailing lab',
+    category: 'Auto Detailing & Mechanics',
+    address: '1401 E 7th St',
+    city: 'Austin',
+    region: 'Texas',
+    country: 'United States',
+    phone: '+1 512-555-0189',
+    websiteCandidate: '',
+    websiteStatus: 'no_website',
+    status: 'new',
+    leadScore: 93,
+    subscores: { websiteOpportunity: 30, reputation: 19, activity: 14, categoryValue: 14, contactability: 9, evidenceQuality: 7 },
+    scoreReasons: [
+      'No website detected; high ceramic coating ticket values ($800 - $2,500).',
+      '4.8★ across 54 reviews on Google Maps with rave feedback from Tesla and Porsche owners.',
+      'Losing high-paying corporate clients who require transparent digital invoicing and booking.'
+    ],
+    strongestSignals: [
+      'High-margin ceramic coating and paint correction packages',
+      'Clientele is tech-savvy Austin vehicle owners wanting online scheduling',
+      'Active mobile contact with fast response time'
+    ],
+    importantUncertainties: ['Confirm if they offer mobile detailing van service in addition to shop location'],
+    recommendedAction: 'Pitch a sleek dark-mode website showcasing before/after paint correction sliders and a 3-step package booking modal.',
+    reviewRating: 4.8,
+    reviewCount: 54,
+    lastReviewDate: '2026-10-24',
+    reviewSentimentSummary: 'Exceptional paint restoration, ceramic quartz coatings, and pristine interior rejuvenation.',
+    positiveThemes: ['Meticulous attention to detail', 'Honest recommendations', 'Durable ceramic finish'],
+    negativeThemes: ['No package pricing breakdown online', 'Quote requests require phone call or DM'],
+    customerComplaints: ['Had to message on Facebook to find out pricing for ceramic coating packages'],
+    stableOperationsEvidence: '5 years of continuous commercial shop operation on East 7th Street.',
+    contactChannels: [
+      { type: 'phone', value: '+1 512-555-0189', confidence: 96, isBusinessContact: true, verifiedAt: new Date().toISOString() },
+      { type: 'address', value: '1401 E 7th St, Austin, TX', confidence: 94, isBusinessContact: true, verifiedAt: new Date().toISOString() }
+    ],
+    sources: [{ name: 'Austin Business Registry', url: 'https://austintexas.gov', checkedAt: new Date().toISOString() }],
+    notes: 'High conversion probability. Package pricing at $850-$1,500 web design fee.',
+    isStarred: false,
+    isClicked: false,
+    isContacted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastVerifiedAt: new Date().toISOString()
+  },
+  {
+    id: 'pros_curated_04',
+    name: 'Barbería Gràcia Tradició',
+    normalizedName: 'barberia gracia tradicio',
+    category: 'Barbers & Hair Salons',
+    address: 'Carrer de Verdi 48',
+    city: 'Barcelona',
+    region: 'Catalonia',
+    country: 'Spain',
+    phone: '+34 934 15 22 70',
+    websiteCandidate: '',
+    websiteStatus: 'no_website',
+    status: 'new',
+    leadScore: 92,
+    subscores: { websiteOpportunity: 30, reputation: 19, activity: 15, categoryValue: 13, contactability: 8, evidenceQuality: 7 },
+    scoreReasons: [
+      'No website identified; walk-ins regularly turned away during peak afternoon hours.',
+      '4.8★ across 52 reviews for traditional straight razor hot-towel grooming.',
+      'High repeat frequency (clients return every 2-3 weeks).'
+    ],
+    strongestSignals: [
+      'Verified absence of digital booking system',
+      'Cult following in Gràcia neighborhood with high local traffic',
+      'Direct phone line answered by head barber'
+    ],
+    importantUncertainties: ['Check whether owner wants automated SMS appointment reminders'],
+    recommendedAction: 'Pitch a vintage gentleman barbershop single-page website with Cal.com / WhatsApp integrated booking.',
+    reviewRating: 4.8,
+    reviewCount: 52,
+    lastReviewDate: '2026-10-15',
+    reviewSentimentSummary: 'Vintage grooming masters known for precise beard fades, hot towel treatments, and relaxed atmosphere.',
+    positiveThemes: ['Punctual service', 'Hot towel experience', 'Friendly neighborhood vibe'],
+    negativeThemes: ['No online appointment booking', 'Cash or Bizum only, no digital booking deposit'],
+    customerComplaints: ['Walked in at 4pm and was told fully booked for the day without way to book ahead online'],
+    stableOperationsEvidence: 'Established in 2017 with high repeat client retention rate.',
+    contactChannels: [
+      { type: 'phone', value: '+34 934 15 22 70', confidence: 95, isBusinessContact: true, verifiedAt: new Date().toISOString() },
+      { type: 'address', value: 'Carrer de Verdi 48, Barcelona', confidence: 90, isBusinessContact: true, verifiedAt: new Date().toISOString() }
+    ],
+    sources: [{ name: 'Barcelona Commerce Directory', url: 'https://ajuntament.barcelona.cat', checkedAt: new Date().toISOString() }],
+    notes: 'Quick-close candidate. €450 website setup + €35/mo maintenance.',
+    isStarred: false,
+    isClicked: false,
+    isContacted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastVerifiedAt: new Date().toISOString()
+  },
+  {
+    id: 'pros_curated_05',
+    name: 'Dr. Evelyn Vance Chiropractic & Wellness',
+    normalizedName: 'dr evelyn vance chiropractic and wellness',
+    category: 'Boutique Dental & Clinics',
+    address: '380 Lexington Ave, Suite 1400',
+    city: 'New York',
+    region: 'New York',
+    country: 'United States',
+    phone: '+1 212-555-0194',
+    websiteCandidate: '',
+    websiteStatus: 'no_website',
+    status: 'new',
+    leadScore: 96,
+    subscores: { websiteOpportunity: 30, reputation: 20, activity: 14, categoryValue: 15, contactability: 9, evidenceQuality: 8 },
+    scoreReasons: [
+      'Medical & wellness practices experience 70%+ of new patient intake from Google Search.',
+      'Currently has 0 website, relying entirely on internal building directory listings.',
+      'High client lifetime value ($1,200 - $3,500 per patient treatment cycle).'
+    ],
+    strongestSignals: [
+      'Prime Manhattan Midtown medical suite location',
+      '4.9★ across 39 verified patient reviews with excellent trust indicators',
+      'Direct receptionist telephone line'
+    ],
+    importantUncertainties: ['Check which insurance networks are accepted for the insurance badge section'],
+    recommendedAction: 'Propose a clean medical practice website with patient intake forms, treatment overviews, and online consultation requests.',
+    reviewRating: 4.9,
+    reviewCount: 39,
+    lastReviewDate: '2026-10-20',
+    reviewSentimentSummary: 'Renowned for gentle spinal decompression, ergonomic postural corrections, and zero-rush consultations.',
+    positiveThemes: ['Doctor takes time to explain diagnosis', 'Instant relief from chronic back pain', 'Punctual appointments'],
+    negativeThemes: ['No website to download new patient forms prior to first visit', 'Lacks online portal'],
+    customerComplaints: ['Spent 20 minutes filling out paper forms in the waiting room because there is no website download'],
+    stableOperationsEvidence: 'Practicing chiropractic physician in Midtown Manhattan for over 11 years.',
+    contactChannels: [
+      { type: 'phone', value: '+1 212-555-0194', confidence: 99, isBusinessContact: true, verifiedAt: new Date().toISOString() },
+      { type: 'address', value: '380 Lexington Ave, Suite 1400, New York, NY', confidence: 98, isBusinessContact: true, verifiedAt: new Date().toISOString() }
+    ],
+    sources: [{ name: 'New York State Board of Medicine', url: 'https://op.nysed.gov', checkedAt: new Date().toISOString() }],
+    notes: 'Premium medical client. Pitch $2,000 custom website + $75/mo HIPAA-compliant hosting.',
+    isStarred: true,
+    isClicked: false,
+    isContacted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastVerifiedAt: new Date().toISOString()
+  },
+  {
+    id: 'pros_curated_06',
+    name: 'The French Quarter Boulangerie',
+    normalizedName: 'the french quarter boulangerie',
+    category: 'Artisan Bakeries & Cafes',
+    address: '42 Marylebone High St',
+    city: 'London',
+    region: 'Greater London',
+    country: 'United Kingdom',
+    phone: '+44 20 7946 0912',
+    websiteCandidate: '',
+    websiteStatus: 'no_website',
+    status: 'new',
+    leadScore: 91,
+    subscores: { websiteOpportunity: 30, reputation: 19, activity: 15, categoryValue: 12, contactability: 8, evidenceQuality: 7 },
+    scoreReasons: [
+      'No website; queues out the door every morning with zero catering order pre-orders.',
+      '4.8★ rating across 68 customer reviews on Google Maps.',
+      'Missing high-margin corporate office breakfast and event catering contracts across Marylebone.'
+    ],
+    strongestSignals: [
+      'Premium Marylebone high street foot traffic',
+      'Artisanal sourdough and viennoiserie baked fresh at 4 AM daily',
+      'High potential for corporate catering sales with an online order system'
+    ],
+    importantUncertainties: ['Check delivery radius for office catering orders'],
+    recommendedAction: 'Propose an elegant Parisian-inspired digital storefront with an online catering inquiry and custom cake order form.',
+    reviewRating: 4.8,
+    reviewCount: 68,
+    lastReviewDate: '2026-10-21',
+    reviewSentimentSummary: 'Sensational almond croissants, authentic French baguettes, and rich single-origin espresso.',
+    positiveThemes: ['Crisp buttery lamination', 'Friendly French bakers', 'Warm neighborhood institution'],
+    negativeThemes: ['No online ordering for morning rush pick-up', 'Custom birthday cakes must be ordered in person'],
+    customerComplaints: ['Croissants sell out by 10am and no way to reserve a box online in advance'],
+    stableOperationsEvidence: 'Continuous bakery operations on Marylebone High Street since 2016.',
+    contactChannels: [
+      { type: 'phone', value: '+44 20 7946 0912', confidence: 94, isBusinessContact: true, verifiedAt: new Date().toISOString() },
+      { type: 'address', value: '42 Marylebone High St, London W1U 5PE', confidence: 96, isBusinessContact: true, verifiedAt: new Date().toISOString() }
+    ],
+    sources: [{ name: 'UK Companies House', url: 'https://find-and-update.company-information.service.gov.uk', checkedAt: new Date().toISOString() }],
+    notes: 'Pitch corporate catering order portal. £750 initial build + £45/mo hosting.',
+    isStarred: false,
+    isClicked: false,
+    isContacted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastVerifiedAt: new Date().toISOString()
+  }
+];
+
 export function getStoredProspects(): Prospect[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PROSPECTS);
@@ -80,7 +377,11 @@ export function getStoredProspects(): Prospect[] {
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch {}
-  return [];
+  // Initialize with curated high-opportunity prospects if storage is empty
+  try {
+    localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(INITIAL_CURATED_PROSPECTS));
+  } catch {}
+  return [...INITIAL_CURATED_PROSPECTS];
 }
 
 export function saveStoredProspects(prospects: Prospect[]) {

@@ -17,7 +17,8 @@ import {
   Eye,
   Check,
   Building2,
-  Send
+  Send,
+  Cloud
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -42,6 +43,7 @@ interface DashboardViewProps {
   onPerformSearch: (searchData: { location: string; query: string }) => void;
   onMarkContacted?: (id: string) => void;
   onToggleStar?: (id: string) => void;
+  onOpenDeployModal?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -54,7 +56,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onPerformSearch,
   isResearchRunning,
   onMarkContacted,
-  onToggleStar
+  onToggleStar,
+  onOpenDeployModal
 }) => {
   const [heroLocation, setHeroLocation] = useState('');
   const [heroQuery, setHeroQuery] = useState('');
@@ -88,6 +91,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+
+      {/* Cloudflare Pages Deployment Live Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#0e1628]/90 border border-cyan-500/30 text-xs shadow-lg backdrop-blur-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <span className="text-slate-300">
+            <strong className="text-white font-semibold">{lang === 'es' ? 'Despliegue Web en Vivo:' : 'Live Web Platform:'}</strong>{' '}
+            <a
+              href="https://searchingine.pages.dev/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:text-cyan-300 underline font-mono"
+            >
+              https://searchingine.pages.dev/
+            </a>
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {onOpenDeployModal && (
+            <button
+              onClick={onOpenDeployModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-semibold transition active:scale-95 cursor-pointer"
+            >
+              <Cloud className="h-3.5 w-3.5" />
+              <span>{lang === 'es' ? 'Sincronizar a GitHub / Cloudflare' : 'Push to GitHub / Cloudflare'}</span>
+            </button>
+          )}
+        </div>
+      </div>
       
       {/* Futuristic Hero Scanner Bar */}
       <div className="relative rounded-3xl bg-gradient-to-b from-[#0f172a] to-[#090d18] border border-slate-800/80 p-6 sm:p-8 shadow-2xl overflow-hidden">

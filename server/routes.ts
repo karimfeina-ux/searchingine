@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import fs from 'fs';
+import path from 'path';
+import JSZip from 'jszip';
 import {
   deleteProspect,
   getOutreachDrafts,
@@ -451,6 +454,41 @@ router.get('/providers/status', (req, res) => {
       dailyBudgetCap: settings.dailyBudgetEur,
       manualResearchModeAvailable: true
     });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Download compiled production bundle for Cloudflare Direct Upload
+router.get('/download/dist-zip', async (_req, res) => {
+  try {
+    const distPath = path.resolve(process.cwd(), 'dist');
+    if (!fs.existsSync(distPath)) {
+      return res.status(404).json({ error: 'Production dist/ directory not found. Please build the applet first.' });
+    }
+
+    const zip = new JSZip();
+
+    function addDirToZip(dir: string, zipFolder: JSZip) {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          const subFolder = zipFolder.folder(entry.name);
+          if (subFolder) addDirToZip(fullPath, subFolder);
+        } else if (entry.isFile()) {
+          const content = fs.readFileSync(fullPath);
+          zipFolder.file(entry.name, content);
+        }
+      }
+    }
+
+    addDirToZip(distPath, zip);
+    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="searchingine-dist-cloudflare.zip"');
+    res.send(zipBuffer);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

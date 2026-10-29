@@ -13,7 +13,8 @@ import {
   Globe,
   LogOut,
   SlidersHorizontal,
-  ChevronRight
+  ChevronRight,
+  Cloud
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -29,6 +30,7 @@ interface HeaderProps {
   onLogout: () => void;
   totalLeadsCount?: number;
   contactedCount?: number;
+  onOpenDeployModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -43,7 +45,8 @@ export const Header: React.FC<HeaderProps> = ({
   userEmail = 'karimmazo33@gmail.com',
   onLogout,
   totalLeadsCount = 0,
-  contactedCount = 0
+  contactedCount = 0,
+  onOpenDeployModal
 }) => {
   const [locationInput, setLocationInput] = useState('');
   const [keywordInput, setKeywordInput] = useState('');
@@ -162,6 +165,18 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Search className="h-4 w-4" />
             </button>
+
+            {/* Cloudflare & GitHub Deploy Button */}
+            {onOpenDeployModal && (
+              <button
+                onClick={onOpenDeployModal}
+                className="flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-950/60 to-indigo-950/60 hover:from-cyan-900/60 hover:to-indigo-900/60 text-cyan-300 text-xs font-semibold shadow-sm shadow-cyan-500/20 active:scale-95 transition cursor-pointer"
+                title="GitHub & Cloudflare Pages Deploy Hub"
+              >
+                <Cloud className="h-3.5 w-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">{lang === 'es' ? 'Desplegar Cloudflare' : 'Deploy Cloudflare'}</span>
+              </button>
+            )}
 
             {/* Admin User Chip */}
             <div className="hidden lg:flex items-center gap-2 pl-2 pr-3 py-1 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">

@@ -17,6 +17,7 @@ import { SetupWizard } from './components/SetupWizard.tsx';
 import { QuickSearchModal } from './components/QuickSearchModal.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { AdminLogin } from './components/AdminLogin.tsx';
+import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
 import { apiFetch } from './services/apiBridge.ts';
 import { defaultSettings, getStoredProspects, computeStats } from './services/clientDataEngine.ts';
 import { Loader2, AlertCircle, X } from 'lucide-react';
@@ -94,6 +95,7 @@ export default function App() {
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [showWizard, setShowWizard] = useState<boolean>(false);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState<boolean>(false);
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState<boolean>(false);
   const [isResearchRunning, setIsResearchRunning] = useState<boolean>(false);
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -433,6 +435,7 @@ export default function App() {
         onLogout={handleLogout}
         totalLeadsCount={stats.totalLeads}
         contactedCount={stats.contactedCount}
+        onOpenDeployModal={() => setIsDeployModalOpen(true)}
       />
 
       {/* Main Viewport Content */}
@@ -467,6 +470,7 @@ export default function App() {
             onPerformSearch={handlePerformSearch}
             onMarkContacted={handleMarkContacted}
             onToggleStar={handleToggleStar}
+            onOpenDeployModal={() => setIsDeployModalOpen(true)}
           />
         )}
 
@@ -560,6 +564,13 @@ export default function App() {
 
       {/* Offline Status Toast Indicator */}
       <OfflineIndicator lang={lang} />
+
+      {/* Cloudflare & GitHub Deploy Hub Modal */}
+      <CloudflareDeployModal
+        isOpen={isDeployModalOpen}
+        onClose={() => setIsDeployModalOpen(false)}
+        lang={lang}
+      />
     </div>
   );
 }
