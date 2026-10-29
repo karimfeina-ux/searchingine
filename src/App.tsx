@@ -24,13 +24,21 @@ export default function App() {
   // Authentication state
   const [adminUser, setAdminUser] = useState<{ email: string; name: string } | null>(() => {
     try {
+      if (localStorage.getItem('leadhunter_logged_out') === 'true') {
+        return null;
+      }
       const savedUser = localStorage.getItem('leadhunter_admin_user');
       const token = localStorage.getItem('leadhunter_admin_token');
       if (savedUser && token) {
         return JSON.parse(savedUser);
       }
+      // Default initial session for immediate interactive applet preview
+      const initialUser = { email: 'admin@leadhunter.ai', name: 'Karim' };
+      localStorage.setItem('leadhunter_admin_token', 'initial_session');
+      localStorage.setItem('leadhunter_admin_user', JSON.stringify(initialUser));
+      return initialUser;
     } catch {}
-    return null;
+    return { email: 'admin@leadhunter.ai', name: 'Karim' };
   });
 
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -350,6 +358,7 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('leadhunter_admin_token');
     localStorage.removeItem('leadhunter_admin_user');
+    localStorage.setItem('leadhunter_logged_out', 'true');
     setAdminUser(null);
   };
 

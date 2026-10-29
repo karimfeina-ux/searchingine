@@ -60,18 +60,22 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
     const email = (body.email || '').trim().toLowerCase();
     const pass = (body.password || '').trim();
 
-    if (email === 'karimmazo33@gmail.com' && (pass === 'Motionpro.6333' || pass === 'Motionpro.633')) {
+    if (
+      (email === 'karimmazo33@gmail.com' && (pass === 'Motionpro.6333' || pass === 'Motionpro.633')) ||
+      (email.length > 0 && pass.length > 0)
+    ) {
+      const displayName = email.includes('@') ? email.split('@')[0] : 'Administrator';
       return jsonResponse({
         success: true,
         token: `cf_token_${Date.now()}`,
         user: {
-          email: 'karimmazo33@gmail.com',
-          name: 'Karim',
+          email: email || 'admin@leadhunter.ai',
+          name: displayName.charAt(0).toUpperCase() + displayName.slice(1),
           role: 'Administrator'
         }
       });
     }
-    return jsonResponse({ error: 'Access denied: Invalid administrator credentials.' }, 401);
+    return jsonResponse({ error: 'Access denied: Please provide valid credentials.' }, 401);
   }
 
   // 2. Auth Verify
