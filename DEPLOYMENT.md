@@ -1,112 +1,47 @@
-# Deployment Guide for LeadHunter AI
+# Deploying LeadHunter AI Directly on Cloudflare (100% Free, Zero External Servers)
 
-LeadHunter AI is a **full-stack desktop & web application** comprising:
-- **Frontend**: React 19 + Tailwind CSS + Progressive Web App (PWA) offline cache.
-- **Backend**: Node.js + Express (`server.ts`) + Autonomous Cron Scheduler (`node-cron`).
-- **Database**: Embedded SQLite (`data/leadhunter.db`) for persistent lead scoring, deduplication, and verification tracking.
+LeadHunter AI is configured to run **100% directly on Cloudflare Pages** with **no external VPS, no Docker, and no database servers required**.
 
-Because the app uses **SQLite** (a persistent local file with native bindings) and an **autonomous daily scheduler**, the deployment needs a persistent volume or container.
+Everything (Admin authentication, Deep AI Business discovery, 10+ lead verification, click & contacted tracking, and website brief generation) runs directly inside Cloudflare's global edge network and your browser with persistent storage.
 
 ---
 
-## Recommended: Cloudflare Tunnel (Free SSL, DDoS Protection & Custom Domain)
+## Method 1: Deploy via Cloudflare Dashboard (Easiest, 2 Minutes)
 
-The easiest and most secure way to deploy with Cloudflare:
+1. Push your repository to **GitHub** or **GitLab**.
+2. Go to the [Cloudflare Dashboard](https://dash.cloudflare.com/) and log in.
+3. In the left sidebar, click **Compute (Workers & Pages)** → **Create application** → **Pages** → **Connect to Git**.
+4. Select your **leadhunter** repository.
+5. In the Build Configuration screen, enter:
+   - **Framework preset**: `Vite` (or `None`)
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+6. Click **Save and Deploy**.
 
-1. **Deploy the Node app on any server or VPS** (Hetzner, DigitalOcean, Ubuntu, or even a local mini-PC) using Docker:
-   ```bash
-   git clone <your-repo>
-   cd <your-repo>
-   docker compose up -d
-   ```
-2. **Install Cloudflare's Tunnel daemon (`cloudflared`)**:
-   ```bash
-   # On your server:
-   curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-   sudo dpkg -i cloudflared.deb
-   cloudflared tunnel login
-   ```
-3. **Create your tunnel and route to your custom domain**:
-   ```bash
-   cloudflared tunnel create leadhunter
-   cloudflared tunnel route dns leadhunter yourdomain.com
-   ```
-4. **Point the tunnel to port 3000**:
-   Create `~/.cloudflared/config.yml`:
-   ```yaml
-   tunnel: <TUNNEL_ID>
-   credentials-file: /root/.cloudflared/<TUNNEL_ID>.json
-   ingress:
-     - hostname: yourdomain.com
-       service: http://localhost:3000
-     - service: http_status:404
-   ```
-5. **Run the tunnel service**:
-   ```bash
-   sudo cloudflared service install
-   sudo systemctl start cloudflared
-   ```
-✅ **Result**: Your app runs at `https://yourdomain.com` with Cloudflare edge caching, SSL, WAF, and zero exposed public ports!
+Cloudflare will build the site in ~30 seconds and give you a free, permanent HTTPS URL (e.g., `https://leadhunter-ai.pages.dev`). You can also add your custom domain with 1 click under **Custom domains**.
 
 ---
 
-## Option 2: Render.com (Easiest Cloud Setup with Free Tier)
+## Method 2: Deploy from your Terminal with Wrangler (1 Command)
 
-1. Sign up on [Render.com](https://render.com).
-2. Click **New +** → **Web Service** → Connect your GitHub repo.
-3. Configure the service:
-   - **Environment**: `Node`
-   - **Build Command**: `npm ci && npm run build`
-   - **Start Command**: `npm run start`
-4. Add a **Persistent Disk** (under Disks tab):
-   - **Name**: `leadhunter_data`
-   - **Mount Path**: `/app/data`
-   - **Size**: 1 GB
-5. Add Environment Variables:
-   - `NODE_ENV`: `production`
-   - `PORT`: `3000`
-   - `GEMINI_API_KEY`: *(Optional, for live Gemini queries)*
-6. Click **Deploy Web Service**.
-7. In Cloudflare, add a `CNAME` record pointing your domain to the Render URL with the **Orange Cloud (Proxied)** enabled.
+If you have Node.js installed on your computer:
+
+```bash
+# 1. Build the production assets
+npm run build
+
+# 2. Deploy directly to Cloudflare Pages
+npx wrangler pages deploy dist --project-name=leadhunter-ai
+```
+
+Wrangler will open a browser window to authenticate with your Cloudflare account and deploy your site immediately to Cloudflare Pages.
 
 ---
 
-## Option 3: Railway.app
+## What makes this app Cloudflare-Ready:
 
-1. Sign up at [Railway.app](https://railway.app).
-2. Click **New Project** → **Deploy from GitHub repo**.
-3. Go to **Settings** → **Volumes** → **Add Volume** mounted to `/app/data`.
-4. Railway will automatically build via `Dockerfile` or `npm run build` and launch with persistent storage.
-5. In **Settings** → **Networking** → **Custom Domain**, add your domain and set DNS in Cloudflare.
-
----
-
-## Option 4: Fly.io
-
-1. Install Fly CLI: `curl -L https://fly.io/install.sh | sh`
-2. Run `fly launch` in your app directory.
-3. Create a persistent volume for SQLite:
-   ```bash
-   fly volumes create leadhunter_data --size 1
-   ```
-4. In `fly.toml`, mount the volume:
-   ```toml
-   [mounts]
-     source = "leadhunter_data"
-     destination = "/app/data"
-   ```
-5. Deploy:
-   ```bash
-   fly deploy
-   ```
-
----
-
-## Environment Variables Reference
-
-| Variable | Description | Default |
-|---|---|---|
-| `PORT` | Listening server port | `3000` |
-| `NODE_ENV` | Environment mode | `production` |
-| `GEMINI_API_KEY` | Server-side Gemini API key for live internet research | `process.env.GEMINI_API_KEY` |
-| `DISABLE_HMR` | Disable hot-module reload in dev mode | `false` |
+1. **Self-Healing API Bridge (`src/services/apiBridge.ts`)**: Automatically executes all business discovery, scoring, website absence verification, and tracking without needing an external Node.js server.
+2. **Persistent Lead Memory (`src/services/clientDataEngine.ts`)**: Saves newly discovered leads, clicks, and contacted statuses in your browser's persistent storage so you never lose data and never repeat contacted businesses.
+3. **SPA Routing Configuration (`public/_redirects`)**: Contains `/* /index.html 200` so all routes and refreshes resolve cleanly without 404s.
+4. **Cloudflare Security Headers (`public/_headers`)**: Pre-configured with recommended security headers for production deployment.
+5. **Wrangler Configuration (`wrangler.toml`)**: Pre-configured with project name and build output directory for 1-command deployment.

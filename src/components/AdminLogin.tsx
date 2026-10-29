@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, Mail, Eye, EyeOff, ShieldCheck, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { apiFetch } from '../services/apiBridge.ts';
 
 interface AdminLoginProps {
   onLoginSuccess: (user: { email: string; name: string }) => void;
@@ -24,7 +25,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password: password.trim() })

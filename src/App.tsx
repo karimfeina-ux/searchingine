@@ -17,6 +17,7 @@ import { SetupWizard } from './components/SetupWizard.tsx';
 import { QuickSearchModal } from './components/QuickSearchModal.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { AdminLogin } from './components/AdminLogin.tsx';
+import { apiFetch } from './services/apiBridge.ts';
 import { Loader2, AlertCircle, X } from 'lucide-react';
 
 export default function App() {
@@ -71,12 +72,12 @@ export default function App() {
   const loadData = useCallback(async () => {
     try {
       const [settingsRes, statsRes, prospectsRes, schedRes, jobsRes, provRes] = await Promise.all([
-        fetch('/api/settings').then((r) => r.json()),
-        fetch('/api/stats').then((r) => r.json()),
-        fetch('/api/prospects?limit=100').then((r) => r.json()),
-        fetch('/api/scheduler/status').then((r) => r.json()),
-        fetch('/api/jobs').then((r) => r.json()),
-        fetch('/api/providers/status').then((r) => r.json())
+        apiFetch('/api/settings').then((r) => r.json()),
+        apiFetch('/api/stats').then((r) => r.json()),
+        apiFetch('/api/prospects?limit=100').then((r) => r.json()),
+        apiFetch('/api/scheduler/status').then((r) => r.json()),
+        apiFetch('/api/jobs').then((r) => r.json()),
+        apiFetch('/api/providers/status').then((r) => r.json())
       ]);
 
       setSettings(settingsRes);
@@ -125,7 +126,7 @@ export default function App() {
     setIsResearchRunning(true);
     setActionError(null);
     try {
-      const res = await fetch('/api/search/deep-prospect', {
+      const res = await apiFetch('/api/search/deep-prospect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ location, query })
@@ -149,7 +150,7 @@ export default function App() {
     setIsResearchRunning(true);
     setActionError(null);
     try {
-      const res = await fetch('/api/scheduler/run-now', { method: 'POST' });
+      const res = await apiFetch('/api/scheduler/run-now', { method: 'POST' });
       if (res.ok) {
         await loadData();
       } else {
@@ -166,7 +167,7 @@ export default function App() {
 
   const handleToggleScheduler = async (enabled: boolean) => {
     try {
-      const res = await fetch('/api/scheduler/toggle', {
+      const res = await apiFetch('/api/scheduler/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled })
@@ -183,7 +184,7 @@ export default function App() {
 
   const handleSaveSettings = async (updated: Partial<AppSettings>) => {
     try {
-      const res = await fetch('/api/settings', {
+      const res = await apiFetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
@@ -202,12 +203,12 @@ export default function App() {
   const handleSelectProspectById = async (prospect: Prospect) => {
     try {
       // Mark as clicked in the background
-      fetch(`/api/prospects/${prospect.id}/click`, { method: 'POST' }).catch(() => {});
+      apiFetch(`/api/prospects/${prospect.id}/click`, { method: 'POST' }).catch(() => {});
       setProspects((prev) =>
         prev.map((p) => (p.id === prospect.id ? { ...p, isClicked: true, clickedAt: new Date().toISOString() } : p))
       );
 
-      const res = await fetch(`/api/prospects/${prospect.id}`);
+      const res = await apiFetch(`/api/prospects/${prospect.id}`);
       if (res.ok) {
         const full = await res.json();
         setSelectedProspect(full);
@@ -221,7 +222,7 @@ export default function App() {
 
   const handleMarkContacted = async (id: string, notes?: string) => {
     try {
-      const res = await fetch(`/api/prospects/${id}/contact`, {
+      const res = await apiFetch(`/api/prospects/${id}/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes })
@@ -232,7 +233,7 @@ export default function App() {
         if (selectedProspect?.id === id) {
           setSelectedProspect(updated);
         }
-        fetch('/api/stats').then((r) => r.json()).then(setStats);
+        apiFetch('/api/stats').then((r) => r.json()).then(setStats);
       }
     } catch (err) {
       console.error('Failed to mark contacted:', err);
@@ -241,7 +242,7 @@ export default function App() {
 
   const handleUpdateProspectStatus = async (id: string, status: LeadStatus, notes?: string) => {
     try {
-      const res = await fetch(`/api/prospects/${id}/status`, {
+      const res = await apiFetch(`/api/prospects/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, notes })
@@ -253,7 +254,7 @@ export default function App() {
           setSelectedProspect((prev) => prev ? { ...prev, status, notes: notes ?? prev.notes } : null);
         }
         // Refresh stats
-        fetch('/api/stats').then((r) => r.json()).then(setStats);
+        apiFetch('/api/stats').then((r) => r.json()).then(setStats);
       }
     } catch (err) {
       console.error('Failed to update status:', err);
@@ -262,7 +263,7 @@ export default function App() {
 
   const handleToggleStar = async (id: string) => {
     try {
-      const res = await fetch(`/api/prospects/${id}/star`, { method: 'POST' });
+      const res = await apiFetch(`/api/prospects/${id}/star`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         setProspects((prev) => prev.map((p) => (p.id === id ? { ...p, isStarred: data.isStarred } : p)));
@@ -277,7 +278,7 @@ export default function App() {
 
   const handleReverify = async (id: string) => {
     try {
-      const res = await fetch(`/api/prospects/${id}/verify-website`, { method: 'POST' });
+      const res = await apiFetch(`/api/prospects/${id}/verify-website`, { method: 'POST' });
       if (res.ok) {
         const updated = await res.json();
         setProspects((prev) => prev.map((p) => (p.id === id ? updated : p)));
@@ -290,7 +291,7 @@ export default function App() {
 
   const handleRegenerateBrief = async (id: string) => {
     try {
-      const res = await fetch(`/api/prospects/${id}/generate-brief`, { method: 'POST' });
+      const res = await apiFetch(`/api/prospects/${id}/generate-brief`, { method: 'POST' });
       if (res.ok) {
         const brief = await res.json();
         setProspects((prev) => prev.map((p) => (p.id === id ? { ...p, brief } : p)));
@@ -303,7 +304,7 @@ export default function App() {
 
   const handleGenerateOutreach = async (id: string, channel: OutreachDraft['channel'], tone: OutreachDraft['tone']) => {
     try {
-      const res = await fetch(`/api/prospects/${id}/outreach`, {
+      const res = await apiFetch(`/api/prospects/${id}/outreach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channel, tone })
@@ -318,7 +319,32 @@ export default function App() {
   };
 
   const handleExportCsv = () => {
-    window.location.href = '/api/export/csv';
+    if (prospects.length === 0) return;
+    const headers = ['ID', 'Name', 'Category', 'Address', 'City', 'Phone', 'WebsiteStatus', 'Rating', 'Reviews', 'LeadScore', 'Status', 'Contacted', 'Clicked'];
+    const rows = prospects.map((p) => [
+      `"${p.id}"`,
+      `"${(p.name || '').replace(/"/g, '""')}"`,
+      `"${(p.category || '').replace(/"/g, '""')}"`,
+      `"${(p.address || '').replace(/"/g, '""')}"`,
+      `"${(p.city || '').replace(/"/g, '""')}"`,
+      `"${p.phone || ''}"`,
+      `"${p.websiteStatus || ''}"`,
+      p.reviewRating || 0,
+      p.reviewCount || 0,
+      p.leadScore || 0,
+      `"${p.status || ''}"`,
+      p.isContacted ? 'Yes' : 'No',
+      p.isClicked ? 'Yes' : 'No'
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `leadhunter_prospects_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleLogout = () => {
