@@ -162,11 +162,11 @@ Return ONLY valid JSON.
     }
   }
 
-  // High-fidelity programmatic fallback tailored specifically to the business
+// High-fidelity programmatic fallback tailored specifically to the business
   return buildProgrammaticBrief(prospect, settings);
 };
 
-function buildProgrammaticBrief(prospect: Prospect, settings: AppSettings): WebsiteBrief {
+export function buildProgrammaticBrief(prospect: Prospect, settings: AppSettings): WebsiteBrief {
   const d1 = getDefaultDirection1(prospect);
   const d2 = getDefaultDirection2(prospect);
   const d3 = getDefaultDirection3(prospect);

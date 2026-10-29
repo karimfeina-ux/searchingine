@@ -110,7 +110,7 @@ export const verifyBusinessWebsite = async (
       if (!isSocial && !isDirectory) {
         const start = Date.now();
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
 
         try {
           const res = await fetch(rawUrl, {

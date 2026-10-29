@@ -32,7 +32,7 @@ router.post('/auth/login', (req, res) => {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanPassword = (password || '').trim();
 
-  if (cleanEmail === 'karimmazo33@gmail.com' && cleanPassword === 'Motionpro.633') {
+  if (cleanEmail === 'karimmazo33@gmail.com' && (cleanPassword === 'Motionpro.6333' || cleanPassword === 'Motionpro.633')) {
     return res.json({
       success: true,
       token: `admin_token_${Date.now()}`,
@@ -56,8 +56,12 @@ router.get('/auth/verify', (_req, res) => {
 // Deep AI Business Search without websites
 router.post('/search/deep-prospect', async (req, res) => {
   try {
-    const { query, location, category } = req.body || {};
-    const results = await deepSearchProspects({ query, location, category });
+    const { query, location, category, region, businessType } = req.body || {};
+    const results = await deepSearchProspects({
+      query: (query || businessType || '').trim(),
+      location: (location || region || '').trim(),
+      category: (category || businessType || '').trim()
+    });
     res.json(results);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Deep search failed.' });
