@@ -41,8 +41,8 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
             </div>
             <p className="text-xs text-slate-400">
               {lang === 'es'
-                ? 'El motor de búsqueda diaria se ejecuta de forma independiente en el servidor backend sin depender de que mantengas la app abierta.'
-                : 'Daily prospecting runs autonomously on the backend server. The desktop app does not need to remain open.'}
+                ? 'El motor de búsqueda diaria se ejecuta de forma independiente en la nube sin depender de que mantengas la pestaña abierta.'
+                : 'Daily prospecting runs autonomously in the cloud without needing your browser tab to stay open.'}
             </p>
           </div>
 

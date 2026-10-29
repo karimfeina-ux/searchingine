@@ -18,18 +18,18 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
     return window.fetch(input, init);
   }
 
-  // Try live server first if available, cleanly fallback to client engine on Cloudflare Pages (404/HTML error or network failure)
+  // Try live server first if available, cleanly fallback to client engine on Cloudflare Pages or static environments
   try {
     const res = await window.fetch(input, init);
     const contentType = res.headers.get('content-type') || '';
-    if (res.ok || (res.status === 401 && contentType.includes('application/json'))) {
+    if (res.ok) {
       return res;
     }
-    // If server returned 404 (common on static Cloudflare Pages when hitting /api/*), fallback to client engine
-    if (res.status === 404 || contentType.includes('text/html')) {
-      return handleClientApiRoute(urlString, init);
+    if (res.status === 401 && contentType.includes('application/json')) {
+      return res;
     }
-    return res;
+    // Any non-OK response (404, 500, 502, HTML fallback) -> execute client data engine
+    return handleClientApiRoute(urlString, init);
   } catch {
     // Network failed or offline: handle via client engine
     return handleClientApiRoute(urlString, init);

@@ -1,6 +1,6 @@
 {
   "name": "LeadHunter AI",
-  "description": "Autonomous AI business prospecting & lead intelligence desktop application for web creators.",
+  "description": "Autonomous AI business prospecting & website opportunity intelligence platform for creators and agencies.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -18,6 +18,7 @@ import { QuickSearchModal } from './components/QuickSearchModal.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { AdminLogin } from './components/AdminLogin.tsx';
 import { apiFetch } from './services/apiBridge.ts';
+import { defaultSettings, getStoredProspects, computeStats } from './services/clientDataEngine.ts';
 import { Loader2, AlertCircle, X } from 'lucide-react';
 
 export default function App() {
@@ -41,18 +42,39 @@ export default function App() {
     return { email: 'admin@leadhunter.ai', name: 'Karim' };
   });
 
-  const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [prospects, setProspects] = useState<Prospect[]>([]);
-  const [stats, setStats] = useState({
-    totalLeads: 0,
-    noWebsiteCount: 0,
-    highPriorityCount: 0,
-    readyToContactCount: 0,
-    clickedCount: 0,
-    contactedCount: 0,
-    clientsWonCount: 0,
-    avgScore: 0
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    try {
+      const stored = localStorage.getItem('leadhunter_settings');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return defaultSettings;
   });
+
+  const [prospects, setProspects] = useState<Prospect[]>(() => {
+    try {
+      const stored = getStoredProspects();
+      if (stored && stored.length > 0) return stored;
+    } catch {}
+    return [];
+  });
+
+  const [stats, setStats] = useState(() => {
+    try {
+      const stored = getStoredProspects();
+      if (stored && stored.length > 0) return computeStats(stored);
+    } catch {}
+    return {
+      totalLeads: 0,
+      noWebsiteCount: 0,
+      highPriorityCount: 0,
+      readyToContactCount: 0,
+      clickedCount: 0,
+      contactedCount: 0,
+      clientsWonCount: 0,
+      avgScore: 0
+    };
+  });
+
   const [jobs, setJobs] = useState<DailyJobRun[]>([]);
   const [schedulerStatus, setSchedulerStatus] = useState<any>({
     isActive: true,
@@ -73,37 +95,49 @@ export default function App() {
   const [showWizard, setShowWizard] = useState<boolean>(false);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState<boolean>(false);
   const [isResearchRunning, setIsResearchRunning] = useState<boolean>(false);
-  const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(true);
+  const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Fetch initial data
+  // Resilient data loading: individual safe fetches ensure no single error stops the site from loading
   const loadData = useCallback(async () => {
+    const fetchEndpoint = async (url: string) => {
+      try {
+        const res = await apiFetch(url);
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        console.warn(`Safe fetch for ${url} notice:`, err);
+      }
+      return null;
+    };
+
     try {
       const [settingsRes, statsRes, prospectsRes, schedRes, jobsRes, provRes] = await Promise.all([
-        apiFetch('/api/settings').then((r) => r.json()),
-        apiFetch('/api/stats').then((r) => r.json()),
-        apiFetch('/api/prospects?limit=100').then((r) => r.json()),
-        apiFetch('/api/scheduler/status').then((r) => r.json()),
-        apiFetch('/api/jobs').then((r) => r.json()),
-        apiFetch('/api/providers/status').then((r) => r.json())
+        fetchEndpoint('/api/settings'),
+        fetchEndpoint('/api/stats'),
+        fetchEndpoint('/api/prospects?limit=100'),
+        fetchEndpoint('/api/scheduler/status'),
+        fetchEndpoint('/api/jobs'),
+        fetchEndpoint('/api/providers/status')
       ]);
 
-      setSettings(settingsRes);
-      setStats(statsRes);
-      setProspects(prospectsRes.items || []);
-      setSchedulerStatus(schedRes);
-      setJobs(jobsRes || []);
-      setProvidersData(provRes);
-
-      if (settingsRes.uiLanguage) setLang(settingsRes.uiLanguage);
-      if (settingsRes.uiTheme) setTheme(settingsRes.uiTheme);
-
-      // Auto show setup wizard if not configured
-      if (settingsRes && !settingsRes.isConfigured) {
-        setShowWizard(true);
+      if (settingsRes) {
+        setSettings(settingsRes);
+        if (settingsRes.uiLanguage) setLang(settingsRes.uiLanguage);
+        if (settingsRes.uiTheme) setTheme(settingsRes.uiTheme);
       }
+      if (statsRes) {
+        setStats(statsRes);
+      }
+      if (prospectsRes?.items && prospectsRes.items.length > 0) {
+        setProspects(prospectsRes.items);
+      }
+      if (schedRes) setSchedulerStatus(schedRes);
+      if (jobsRes) setJobs(jobsRes);
+      if (provRes) setProvidersData(provRes);
     } catch (err) {
-      console.error('Failed to load application data:', err);
+      console.warn('Background sync notice:', err);
     } finally {
       setIsLoadingInitial(false);
     }
@@ -381,16 +415,6 @@ export default function App() {
   // Admin gatekeeper: If user is not authenticated, show strictly the login screen
   if (!adminUser) {
     return <AdminLogin onLoginSuccess={(user) => setAdminUser(user)} />;
-  }
-
-  if (isLoadingInitial || !settings) {
-    return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#070b14] text-slate-100">
-        <Loader2 className="h-10 w-10 animate-spin text-cyan-400 mb-4" />
-        <h1 className="text-base font-extrabold tracking-tight">LEADHUNTER<span className="text-cyan-400">.AI</span></h1>
-        <p className="text-xs text-slate-500 mt-1 font-mono">Initializing Autonomous Prospecting Engine...</p>
-      </div>
-    );
   }
 
   return (
