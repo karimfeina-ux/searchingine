@@ -22,13 +22,23 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   try {
     const res = await window.fetch(input, init);
     const contentType = res.headers.get('content-type') || '';
-    if (res.ok) {
+
+    // If response is HTML (Cloudflare Pages SPA rewrite: /* /index.html 200) -> execute client engine
+    if (contentType.includes('text/html')) {
+      return handleClientApiRoute(urlString, init);
+    }
+
+    // Live backend returned real JSON
+    if (res.ok && contentType.includes('application/json')) {
       return res;
     }
+
+    // Edge check: If backend explicitly returned structured JSON error/auth
     if (res.status === 401 && contentType.includes('application/json')) {
       return res;
     }
-    // Any non-OK response (404, 500, 502, HTML fallback) -> execute client data engine
+
+    // Any other status or non-JSON payload -> execute client data engine
     return handleClientApiRoute(urlString, init);
   } catch {
     // Network failed or offline: handle via client engine

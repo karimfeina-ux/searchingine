@@ -5,39 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
       (function() {
-        // Intercept and neutralize Vite HMR WebSockets in cloud proxy environments
-        const OrigWS = window.WebSocket;
-        if (OrigWS) {
-          window.WebSocket = function(url, protocols) {
-            if (protocols === 'vite-hmr' || (typeof url === 'string' && (url.includes('vite-hmr') || url.includes('token=')))) {
-              const fake = new EventTarget();
-              fake.readyState = 1; // WebSocket.OPEN
-              fake.CONNECTING = 0;
-              fake.OPEN = 1;
-              fake.CLOSING = 2;
-              fake.CLOSED = 3;
-              fake.send = function() {};
-              fake.close = function() {};
-              fake.onopen = null;
-              fake.onclose = null;
-              fake.onmessage = null;
-              fake.onerror = null;
-              setTimeout(function() {
-                if (typeof fake.onopen === 'function') {
-                  try { fake.onopen(new Event('open')); } catch (_) {}
-                }
-                fake.dispatchEvent(new Event('open'));
-              }, 5);
-              return fake;
-            }
-            return new OrigWS(url, protocols);
-          };
-          window.WebSocket.prototype = OrigWS.prototype;
-          window.WebSocket.CONNECTING = 0;
-          window.WebSocket.OPEN = 1;
-          window.WebSocket.CLOSING = 2;
-          window.WebSocket.CLOSED = 3;
-        }
+        try {
+          const OrigWS = window.WebSocket;
+          if (OrigWS) {
+            window.WebSocket = function(url, protocols) {
+              if (protocols === 'vite-hmr' || (typeof url === 'string' && (url.includes('vite-hmr') || url.includes('token=')))) {
+                const fake = new EventTarget();
+                fake.readyState = 1;
+                fake.CONNECTING = 0;
+                fake.OPEN = 1;
+                fake.CLOSING = 2;
+                fake.CLOSED = 3;
+                fake.send = function() {};
+                fake.close = function() {};
+                fake.onopen = null;
+                fake.onclose = null;
+                fake.onmessage = null;
+                fake.onerror = null;
+                setTimeout(function() {
+                  if (typeof fake.onopen === 'function') {
+                    try { fake.onopen(new Event('open')); } catch (_) {}
+                  }
+                  fake.dispatchEvent(new Event('open'));
+                }, 5);
+                return fake;
+              }
+              return new OrigWS(url, protocols);
+            };
+            try {
+              window.WebSocket.prototype = OrigWS.prototype;
+              window.WebSocket.CONNECTING = 0;
+              window.WebSocket.OPEN = 1;
+              window.WebSocket.CLOSING = 2;
+              window.WebSocket.CLOSED = 3;
+            } catch (_) {}
+          }
+        } catch (_) {}
       })();
     </script>
     <title>LeadHunter AI — Autonomous Business Prospecting & Intelligence Platform</title>
