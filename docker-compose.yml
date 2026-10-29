@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: leadhunter-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    volumes:
+      - leadhunter_data:/app/data
+
+  # Optional: Free Cloudflare Tunnel to expose the app with custom domain & SSL
+  # Run: cloudflared tunnel run --token <YOUR_TOKEN>
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: leadhunter-tunnel
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+  #   depends_on:
+  #     - app
+
+volumes:
+  leadhunter_data:
