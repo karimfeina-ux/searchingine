@@ -85,6 +85,16 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
     }
   }
 
+  // 3b. Google Maps Search Fallback
+  if (path === '/api/search/google-maps' && method === 'POST') {
+    try {
+      const results = await runRealSearch(body);
+      return jsonResponse({ ...results, gmpAttribution: 'Google Maps' });
+    } catch (err: any) {
+      return jsonResponse({ error: err?.message || 'Search failed' }, 502);
+    }
+  }
+
   // 4. Settings
   if (path === '/api/settings') {
     if (method === 'PUT') {
