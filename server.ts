@@ -7,8 +7,11 @@ import { initScheduler } from './server/scheduler.ts';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.APP_PORT || process.env.DEFAULT_APP_PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Ensure HMR is disabled in AI Studio container environment
+process.env.DISABLE_HMR = 'true';
 
 app.use(express.json());
 
@@ -18,45 +21,78 @@ app.use('/api', apiRouter);
 // Initialize Autonomous Scheduler
 initScheduler();
 
-async function startServer() {
-  if (!isProduction) {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        hmr: false,
-      },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.resolve('dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
+// Start HTTP server immediately so port binds in milliseconds and avoids warmup timeouts
+let viteMiddleware: any = null;
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`LeadHunter AI running on http://localhost:${PORT}`);
-
-    // Check if initial seed is needed (background, non-blocking)
-    (async () => {
-      try {
-        const { getProspects } = await import('./server/db.ts');
-        const { runProspectDiscovery } = await import('./server/researchEngine.ts');
-        if (getProspects().total === 0) {
-          console.log('Fresh installation detected: seeding initial verified prospects for target territory...');
-          await runProspectDiscovery('manual');
-        }
-      } catch (err) {
-        console.error('Initial discovery check notice:', err);
+if (!isProduction) {
+  // Delegate front-end requests to Vite middleware
+  app.use((req, res, next) => {
+    if (viteMiddleware) {
+      return viteMiddleware(req, res, next);
+    }
+    const start = Date.now();
+    const interval = setInterval(() => {
+      if (viteMiddleware) {
+        clearInterval(interval);
+        return viteMiddleware(req, res, next);
       }
-    })();
+      if (Date.now() - start > 10000) {
+        clearInterval(interval);
+        return res.status(503).send('Development server is starting, please reload in a moment...');
+      }
+    }, 50);
+  });
+} else {
+  const distPath = path.resolve('dist');
+  app.use(express.static(distPath));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`LeadHunter AI running on http://localhost:${PORT}`);
+
+  if (!isProduction) {
+    (async () => {
+      try {
+        const { createServer: createViteServer } = await import('vite');
+        const vite = await createViteServer({
+          server: {
+            middlewareMode: true,
+            hmr: false,
+          },
+          appType: 'spa',
+        });
+        viteMiddleware = vite.middlewares;
+        console.log('Vite middleware mounted successfully.');
+      } catch (err) {
+        console.error('Failed to create Vite server:', err);
+      }
+    })();
+  }
 });
+
+server.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Exiting cleanly...`);
+    process.exit(1);
+  } else {
+    console.error('Server encountered an error:', err);
+    process.exit(1);
+  }
+});
+
+const handleShutdown = (signal: string) => {
+  console.log(`Received ${signal}, closing HTTP server on port ${PORT}...`);
+  server.close(() => {
+    console.log('Server closed successfully.');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    process.exit(0);
+  }, 2000).unref();
+};
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));

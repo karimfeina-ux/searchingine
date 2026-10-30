@@ -31,23 +31,22 @@ import { deepSearchProspects } from './researchEngine.ts';
 
 const router = Router();
 
-// Admin Authentication Gateway
+// Admin Authentication Gateway (Rule 6: Remove hardcoded login password and accept-any logic)
 router.post('/auth/login', (req, res) => {
   const { email, password } = req.body || {};
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanPassword = (password || '').trim();
 
-  // Allow original administrator or any provided credentials in demo/environment mode
-  if (
-    (cleanEmail === 'karimmazo33@gmail.com' && (cleanPassword === 'Motionpro.6333' || cleanPassword === 'Motionpro.633')) ||
-    (cleanEmail.length > 0 && cleanPassword.length > 0)
-  ) {
+  const expectedEmail = (process.env.ADMIN_EMAIL || 'admin@leadhunter.ai').toLowerCase();
+  const expectedPassword = process.env.ADMIN_PASSWORD;
+
+  if (expectedPassword && cleanEmail === expectedEmail && cleanPassword === expectedPassword) {
     const displayName = cleanEmail.includes('@') ? cleanEmail.split('@')[0] : 'Administrator';
     return res.json({
       success: true,
       token: `admin_token_${Date.now()}`,
       user: {
-        email: cleanEmail || 'admin@leadhunter.ai',
+        email: cleanEmail,
         name: displayName.charAt(0).toUpperCase() + displayName.slice(1),
         role: 'Administrator'
       }
@@ -55,12 +54,30 @@ router.post('/auth/login', (req, res) => {
   }
 
   return res.status(401).json({
-    error: 'Access denied: Please provide administrator email and security key.'
+    error: 'Access denied: Invalid administrator credentials.'
   });
 });
 
 router.get('/auth/verify', (_req, res) => {
   res.json({ verified: true });
+});
+
+// OpenStreetMap Places Search endpoint (mirrors Cloudflare Pages function /api/places-search)
+router.post('/places-search', async (req, res) => {
+  try {
+    const { onRequestPost } = await import('../functions/api/places-search.ts');
+    const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+    const standardRequest = new Request(fullUrl, {
+      method: 'POST',
+      headers: req.headers as any,
+      body: JSON.stringify(req.body)
+    });
+    const cfResponse = await onRequestPost({ request: standardRequest });
+    const responseJson = await cfResponse.json();
+    return res.status(cfResponse.status).json(responseJson);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Places search failed.' });
+  }
 });
 
 // Deep AI Business Search without websites

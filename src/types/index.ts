@@ -156,6 +156,7 @@ export interface Prospect {
   negativeThemes: string[];
   customerComplaints: string[];
   stableOperationsEvidence: string;
+  stableEvidence?: string;
   contactChannels: ContactChannel[];
   sources: { name: string; url: string; checkedAt: string }[];
   notes: string;
