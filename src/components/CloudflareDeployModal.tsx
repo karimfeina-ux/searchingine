@@ -123,6 +123,7 @@ export const CloudflareDeployModal: React.FC<CloudflareDeployModalProps> = ({
               'node-cron': '^4.6.0',
               react: '^19.0.1',
               'react-dom': '^19.0.1',
+              '@vis.gl/react-google-maps': '^1.10.2',
               vite: '^8.3.0'
             },
             devDependencies: {
@@ -151,7 +152,7 @@ export const CloudflareDeployModal: React.FC<CloudflareDeployModalProps> = ({
       },
       {
         path: 'public/_redirects',
-        content: '/* /index.html 200\n'
+        content: '/api/* /api/:splat 200\n'
       },
       {
         path: 'public/_headers',
@@ -159,7 +160,7 @@ export const CloudflareDeployModal: React.FC<CloudflareDeployModalProps> = ({
       },
       {
         path: 'wrangler.toml',
-        content: 'name = "searchingine"\ncompatibility_date = "2024-09-23"\npages_build_output_dir = "dist"\n'
+        content: 'name = "searchingine"\ncompatibility_date = "2024-09-23"\ncompatibility_flags = ["nodejs_compat"]\npages_build_output_dir = "dist"\n'
       }
     ];
 

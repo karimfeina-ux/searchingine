@@ -600,7 +600,8 @@ router.get('/deploy/project-files', (_req, res) => {
       'public/_headers',
       'functions/_lib/auth.ts',
       'functions/api/auth/login.ts',
-      'functions/api/places-search.ts'
+      'functions/api/places-search.ts',
+      'functions/api/search/google-maps.ts'
     ];
 
     const files: Array<{ path: string; content: string }> = [];
