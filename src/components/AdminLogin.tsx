@@ -36,6 +36,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
       if (res.ok && data.success) {
         localStorage.setItem('leadhunter_admin_token', data.token);
         localStorage.setItem('leadhunter_admin_user', JSON.stringify(data.user));
+        localStorage.removeItem('leadhunter_logged_out');
         onLoginSuccess(data.user);
       } else {
         setError(data.error || 'Access denied: Invalid administrator credentials.');
@@ -151,7 +152,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
               </div>
             </div>
 
-            <div className="pt-2 space-y-2">
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={isLoading}
@@ -168,21 +169,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                   </>
                 )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const demoUser = { email: 'admin@leadhunter.ai', name: 'Admin' };
-                  localStorage.setItem('leadhunter_admin_token', `demo_token_${Date.now()}`);
-                  localStorage.setItem('leadhunter_admin_user', JSON.stringify(demoUser));
-                  localStorage.removeItem('leadhunter_logged_out');
-                  onLoginSuccess(demoUser);
-                }}
-                className="w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-xl text-xs font-medium text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 border border-dashed border-slate-700/60 transition-all cursor-pointer"
-              >
-                <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" />
-                <span>Quick Access Demo Mode</span>
               </button>
             </div>
           </form>

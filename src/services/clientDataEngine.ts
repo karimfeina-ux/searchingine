@@ -19,19 +19,11 @@ export const normalizeBusinessName = (name: string): string => {
 export const defaultSettings: AppSettings = {
   id: 1,
   isConfigured: true,
-  cities: ['Miami', 'Barcelona', 'Madrid', 'Valencia', 'London', 'New York', 'Austin'],
-  region: 'Global',
-  country: 'Worldwide',
+  cities: ['Valencia, España', 'Madrid, España', 'Barcelona, España', 'Sevilla, España', 'Málaga, España'],
+  region: 'España',
+  country: 'España',
   searchRadiusKm: 25,
-  categories: [
-    'Artisan Bakeries & Cafes',
-    'Specialty Coffee Roasters',
-    'Barbershops & Grooming',
-    'Boutique Dental & Clinics',
-    'Auto Detailing & Mechanics',
-    'Custom Woodworking & Carpentry',
-    'Boutique Fitness & Yoga Studios'
-  ],
+  categories: ['peluquería', 'barbería', 'panadería', 'cafetería', 'taller mecánico', 'clínica dental', 'fontanero', 'carpintero', 'gimnasio', 'restaurante'],
   excludedCategories: ['Fast food chains', 'Government offices', 'Corporations'],
   languages: ['en', 'es'],
   minRating: 4.2,
@@ -75,9 +67,15 @@ export function saveClientSettings(updated: Partial<AppSettings>): AppSettings {
 export function getStoredProspects(): Prospect[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PROSPECTS);
-    if (raw !== null) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+    if (raw) {
+      let parsed = JSON.parse(raw);
+      // One-time cleanup: remove the invented demo leads created by earlier versions.
+      if (Array.isArray(parsed) && !localStorage.getItem('leadhunter_purged_fake_v1')) {
+        parsed = parsed.filter((p: Prospect) => typeof p.id === 'string' && p.id.startsWith('gp_'));
+        localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(parsed));
+        localStorage.setItem('leadhunter_purged_fake_v1', '1');
+      }
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch {}
   return [];
@@ -330,7 +328,7 @@ export function createClientBrief(prospect: Prospect, settings: AppSettings): We
       'High-value clients who compare professional reputations before booking services'
     ],
     verifiedStrengths: [
-      `Strong public feedback: ${prospect.reviewRating.toFixed(1)}★ rating on Google Maps`,
+      prospect.reviewRating > 0 ? `Strong public feedback: ${prospect.reviewRating.toFixed(1)}★ rating on Google Maps` : 'Established local business listed in OpenStreetMap',
       `Convenient physical location: ${prospect.address}, ${prospect.city}`,
       'Proven hands-on craftmanship and established customer loyalty'
     ],
@@ -382,7 +380,7 @@ export function createClientBrief(prospect: Prospect, settings: AppSettings): We
     },
     conversionUx: {
       trustBuilders: [
-        `Prominent Google Review verification badge (${prospect.reviewRating}★ rating)`,
+        prospect.reviewRating > 0 ? `Prominent Google Review verification badge (${prospect.reviewRating}★ rating)` : 'Customer testimonials section (collect reviews from happy clients)',
         `Exact physical address (${prospect.address}) and guaranteed fast response time`,
         'Transparent service guarantee with no hidden extras'
       ],

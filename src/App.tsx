@@ -26,21 +26,12 @@ export default function App() {
   // Authentication state
   const [adminUser, setAdminUser] = useState<{ email: string; name: string } | null>(() => {
     try {
-      if (localStorage.getItem('leadhunter_logged_out') === 'true') {
-        return null;
-      }
+      if (localStorage.getItem('leadhunter_logged_out') === 'true') return null;
       const savedUser = localStorage.getItem('leadhunter_admin_user');
       const token = localStorage.getItem('leadhunter_admin_token');
-      if (savedUser && token) {
-        return JSON.parse(savedUser);
-      }
-      // Default initial session for immediate interactive applet preview
-      const initialUser = { email: 'admin@leadhunter.ai', name: 'Karim' };
-      localStorage.setItem('leadhunter_admin_token', 'initial_session');
-      localStorage.setItem('leadhunter_admin_user', JSON.stringify(initialUser));
-      return initialUser;
+      if (savedUser && token) return JSON.parse(savedUser);
     } catch {}
-    return { email: 'admin@leadhunter.ai', name: 'Karim' };
+    return null;
   });
 
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -78,7 +69,7 @@ export default function App() {
 
   const [jobs, setJobs] = useState<DailyJobRun[]>([]);
   const [schedulerStatus, setSchedulerStatus] = useState<any>({
-    isActive: true,
+    isActive: false,
     isCurrentlyRunning: false,
     scheduleTime: '08:00',
     timezone: 'Europe/Madrid',
