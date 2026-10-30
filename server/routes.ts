@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
 import {
+  clearProspects,
   deleteProspect,
   getOutreachDrafts,
   getProspectById,
@@ -192,6 +193,16 @@ router.post('/prospects/:id/contact', (req, res) => {
       return res.status(404).json({ error: 'Prospect not found' });
     }
     res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/prospects/clear', (req, res) => {
+  try {
+    const { keepContacted = true, keepStarred = true } = req.body || {};
+    const result = clearProspects({ keepContacted: Boolean(keepContacted), keepStarred: Boolean(keepStarred) });
+    res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -19,8 +19,8 @@ import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { AdminLogin } from './components/AdminLogin.tsx';
 import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
 import { apiFetch } from './services/apiBridge.ts';
-import { defaultSettings, getStoredProspects, computeStats } from './services/clientDataEngine.ts';
-import { Loader2, AlertCircle, X } from 'lucide-react';
+import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects } from './services/clientDataEngine.ts';
+import { Loader2, AlertCircle, X, Compass, Database, CheckCircle2, Settings } from 'lucide-react';
 
 export default function App() {
   // Authentication state
@@ -134,6 +134,7 @@ export default function App() {
       }
       if (prospectsRes?.items && prospectsRes.items.length > 0) {
         setProspects(prospectsRes.items);
+        saveStoredProspects(prospectsRes.items);
       }
       if (schedRes) setSchedulerStatus(schedRes);
       if (jobsRes) setJobs(jobsRes);
@@ -273,11 +274,15 @@ export default function App() {
       });
       if (res.ok) {
         const updated = await res.json();
-        setProspects((prev) => prev.map((p) => (p.id === id ? updated : p)));
+        setProspects((prev) => {
+          const next = prev.map((p) => (p.id === id ? updated : p));
+          saveStoredProspects(next);
+          return next;
+        });
         if (selectedProspect?.id === id) {
           setSelectedProspect(updated);
         }
-        apiFetch('/api/stats').then((r) => r.json()).then(setStats);
+        apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
       }
     } catch (err) {
       console.error('Failed to mark contacted:', err);
@@ -293,15 +298,54 @@ export default function App() {
       });
       if (res.ok) {
         const updated = await res.json();
-        setProspects((prev) => prev.map((p) => (p.id === id ? { ...p, status, notes: notes ?? p.notes } : p)));
+        setProspects((prev) => {
+          const next = prev.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  status,
+                  notes: notes ?? p.notes,
+                  isContacted: status === 'contacted' ? true : p.isContacted
+                }
+              : p
+          );
+          saveStoredProspects(next);
+          return next;
+        });
         if (selectedProspect?.id === id) {
-          setSelectedProspect((prev) => prev ? { ...prev, status, notes: notes ?? prev.notes } : null);
+          setSelectedProspect((prev) => (prev ? { ...prev, status, notes: notes ?? prev.notes, isContacted: status === 'contacted' ? true : prev.isContacted } : null));
         }
         // Refresh stats
-        apiFetch('/api/stats').then((r) => r.json()).then(setStats);
+        apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
       }
     } catch (err) {
       console.error('Failed to update status:', err);
+    }
+  };
+
+  const handleClearResearch = async (options: { keepContacted: boolean; keepStarred: boolean } = { keepContacted: true, keepStarred: true }) => {
+    try {
+      const res = await apiFetch('/api/prospects/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(options)
+      });
+      if (res.ok) {
+        setProspects((prev) => {
+          const next = prev.filter((p) => {
+            const isContacted = Boolean(p.isContacted || p.status === 'contacted');
+            const isStarred = Boolean(p.isStarred);
+            if (options.keepContacted && isContacted) return true;
+            if (options.keepStarred && isStarred) return true;
+            return false;
+          });
+          saveStoredProspects(next);
+          return next;
+        });
+        apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
+      }
+    } catch (err) {
+      console.error('Failed to clear research:', err);
     }
   };
 
@@ -471,6 +515,7 @@ export default function App() {
             onMarkContacted={handleMarkContacted}
             onToggleStar={handleToggleStar}
             onOpenDeployModal={() => setIsDeployModalOpen(true)}
+            onClearResearch={handleClearResearch}
           />
         )}
 
@@ -478,12 +523,14 @@ export default function App() {
           <ProspectsView
             prospects={currentTab === 'contacted' ? prospects.filter((p) => p.isContacted || p.status === 'contacted') : prospects}
             lang={lang}
+            initialFilter={currentTab === 'contacted' ? 'contacted' : 'uncontacted'}
             onSelectProspect={handleSelectProspectById}
             onToggleStar={handleToggleStar}
             onUpdateStatus={handleUpdateProspectStatus}
             onVerifyAgain={handleReverify}
             onExportCsv={handleExportCsv}
             onMarkContacted={handleMarkContacted}
+            onClearResearch={handleClearResearch}
           />
         )}
 
@@ -571,6 +618,63 @@ export default function App() {
         onClose={() => setIsDeployModalOpen(false)}
         lang={lang}
       />
+
+      {/* Mobile Sticky Bottom Navigation Bar for Home Screen / PWA */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#090d18]/95 border-t border-slate-800/80 backdrop-blur-2xl px-3 py-2 flex items-center justify-around text-[10px] shadow-2xl safe-area-pb">
+        <button
+          onClick={() => setCurrentTab('dashboard')}
+          className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+            currentTab === 'dashboard' ? 'text-cyan-400 font-bold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Compass className="h-4 w-4" />
+          <span>{lang === 'es' ? 'Descubrir' : 'Discover'}</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('prospects')}
+          className={`flex flex-col items-center gap-1 relative transition cursor-pointer ${
+            currentTab === 'prospects' ? 'text-cyan-400 font-bold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <div className="relative">
+            <Database className="h-4 w-4" />
+            {stats.totalLeads > 0 && (
+              <span className="absolute -top-1 -right-2 px-1 rounded-full text-[9px] bg-slate-800 text-slate-300 font-mono">
+                {stats.totalLeads}
+              </span>
+            )}
+          </div>
+          <span>{lang === 'es' ? 'Leads' : 'Leads'}</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('contacted')}
+          className={`flex flex-col items-center gap-1 relative transition cursor-pointer ${
+            currentTab === 'contacted' ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <div className="relative">
+            <CheckCircle2 className="h-4 w-4" />
+            {stats.contactedCount > 0 && (
+              <span className="absolute -top-1 -right-2 px-1 rounded-full text-[9px] bg-emerald-500/30 text-emerald-300 font-mono">
+                {stats.contactedCount}
+              </span>
+            )}
+          </div>
+          <span>{lang === 'es' ? 'Contactados' : 'Contacted'}</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('settings')}
+          className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+            currentTab === 'settings' ? 'text-cyan-400 font-bold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Settings className="h-4 w-4" />
+          <span>{lang === 'es' ? 'Ajustes' : 'Settings'}</span>
+        </button>
+      </nav>
     </div>
   );
 }

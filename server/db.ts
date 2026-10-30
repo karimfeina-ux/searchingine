@@ -284,6 +284,24 @@ export const deleteProspect = (id: string): void => {
   persistStore();
 };
 
+export const clearProspects = (options: { keepContacted?: boolean; keepStarred?: boolean } = { keepContacted: true, keepStarred: true }): { deletedCount: number; remainingCount: number } => {
+  let deletedCount = 0;
+  for (const [id, p] of Object.entries(store.prospects)) {
+    const isContacted = Boolean(p.isContacted || p.status === 'contacted');
+    const isStarred = Boolean(p.isStarred);
+    if ((options.keepContacted && isContacted) || (options.keepStarred && isStarred)) {
+      continue;
+    }
+    delete store.prospects[id];
+    delete store.briefs[id];
+    delete store.verifications[id];
+    delete store.outreachDrafts[id];
+    deletedCount++;
+  }
+  persistStore();
+  return { deletedCount, remainingCount: Object.keys(store.prospects).length };
+};
+
 export const saveVerification = (v: WebsiteVerificationRecord): void => {
   if (!store.verifications[v.prospectId]) {
     store.verifications[v.prospectId] = [];

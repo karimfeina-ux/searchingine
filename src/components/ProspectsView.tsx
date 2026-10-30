@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Prospect, WebsiteStatus, LeadStatus } from '../types/index.ts';
+import { getGoogleMapsUrl } from '../utils/maps.ts';
+import { t } from '../utils/translations.ts';
 import {
   Search,
   Filter,
@@ -16,7 +18,10 @@ import {
   Table as TableIcon,
   RefreshCw,
   Copy,
-  Check
+  Check,
+  Trash2,
+  AlertTriangle,
+  Compass
 } from 'lucide-react';
 
 interface ProspectsViewProps {
@@ -28,6 +33,8 @@ interface ProspectsViewProps {
   onVerifyAgain: (id: string) => void;
   onExportCsv: () => void;
   onMarkContacted?: (id: string) => void;
+  onClearResearch?: (options: { keepContacted: boolean; keepStarred: boolean }) => void;
+  initialFilter?: 'all' | 'uncontacted' | 'contacted';
 }
 
 export const ProspectsView: React.FC<ProspectsViewProps> = ({
@@ -39,15 +46,27 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
   onVerifyAgain,
   onExportCsv,
   onMarkContacted,
+  onClearResearch,
+  initialFilter = 'uncontacted'
 }) => {
+  const tr = t[lang] || t.en;
   const [search, setSearch] = useState('');
-  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'uncontacted' | 'contacted' | 'clicked' | 'high_priority'>('all');
+  // Default to uncontacted so users don't see contacted businesses in their new search list
+  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'uncontacted' | 'contacted' | 'clicked' | 'high_priority'>(initialFilter);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedWebsiteStatus, setSelectedWebsiteStatus] = useState<string>('all');
   const [selectedLeadStatus, setSelectedLeadStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'score' | 'rating' | 'reviews' | 'recent'>('score');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialFilter) {
+      setPipelineFilter(initialFilter);
+    }
+  }, [initialFilter]);
 
   // Extract unique categories for filter
   const categories = Array.from(new Set(prospects.map((p) => p.category)));
@@ -55,14 +74,17 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
   // Filter & sort
   const filtered = prospects
     .filter((p) => {
-      if (pipelineFilter === 'uncontacted' && (p.isContacted || p.status === 'contacted')) return false;
-      if (pipelineFilter === 'contacted' && !p.isContacted && p.status !== 'contacted') return false;
+      const isLeadContacted = Boolean(p.isContacted || p.status === 'contacted');
+
+      if (pipelineFilter === 'uncontacted' && isLeadContacted) return false;
+      if (pipelineFilter === 'contacted' && !isLeadContacted) return false;
       if (pipelineFilter === 'clicked' && !p.isClicked) return false;
       if (pipelineFilter === 'high_priority' && p.leadScore < 80) return false;
 
       if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
       if (selectedWebsiteStatus !== 'all' && p.websiteStatus !== selectedWebsiteStatus) return false;
       if (selectedLeadStatus !== 'all' && p.status !== selectedLeadStatus) return false;
+
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchesName = p.name.toLowerCase().includes(q);
@@ -90,32 +112,120 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
     }
   };
 
+  const handleContactAction = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (onMarkContacted) {
+      onMarkContacted(id);
+      setFeedbackToast(tr.markContactedSuccess);
+      setTimeout(() => setFeedbackToast(null), 3000);
+    }
+  };
+
+  const handleExecuteClear = () => {
+    if (onClearResearch) {
+      onClearResearch({ keepContacted: true, keepStarred: true });
+      setShowClearConfirmModal(false);
+      setFeedbackToast(tr.cleanedSuccess);
+      setTimeout(() => setFeedbackToast(null), 3000);
+    }
+  };
+
+  const uncontactedCount = prospects.filter((p) => !p.isContacted && p.status !== 'contacted').length;
+  const contactedCount = prospects.filter((p) => p.isContacted || p.status === 'contacted').length;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-in fade-in duration-200">
+      {/* Toast Feedback */}
+      {feedbackToast && (
+        <div className="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-emerald-500/90 text-slate-950 font-bold px-4 py-2.5 shadow-2xl backdrop-blur-md animate-in slide-in-from-top duration-200 border border-emerald-300 text-xs">
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{feedbackToast}</span>
+        </div>
+      )}
+
+      {/* Confirmation Modal to Clean Research List */}
+      {showClearConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0f172a] p-6 shadow-2xl text-slate-100 space-y-4">
+            <div className="flex items-center gap-3 text-amber-400">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-white">{tr.cleanResearchTitle}</h3>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {tr.cleanResearchDesc}
+            </p>
+            <div className="rounded-xl bg-slate-900/90 p-3 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+              <div className="flex justify-between">
+                <span>{lang === 'es' ? 'Prospectos a limpiar (no contactados):' : 'Leads to remove (uncontacted):'}</span>
+                <span className="font-bold text-rose-400">{uncontactedCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{lang === 'es' ? 'Prospectos protegidos (contactados y favoritos):' : 'Protected leads (contacted & starred):'}</span>
+                <span className="font-bold text-emerald-400">{contactedCount}</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setShowClearConfirmModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition cursor-pointer"
+              >
+                {tr.cleanResearchCancel}
+              </button>
+              <button
+                onClick={handleExecuteClear}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-xs font-bold text-white shadow-lg shadow-rose-900/30 transition cursor-pointer"
+              >
+                {tr.cleanResearchConfirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Pipeline Navigation Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        {[
-          { id: 'all', label: 'All Leads', count: prospects.length },
-          { id: 'uncontacted', label: 'Uncontacted', count: prospects.filter((p) => !p.isContacted && p.status !== 'contacted').length },
-          { id: 'contacted', label: 'Contacted', count: prospects.filter((p) => p.isContacted || p.status === 'contacted').length },
-          { id: 'clicked', label: 'Viewed', count: prospects.filter((p) => p.isClicked).length },
-          { id: 'high_priority', label: 'High Score (80+)', count: prospects.filter((p) => p.leadScore >= 80).length },
-        ].map((tab) => (
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { id: 'uncontacted', label: tr.filterUncontacted, count: uncontactedCount },
+            { id: 'contacted', label: tr.filterContactedOnly, count: contactedCount, isHighlight: true },
+            { id: 'all', label: tr.filterAll, count: prospects.length },
+            { id: 'high_priority', label: tr.filterHighScore, count: prospects.filter((p) => p.leadScore >= 80).length },
+            { id: 'clicked', label: tr.filterViewed, count: prospects.filter((p) => p.isClicked).length },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setPipelineFilter(tab.id as any)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition cursor-pointer select-none ${
+                pipelineFilter === tab.id
+                  ? tab.isHighlight
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-950'
+                    : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-950'
+                  : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                pipelineFilter === tab.id && tab.isHighlight ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-800/80 text-slate-300'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Clean Research List Button */}
+        {onClearResearch && uncontactedCount > 0 && (
           <button
-            key={tab.id}
-            onClick={() => setPipelineFilter(tab.id as any)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition cursor-pointer select-none ${
-              pipelineFilter === tab.id
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-950'
-                : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
-            }`}
+            onClick={() => setShowClearConfirmModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-300 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-800/40 transition cursor-pointer shrink-0 shadow-sm"
+            title={lang === 'es' ? 'Limpia prospectos no contactados antes de buscar otra región' : 'Clear uncontacted search list before researching a new region'}
           >
-            <span>{tab.label}</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800/80 text-slate-300 font-mono">
-              {tab.count}
-            </span>
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <span>{tr.cleanResearchBtn}</span>
           </button>
-        ))}
+        )}
       </div>
 
       {/* Search & Filter Toolbar */}
@@ -138,7 +248,7 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
             <div className="flex rounded-xl border border-slate-800 bg-slate-950/60 p-0.5">
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-lg text-xs transition ${
+                className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
                   viewMode === 'table' ? 'bg-cyan-500/20 text-cyan-300 font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
                 title="Table view"
@@ -147,7 +257,7 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
               </button>
               <button
                 onClick={() => setViewMode('cards')}
-                className={`p-1.5 rounded-lg text-xs transition ${
+                className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
                   viewMode === 'cards' ? 'bg-cyan-500/20 text-cyan-300 font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
                 title="Grid card view"
@@ -159,20 +269,20 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
             {/* Export CSV Button */}
             <button
               onClick={onExportCsv}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700 hover:text-white transition"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700 hover:text-white transition cursor-pointer"
               title="Export filtered prospects to CSV"
             >
               <Download className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{lang === 'es' ? 'Exportar CSV' : 'Export CSV'}</span>
+              <span>{tr.exportCsv}</span>
             </button>
           </div>
         </div>
 
-        {/* Filter Pills */}
+        {/* Filter Dropdowns */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/60 text-xs text-slate-300">
           <div className="flex items-center gap-1.5 text-slate-400 font-medium">
             <Filter className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{lang === 'es' ? 'Filtros:' : 'Filters:'}</span>
+            <span>{tr.filters}</span>
           </div>
 
           {/* Website Status Filter */}
@@ -181,12 +291,12 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
             onChange={(e) => setSelectedWebsiteStatus(e.target.value)}
             className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
           >
-            <option value="all">{lang === 'es' ? 'Estado Web: Todos' : 'Website Status: All'}</option>
-            <option value="no_website">{lang === 'es' ? 'Sin Web (No Website)' : 'No Website Found'}</option>
-            <option value="website_broken">{lang === 'es' ? 'Web Rota (Broken)' : 'Website Broken'}</option>
-            <option value="website_outdated">{lang === 'es' ? 'Web Obsoleta' : 'Website Outdated'}</option>
-            <option value="possibly_no_website">{lang === 'es' ? 'Posiblemente Sin Web' : 'Possibly No Website'}</option>
-            <option value="website_exists">{lang === 'es' ? 'Web Existe' : 'Website Exists'}</option>
+            <option value="all">{tr.websiteStatusAll}</option>
+            <option value="no_website">{tr.noWebsiteFound}</option>
+            <option value="website_broken">{tr.websiteBroken}</option>
+            <option value="website_outdated">{tr.websiteOutdated}</option>
+            <option value="possibly_no_website">{tr.possiblyNoWebsite}</option>
+            <option value="website_exists">{tr.websiteExists}</option>
           </select>
 
           {/* Category Filter */}
@@ -207,27 +317,27 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
             onChange={(e) => setSelectedLeadStatus(e.target.value)}
             className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
           >
-            <option value="all">{lang === 'es' ? 'Pipeline: Todos' : 'Pipeline Status: All'}</option>
-            <option value="high_priority">{lang === 'es' ? 'Alta Prioridad' : 'High Priority'}</option>
-            <option value="ready_to_contact">{lang === 'es' ? 'Listo Para Contactar' : 'Ready to Contact'}</option>
-            <option value="contacted">{lang === 'es' ? 'Contactado' : 'Contacted'}</option>
-            <option value="client_signed">{lang === 'es' ? 'Cliente Firmado' : 'Client Signed'}</option>
-            <option value="new">{lang === 'es' ? 'Nuevo' : 'New'}</option>
-            <option value="excluded">{lang === 'es' ? 'Excluido' : 'Excluded'}</option>
+            <option value="all">{tr.pipelineStatusAll}</option>
+            <option value="high_priority">{tr.highPriority}</option>
+            <option value="ready_to_contact">{tr.readyToContact}</option>
+            <option value="contacted">{tr.contactedStatus}</option>
+            <option value="client_signed">{tr.clientSigned}</option>
+            <option value="new">{tr.newLead}</option>
+            <option value="excluded">{tr.excluded}</option>
           </select>
 
           {/* Sort By Filter */}
           <div className="ml-auto flex items-center gap-1">
-            <span className="text-[11px] text-slate-500">{lang === 'es' ? 'Ordenar por:' : 'Sort by:'}</span>
+            <span className="text-[11px] text-slate-500">{tr.sortBy}</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
               className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
             >
-              <option value="score">{lang === 'es' ? 'Puntuación Lead' : 'Lead Score'}</option>
-              <option value="rating">{lang === 'es' ? 'Valoración (★)' : 'Star Rating'}</option>
-              <option value="reviews">{lang === 'es' ? 'Nº Reseñas' : 'Review Count'}</option>
-              <option value="recent">{lang === 'es' ? 'Más Reciente' : 'Most Recent'}</option>
+              <option value="score">{tr.score}</option>
+              <option value="rating">{tr.starRating}</option>
+              <option value="reviews">{tr.reviewCount}</option>
+              <option value="recent">{tr.mostRecent}</option>
             </select>
           </div>
         </div>
@@ -240,27 +350,35 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
             ? `Mostrando ${filtered.length} negocios investigados`
             : `Showing ${filtered.length} investigated prospects`}
         </span>
-        <span className="text-[11px] text-slate-500">
-          {lang === 'es' ? 'Haz clic en un registro para abrir el Brief de Diseño y el Prompt de AI Studio' : 'Click any lead to view its Full Brief and copy-ready AI Studio Prompt'}
+        <span className="text-[11px] text-slate-500 hidden sm:inline">
+          {tr.clickToViewBrief}
         </span>
       </div>
 
       {/* Render View (Table or Cards) */}
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-400 bg-slate-900/30">
+        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-400 bg-slate-900/30 space-y-3">
           <p className="text-sm font-semibold text-slate-300">
-            {lang === 'es' ? 'No se encontraron prospectos con los filtros actuales' : 'No prospects match the selected filters'}
+            {tr.noResultsFound}
           </p>
+          {pipelineFilter === 'contacted' && (
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              {lang === 'es'
+                ? 'Aún no has contactado ningún negocio. Cuando pulses "Marcar Contactado" en cualquier prospecto, aparecerá guardado permanentemente aquí.'
+                : 'You have not contacted any business yet. Click "Mark Contacted" on any prospect to permanently save it in this category.'}
+            </p>
+          )}
           <button
             onClick={() => {
               setSearch('');
               setSelectedCategory('all');
               setSelectedWebsiteStatus('all');
               setSelectedLeadStatus('all');
+              setPipelineFilter('all');
             }}
-            className="mt-3 text-xs text-cyan-400 hover:underline"
+            className="text-xs text-cyan-400 hover:underline cursor-pointer block mx-auto"
           >
-            {lang === 'es' ? 'Restablecer todos los filtros' : 'Reset all filters'}
+            {tr.resetFilters}
           </button>
         </div>
       ) : viewMode === 'table' ? (
@@ -270,238 +388,302 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
             <thead className="border-b border-slate-800 bg-slate-950/80 text-[11px] font-bold uppercase tracking-wider text-slate-400">
               <tr>
                 <th className="py-3.5 pl-4 pr-2 w-8">★</th>
-                <th className="py-3.5 px-4">{lang === 'es' ? 'Puntuación' : 'Score'}</th>
-                <th className="py-3.5 px-4">{lang === 'es' ? 'Negocio' : 'Business'}</th>
-                <th className="py-3.5 px-4">{lang === 'es' ? 'Ubicación' : 'Location'}</th>
-                <th className="py-3.5 px-4">{lang === 'es' ? 'Estado Web' : 'Website Status'}</th>
-                <th className="py-3.5 px-4">{lang === 'es' ? 'Reputación' : 'Reviews'}</th>
-                <th className="py-3.5 px-4">{lang === 'es' ? 'Contacto' : 'Contact'}</th>
-                <th className="py-3.5 px-4">{lang === 'es' ? 'Estado Pipeline' : 'Pipeline'}</th>
-                <th className="py-3.5 pr-4 pl-2 text-right">{lang === 'es' ? 'Acciones' : 'Actions'}</th>
+                <th className="py-3.5 px-3">{tr.colScore}</th>
+                <th className="py-3.5 px-4">{tr.colBusiness}</th>
+                <th className="py-3.5 px-3">{tr.colLocation}</th>
+                <th className="py-3.5 px-3">Google Maps</th>
+                <th className="py-3.5 px-3">{tr.colWebsite}</th>
+                <th className="py-3.5 px-3">{tr.colReviews}</th>
+                <th className="py-3.5 px-3">{tr.colContact}</th>
+                <th className="py-3.5 px-3">{tr.colPipeline}</th>
+                <th className="py-3.5 pr-4 pl-2 text-right">{tr.colActions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {filtered.map((prospect) => (
-                <tr
-                  key={prospect.id}
-                  onClick={() => onSelectProspect(prospect)}
-                  className="cursor-pointer transition hover:bg-slate-800/40 group"
-                >
-                  {/* Star */}
-                  <td className="py-3 pl-4 pr-2" onClick={(e) => { e.stopPropagation(); onToggleStar(prospect.id); }}>
-                    <Star
-                      className={`w-4 h-4 transition ${
-                        prospect.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-600 hover:text-amber-400'
-                      }`}
-                    />
-                  </td>
+              {filtered.map((prospect) => {
+                const mapsUrl = getGoogleMapsUrl(prospect);
+                const isLeadContacted = Boolean(prospect.isContacted || prospect.status === 'contacted');
 
-                  {/* Lead Score */}
-                  <td className="py-3 px-4">
-                    <div
-                      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-0.5 font-extrabold text-xs shadow-sm ${
-                        prospect.leadScore >= 85
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                          : prospect.leadScore >= 70
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                          : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                      }`}
-                    >
-                      <Zap className="w-3 h-3 fill-current" />
-                      <span>{prospect.leadScore}</span>
-                    </div>
-                  </td>
+                return (
+                  <tr
+                    key={prospect.id}
+                    onClick={() => onSelectProspect(prospect)}
+                    className="cursor-pointer transition hover:bg-slate-800/40 group"
+                  >
+                    {/* Star */}
+                    <td className="py-3 pl-4 pr-2" onClick={(e) => { e.stopPropagation(); onToggleStar(prospect.id); }}>
+                      <Star
+                        className={`w-4 h-4 transition ${
+                          prospect.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-600 hover:text-amber-400'
+                        }`}
+                      />
+                    </td>
 
-                  {/* Business Name & Category */}
-                  <td className="py-3 px-4">
-                    <div className="font-bold text-white group-hover:text-cyan-300 transition truncate max-w-[220px]">
-                      {prospect.name}
-                    </div>
-                    <div className="text-[11px] text-slate-500 truncate">{prospect.category}</div>
-                  </td>
-
-                  {/* Location */}
-                  <td className="py-3 px-4 text-slate-400">
-                    <div className="truncate max-w-[180px]">{prospect.address}</div>
-                    <div className="text-[11px] text-slate-500">{prospect.city}</div>
-                  </td>
-
-                  {/* Website Verification Badge */}
-                  <td className="py-3 px-4">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide ${
-                        prospect.websiteStatus === 'no_website'
-                          ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                          : prospect.websiteStatus === 'website_broken'
-                          ? 'bg-red-500/15 text-red-300 border border-red-500/30'
-                          : prospect.websiteStatus === 'website_outdated'
-                          ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                          : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      {prospect.websiteStatus.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-
-                  {/* Reviews */}
-                  <td className="py-3 px-4">
-                    <span className="font-medium text-amber-400">★ {prospect.reviewRating.toFixed(1)}</span>
-                    <span className="text-[11px] text-slate-500 ml-1">({prospect.reviewCount})</span>
-                  </td>
-
-                  {/* Contact */}
-                  <td className="py-3 px-4 text-slate-400">
-                    {prospect.phone ? (
-                      <span className="flex items-center gap-1 font-mono text-[11px] text-slate-300">
-                        <Phone className="w-3 h-3 text-cyan-400 shrink-0" />
-                        <span>{prospect.phone}</span>
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-500 italic">In-person / Social</span>
-                    )}
-                  </td>
-
-                  {/* Pipeline Status Dropdown */}
-                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      value={prospect.status}
-                      onChange={(e) => onUpdateStatus(prospect.id, e.target.value as LeadStatus)}
-                      className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-0.5 text-[11px] font-medium text-slate-300 focus:border-cyan-500 focus:outline-none"
-                    >
-                      <option value="new">New</option>
-                      <option value="high_priority">High Priority</option>
-                      <option value="ready_to_contact">Ready to Contact</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="interested">Interested</option>
-                      <option value="client_signed">Client Signed</option>
-                      <option value="excluded">Excluded</option>
-                    </select>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="py-3 pr-4 pl-2 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1.5">
-                      {onMarkContacted && (
-                        <button
-                          onClick={() => onMarkContacted(prospect.id)}
-                          className={`px-2 py-1 rounded-lg text-[10px] font-semibold border transition ${
-                            prospect.isContacted || prospect.status === 'contacted'
-                              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30'
-                              : 'bg-slate-800/80 hover:bg-emerald-950/40 hover:text-emerald-300 text-slate-300 border-slate-700'
-                          }`}
-                          title={prospect.isContacted ? 'Contacted' : 'Mark as Contacted'}
-                        >
-                          {prospect.isContacted || prospect.status === 'contacted' ? '✓ Contacted' : 'Mark Contacted'}
-                        </button>
-                      )}
-                      {prospect.brief && (
-                        <button
-                          onClick={(e) => handleCopyPrompt(e, prospect)}
-                          className="p-1.5 rounded-lg border border-slate-700 bg-slate-800/80 text-cyan-400 hover:bg-slate-700 transition"
-                          title="Copy Google AI Studio Website Prompt"
-                        >
-                          {copiedId === prospect.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => onSelectProspect(prospect)}
-                        className="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 text-[11px] font-semibold border border-cyan-500/30 transition"
+                    {/* Lead Score */}
+                    <td className="py-3 px-3">
+                      <div
+                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 font-extrabold text-xs shadow-sm ${
+                          prospect.leadScore >= 85
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : prospect.leadScore >= 70
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                            : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                        }`}
                       >
-                        {lang === 'es' ? 'Ver Perfil' : 'Profile'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <Zap className="w-3 h-3 fill-current" />
+                        <span>{prospect.leadScore}</span>
+                      </div>
+                    </td>
+
+                    {/* Business Name & Category */}
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-white group-hover:text-cyan-300 transition truncate max-w-[200px]">
+                        {prospect.name}
+                      </div>
+                      <div className="text-[11px] text-slate-500 truncate">{prospect.category}</div>
+                    </td>
+
+                    {/* Location */}
+                    <td className="py-3 px-3 text-slate-400">
+                      <div className="truncate max-w-[150px]">{prospect.address}</div>
+                      <div className="text-[11px] text-slate-500">{prospect.city}</div>
+                    </td>
+
+                    {/* Direct Google Maps Link to confirm info */}
+                    <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[11px] font-semibold transition"
+                        title={tr.mapsConfirmTitle}
+                      >
+                        <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
+                        <span>Maps ↗</span>
+                      </a>
+                    </td>
+
+                    {/* Website Verification Badge */}
+                    <td className="py-3 px-3">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${
+                          prospect.websiteStatus === 'no_website'
+                            ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                            : prospect.websiteStatus === 'website_broken'
+                            ? 'bg-red-500/15 text-red-300 border border-red-500/30'
+                            : prospect.websiteStatus === 'website_outdated'
+                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        {prospect.websiteStatus.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+
+                    {/* Reviews */}
+                    <td className="py-3 px-3">
+                      <span className="font-medium text-amber-400">★ {prospect.reviewRating.toFixed(1)}</span>
+                      <span className="text-[11px] text-slate-500 ml-1">({prospect.reviewCount})</span>
+                    </td>
+
+                    {/* Contact Phone */}
+                    <td className="py-3 px-3 text-slate-400">
+                      {prospect.phone ? (
+                        <a
+                          href={`tel:${prospect.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1 font-mono text-[11px] text-slate-300 hover:text-cyan-300 transition"
+                        >
+                          <Phone className="w-3 h-3 text-cyan-400 shrink-0" />
+                          <span>{prospect.phone}</span>
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 italic">In-person</span>
+                      )}
+                    </td>
+
+                    {/* Pipeline Status Dropdown */}
+                    <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
+                      <select
+                        value={prospect.status}
+                        onChange={(e) => onUpdateStatus(prospect.id, e.target.value as LeadStatus)}
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-0.5 text-[11px] font-medium text-slate-300 focus:border-cyan-500 focus:outline-none"
+                      >
+                        <option value="new">{tr.newLead}</option>
+                        <option value="high_priority">{tr.highPriority}</option>
+                        <option value="ready_to_contact">{tr.readyToContact}</option>
+                        <option value="contacted">{tr.contactedStatus}</option>
+                        <option value="client_signed">{tr.clientSigned}</option>
+                        <option value="excluded">{tr.excluded}</option>
+                      </select>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-3 pr-4 pl-2 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {onMarkContacted && (
+                          <button
+                            onClick={(e) => handleContactAction(e, prospect.id)}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-semibold border transition cursor-pointer ${
+                              isLeadContacted
+                                ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30'
+                                : 'bg-slate-800/80 hover:bg-emerald-950/40 hover:text-emerald-300 text-slate-300 border-slate-700'
+                            }`}
+                            title={isLeadContacted ? 'Contacted' : 'Mark as Contacted'}
+                          >
+                            {isLeadContacted ? tr.contactedBadge : tr.markContacted}
+                          </button>
+                        )}
+                        {prospect.brief && (
+                          <button
+                            onClick={(e) => handleCopyPrompt(e, prospect)}
+                            className="p-1.5 rounded-lg border border-slate-700 bg-slate-800/80 text-cyan-400 hover:bg-slate-700 transition cursor-pointer"
+                            title="Copy Google AI Studio Website Prompt"
+                          >
+                            {copiedId === prospect.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => onSelectProspect(prospect)}
+                          className="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 text-[11px] font-semibold border border-cyan-500/30 transition cursor-pointer"
+                        >
+                          {tr.viewProfile}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
         /* Grid Cards View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((prospect) => (
-            <div
-              key={prospect.id}
-              onClick={() => onSelectProspect(prospect)}
-              className="cursor-pointer overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-4 transition-all hover:border-cyan-500/50 hover:bg-slate-900/90 hover:shadow-xl group flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1">
-                    <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-                      {prospect.category}
-                    </span>
-                    <h3 className="font-bold text-white group-hover:text-cyan-300 transition text-sm">
-                      {prospect.name}
-                    </h3>
-                  </div>
+          {filtered.map((prospect) => {
+            const mapsUrl = getGoogleMapsUrl(prospect);
+            const isLeadContacted = Boolean(prospect.isContacted || prospect.status === 'contacted');
 
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onToggleStar(prospect.id); }}
-                      className="p-1 text-slate-600 hover:text-amber-400 transition"
-                    >
-                      <Star className={`w-4 h-4 ${prospect.isStarred ? 'fill-amber-400 text-amber-400' : ''}`} />
-                    </button>
-                    <div
-                      className={`flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-bold ${
-                        prospect.leadScore >= 85
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                          : prospect.leadScore >= 70
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                          : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                      }`}
-                    >
-                      <Zap className="w-3 h-3 fill-current" />
-                      <span>{prospect.leadScore}</span>
+            return (
+              <div
+                key={prospect.id}
+                onClick={() => onSelectProspect(prospect)}
+                className="cursor-pointer overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-4 transition-all hover:border-cyan-500/50 hover:bg-slate-900/90 hover:shadow-xl group flex flex-col justify-between space-y-3"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-white group-hover:text-cyan-300 transition text-sm truncate">
+                          {prospect.name}
+                        </span>
+                      </div>
+                      <span className="inline-block rounded-md bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                        {prospect.category}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleStar(prospect.id);
+                        }}
+                        className="p-1 text-slate-500 hover:text-amber-400 transition"
+                      >
+                        <Star className={`w-4 h-4 ${prospect.isStarred ? 'fill-amber-400 text-amber-400' : ''}`} />
+                      </button>
+                      <div
+                        className={`flex items-center gap-1 rounded-lg px-2 py-0.5 font-bold text-xs ${
+                          prospect.leadScore >= 85
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                        }`}
+                      >
+                        <Zap className="w-3 h-3 fill-current" />
+                        <span>{prospect.leadScore}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-3 space-y-1 text-xs text-slate-400">
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
-                    <span className="truncate">{prospect.address}, {prospect.city}</span>
-                  </div>
-                  {prospect.phone && (
-                    <div className="flex items-center gap-1 text-slate-300">
-                      <Phone className="w-3 h-3 text-cyan-400 shrink-0" />
-                      <span className="font-mono text-[11px]">{prospect.phone}</span>
+                  {/* Address & Google Maps Direct Link */}
+                  <div className="mt-3 space-y-1.5 text-xs text-slate-400">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1 text-[11px] truncate">
+                        <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate">{prospect.address}, {prospect.city}</span>
+                      </div>
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-[10px] font-semibold shrink-0 transition"
+                        title={tr.mapsConfirmTitle}
+                      >
+                        <span>Maps</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
                     </div>
-                  )}
-                  <div className="text-amber-400 font-medium">
-                    ★ {prospect.reviewRating.toFixed(1)} ({prospect.reviewCount} {lang === 'es' ? 'reseñas' : 'reviews'})
-                  </div>
-                </div>
 
-                <div className="mt-3 pt-2 border-t border-slate-800/60">
-                  <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      prospect.websiteStatus === 'no_website'
-                        ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                        : prospect.websiteStatus === 'website_broken'
-                        ? 'bg-red-500/15 text-red-300 border border-red-500/30'
-                        : 'bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {prospect.websiteStatus.replace(/_/g, ' ')}
-                  </span>
-                  <p className="mt-1 text-[11px] text-slate-400 italic line-clamp-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-amber-400 font-medium">
+                        ★ {prospect.reviewRating.toFixed(1)} ({prospect.reviewCount} {lang === 'es' ? 'reseñas' : 'reviews'})
+                      </span>
+                      {prospect.phone && (
+                        <a
+                          href={`tel:${prospect.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-mono text-slate-300 hover:text-cyan-300 transition"
+                        >
+                          {prospect.phone}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sentiment snippet */}
+                  <p className="mt-2.5 text-[11px] text-slate-300 italic line-clamp-2 bg-slate-950/60 p-2 rounded-xl border border-slate-800/80">
                     "{prospect.reviewSentimentSummary}"
                   </p>
                 </div>
-              </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs">
-                <span className="text-cyan-400 font-semibold text-[11px]">
-                  {prospect.brief ? '3 Conceptos Listos' : 'Analizado'}
-                </span>
-                <span className="text-slate-400 group-hover:text-cyan-300 transition text-[11px] font-medium">
-                  {lang === 'es' ? 'Abrir Perfil' : 'View Profile'} &rarr;
-                </span>
+                {/* Card Footer Actions */}
+                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={(e) => handleContactAction(e, prospect.id)}
+                    className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold border transition cursor-pointer text-center ${
+                      isLeadContacted
+                        ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40'
+                        : 'bg-slate-800 hover:bg-emerald-950/50 hover:text-emerald-300 text-slate-200 border-slate-700'
+                    }`}
+                  >
+                    {isLeadContacted ? tr.contactedBadge : tr.markContacted}
+                  </button>
+
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-xl border border-slate-700 bg-slate-800/80 text-blue-300 hover:bg-blue-900/30 transition cursor-pointer"
+                    title={tr.viewOnGoogleMaps}
+                  >
+                    <MapPin className="w-4 h-4 text-blue-400" />
+                  </a>
+
+                  {prospect.brief && (
+                    <button
+                      onClick={(e) => handleCopyPrompt(e, prospect)}
+                      className="p-1.5 rounded-xl border border-slate-700 bg-slate-800/80 text-cyan-400 hover:bg-slate-700 transition cursor-pointer"
+                      title={tr.copyPrompt}
+                    >
+                      {copiedId === prospect.id ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

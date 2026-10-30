@@ -6,7 +6,8 @@ import {
   addExclusion,
   runClientDeepSearch,
   computeStats,
-  createClientBrief
+  createClientBrief,
+  clearStoredProspects
 } from './clientDataEngine.ts';
 import type { Prospect } from '../types/index.ts';
 
@@ -150,6 +151,14 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
       items: filtered,
       total: filtered.length
     });
+  }
+
+  // Clear research list
+  if (path === '/api/prospects/clear' && (method === 'POST' || method === 'DELETE')) {
+    const keepContacted = body.keepContacted !== false;
+    const keepStarred = body.keepStarred !== false;
+    const kept = clearStoredProspects({ keepContacted, keepStarred });
+    return jsonResponse({ success: true, remainingCount: kept.length });
   }
 
   // 7. Individual Prospect actions

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { AppSettings, LeadStatus, OutreachDraft, Prospect } from '../types/index.ts';
+import { getGoogleMapsUrl } from '../utils/maps.ts';
 import {
   X,
   Star,
@@ -166,6 +167,16 @@ Base Web Price: €${settings.baseWebsitePrice} | Hosting: €${settings.monthly
                 <span className="text-amber-400 font-medium">
                   ★ {prospect.reviewRating.toFixed(1)} ({prospect.reviewCount} {lang === 'es' ? 'reseñas' : 'reviews'})
                 </span>
+                <a
+                  href={getGoogleMapsUrl(prospect)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-xs font-semibold transition"
+                  title={lang === 'es' ? 'Confirmar negocio e información en Google Maps' : 'Verify business and confirm details on Google Maps'}
+                >
+                  <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                  <span>{lang === 'es' ? 'Ver en Google Maps ↗' : 'View on Google Maps ↗'}</span>
+                </a>
               </div>
             </div>
           </div>
@@ -350,6 +361,35 @@ Base Web Price: €${settings.baseWebsitePrice} | Hosting: €${settings.monthly
                     <p className="text-xs text-slate-400">{prospect.stableOperationsEvidence}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Direct Google Maps Live Verification Card */}
+              <div className="rounded-2xl border border-blue-500/30 bg-blue-950/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">
+                      {lang === 'es' ? 'Verificar y Confirmar Información en Google Maps' : 'Verify & Cross-Check on Google Maps'}
+                    </h4>
+                    <p className="text-[11px] text-slate-300">
+                      {lang === 'es'
+                        ? 'Comprueba reseñas reales, horarios de apertura, fotos de clientes y teléfono oficial.'
+                        : 'Inspect real customer reviews, street photos, official opening hours, and business listing.'}
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href={getGoogleMapsUrl(prospect)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-900/30 transition shrink-0"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>{lang === 'es' ? 'Abrir en Google Maps ↗' : 'Open Google Maps ↗'}</span>
+                </a>
               </div>
 
               {/* Pipeline Notes & Status Management */}

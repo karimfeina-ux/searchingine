@@ -433,6 +433,19 @@ export function addExclusion(name: string, phone?: string) {
   } catch {}
 }
 
+export function clearStoredProspects(options: { keepContacted?: boolean; keepStarred?: boolean } = { keepContacted: true, keepStarred: true }): Prospect[] {
+  const current = getStoredProspects();
+  const kept = current.filter((p) => {
+    const isContacted = Boolean(p.isContacted || p.status === 'contacted');
+    const isStarred = Boolean(p.isStarred);
+    if (options.keepContacted && isContacted) return true;
+    if (options.keepStarred && isStarred) return true;
+    return false;
+  });
+  saveStoredProspects(kept);
+  return kept;
+}
+
 // Generate complete Website Design Brief programmatically
 export function createClientBrief(prospect: Prospect, settings: AppSettings): WebsiteBrief {
   const price = settings.baseWebsitePrice || 500;

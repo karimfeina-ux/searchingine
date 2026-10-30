@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Cloud
 } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton.tsx';
 
 interface HeaderProps {
   currentTab: string;
@@ -185,6 +186,9 @@ export const Header: React.FC<HeaderProps> = ({
                 {userEmail}
               </span>
             </div>
+
+            {/* PWA Mobile & Desktop Home Screen Install Button */}
+            <PWAInstallButton lang={lang} />
 
             {/* Language switch */}
             <button
