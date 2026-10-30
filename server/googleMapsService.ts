@@ -93,31 +93,57 @@ export async function searchGoogleMapsBusinesses(params: {
     'places.primaryTypeDisplayName',
     'places.types',
     'places.regularOpeningHours',
-    'places.editorialSummary'
+    'places.editorialSummary',
+    'nextPageToken'
   ].join(',');
 
-  const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
-      'X-Goog-FieldMask': fieldMask,
-    },
-    body: JSON.stringify(requestBody),
-  });
+  let places: GooglePlaceResult[] = [];
+  let nextPageToken: string | undefined = undefined;
+  let pageCount = 0;
+  const maxPages = 3;
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error(`Google Places API error (${response.status}):`, errorBody);
-    if (response.status === 429) {
-      throw new Error('Google Maps Platform quota exceeded. Please check your account limits.');
+  do {
+    const requestBody: Record<string, any> = {
+      textQuery: fullTextQuery,
+      pageSize: 20,
+    };
+    if (nextPageToken) {
+      requestBody.pageToken = nextPageToken;
     }
-    throw new Error(`Google Maps search failed: ${response.status} ${response.statusText}`);
-  }
+    if (params.minRating && params.minRating > 0 && !nextPageToken) {
+      requestBody.minRating = Math.min(Math.max(params.minRating, 1.0), 5.0);
+    }
 
-  const data: { places?: GooglePlaceResult[] } = await response.json();
-  const places: GooglePlaceResult[] = Array.isArray(data.places) ? data.places : [];
+    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
+        'X-Goog-FieldMask': fieldMask,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      if (places.length === 0) {
+        const errorBody = await response.text();
+        console.error(`Google Places API error (${response.status}):`, errorBody);
+        if (response.status === 429) {
+          throw new Error('Google Maps Platform quota exceeded. Please check your account limits.');
+        }
+        throw new Error(`Google Maps search failed: ${response.status} ${response.statusText}`);
+      }
+      break;
+    }
+
+    const data: { places?: GooglePlaceResult[]; nextPageToken?: string } = await response.json();
+    if (Array.isArray(data.places)) {
+      places = places.concat(data.places);
+    }
+    nextPageToken = data.nextPageToken;
+    pageCount++;
+  } while (nextPageToken && pageCount < maxPages && places.length < 60);
 
   const { names: excludedNames, phones: excludedPhones } = getExcludedBusinessNamesAndPhones();
   const settings = getSettings();

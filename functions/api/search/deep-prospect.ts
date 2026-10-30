@@ -61,28 +61,46 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
           'places.primaryTypeDisplayName',
           'places.types',
           'places.regularOpeningHours',
-          'places.editorialSummary'
+          'places.editorialSummary',
+          'nextPageToken'
         ].join(',');
 
-        const gmpRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': apiKey,
-            'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
-            'X-Goog-FieldMask': fieldMask
-          },
-          body: JSON.stringify({
+        let places: any[] = [];
+        let nextPageToken: string | undefined = undefined;
+        let pageCount = 0;
+        const maxPages = 3;
+
+        do {
+          const reqPayload: Record<string, any> = {
             textQuery: fullTextQuery,
             pageSize: 20
-          })
-        });
+          };
+          if (nextPageToken) {
+            reqPayload.pageToken = nextPageToken;
+          }
 
-        if (gmpRes.ok) {
+          const gmpRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
+              'X-Goog-FieldMask': fieldMask
+            },
+            body: JSON.stringify(reqPayload)
+          });
+
+          if (!gmpRes.ok) break;
+
           const gmpData: any = await gmpRes.json();
-          const places = Array.isArray(gmpData.places) ? gmpData.places : [];
+          if (Array.isArray(gmpData.places)) {
+            places = places.concat(gmpData.places);
+          }
+          nextPageToken = gmpData.nextPageToken;
+          pageCount++;
+        } while (nextPageToken && pageCount < maxPages && places.length < 60);
 
-          if (places.length > 0) {
+        if (places.length > 0) {
             const now = new Date().toISOString();
             const items: any[] = [];
 

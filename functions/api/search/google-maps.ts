@@ -67,36 +67,54 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
       'places.primaryTypeDisplayName',
       'places.types',
       'places.regularOpeningHours',
-      'places.editorialSummary'
+      'places.editorialSummary',
+      'nextPageToken'
     ].join(',');
 
-    const reqPayload: Record<string, any> = {
-      textQuery: fullTextQuery,
-      pageSize
-    };
+    let places: any[] = [];
+    let nextPageToken: string | undefined = undefined;
+    let pageCount = 0;
+    const maxPages = 3;
 
-    if (minRating > 0) {
-      reqPayload.minRating = Math.min(Math.max(minRating, 1.0), 5.0);
-    }
+    do {
+      const reqPayload: Record<string, any> = {
+        textQuery: fullTextQuery,
+        pageSize: 20
+      };
+      if (nextPageToken) {
+        reqPayload.pageToken = nextPageToken;
+      }
+      if (minRating > 0 && !nextPageToken) {
+        reqPayload.minRating = Math.min(Math.max(minRating, 1.0), 5.0);
+      }
 
-    const gmpRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
-        'X-Goog-FieldMask': fieldMask
-      },
-      body: JSON.stringify(reqPayload)
-    });
+      const gmpRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
+          'X-Goog-FieldMask': fieldMask
+        },
+        body: JSON.stringify(reqPayload)
+      });
 
-    if (!gmpRes.ok) {
-      const errText = await gmpRes.text();
-      return json({ error: `Google Maps API error (${gmpRes.status}): ${errText}` }, gmpRes.status);
-    }
+      if (!gmpRes.ok) {
+        if (places.length === 0) {
+          const errText = await gmpRes.text();
+          return json({ error: `Google Maps API error (${gmpRes.status}): ${errText}` }, gmpRes.status);
+        }
+        break;
+      }
 
-    const gmpData: any = await gmpRes.json();
-    const places = Array.isArray(gmpData.places) ? gmpData.places : [];
+      const gmpData: any = await gmpRes.json();
+      if (Array.isArray(gmpData.places)) {
+        places = places.concat(gmpData.places);
+      }
+      nextPageToken = gmpData.nextPageToken;
+      pageCount++;
+    } while (nextPageToken && pageCount < maxPages && places.length < 60);
+
     const now = new Date().toISOString();
 
     const items: any[] = [];

@@ -102,11 +102,19 @@ export function getExcludedSets(): { names: Set<string>; phones: Set<string> } {
     }
   } catch {}
 
-  // Also include clicked, contacted, or excluded prospects in exclusions
+  // Also include clicked, contacted, waiting, signed, not_interested, or excluded prospects in exclusions
   const prospects = getStoredProspects();
   for (const p of prospects) {
-    if (p.isClicked || p.isContacted || p.status === 'contacted' || p.status === 'excluded') {
-      names.add(normalizeBusinessName(p.name));
+    if (
+      p.isClicked ||
+      p.isContacted ||
+      p.status === 'contacted' ||
+      p.status === 'waiting' ||
+      p.status === 'client_signed' ||
+      p.status === 'not_interested' ||
+      p.status === 'excluded'
+    ) {
+      if (p.name) names.add(normalizeBusinessName(p.name));
       if (p.phone) {
         const clean = p.phone.replace(/\D/g, '');
         if (clean.length >= 6) phones.add(clean);
@@ -132,6 +140,27 @@ export function addExclusion(name: string, phone?: string) {
     if (clean.length >= 6) phones.add(clean);
   }
   saveExcludedSets(names, phones);
+}
+
+export function isExcluded(name: string, phone?: string): boolean {
+  const { names, phones } = getExcludedSets();
+  if (name && names.has(normalizeBusinessName(name))) return true;
+  if (phone) {
+    const clean = phone.replace(/\D/g, '');
+    if (clean.length >= 6 && phones.has(clean)) return true;
+  }
+  return false;
+}
+
+export function deleteProspectClient(prospectId: string): { remaining: Prospect[]; deleted?: Prospect } {
+  const current = getStoredProspects();
+  const target = current.find((p) => p.id === prospectId);
+  if (target) {
+    addExclusion(target.name, target.phone);
+  }
+  const remaining = current.filter((p) => p.id !== prospectId);
+  saveStoredProspects(remaining);
+  return { remaining, deleted: target };
 }
 
 export function clearStoredProspects(options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { cleanAll: true }): Prospect[] {
@@ -402,7 +431,7 @@ export function computeStats(prospects: Prospect[]) {
   const highPriorityCount = prospects.filter((p) => p.status === 'high_priority' || p.leadScore >= 80).length;
   const readyToContactCount = prospects.filter((p) => p.status === 'ready_to_contact').length;
   const clickedCount = prospects.filter((p) => p.isClicked).length;
-  const contactedCount = prospects.filter((p) => p.isContacted || p.status === 'contacted').length;
+  const contactedCount = prospects.filter((p) => p.isContacted || p.status === 'contacted' || p.status === 'waiting' || p.status === 'client_signed').length;
   const clientsWonCount = prospects.filter((p) => p.status === 'client_signed').length;
   const avgScore = totalLeads > 0 ? Math.round((prospects.reduce((acc, p) => acc + p.leadScore, 0) / totalLeads) * 10) / 10 : 0;
 

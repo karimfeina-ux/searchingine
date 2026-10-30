@@ -242,16 +242,24 @@ export const markProspectClicked = (id: string): Prospect | null => {
   return getProspectById(id);
 };
 
-export const markProspectContacted = (id: string, notes?: string): Prospect | null => {
+export const markProspectContacted = (id: string, notes?: string, status?: string): Prospect | null => {
   const p = store.prospects[id];
   if (!p) return null;
   p.isContacted = true;
   p.contactedAt = new Date().toISOString();
-  p.status = 'contacted';
+  p.status = (status as any) || 'contacted';
   if (notes !== undefined) p.notes = notes;
   p.updatedAt = p.contactedAt;
   persistStore();
   return getProspectById(id);
+};
+
+export const deleteProspect = (id: string): { success: boolean; deleted?: Prospect } => {
+  const p = store.prospects[id];
+  if (!p) return { success: false };
+  delete store.prospects[id];
+  persistStore();
+  return { success: true, deleted: p };
 };
 
 export const banProspectHasWebsite = (id: string): { success: boolean; name?: string } => {

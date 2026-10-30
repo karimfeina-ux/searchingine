@@ -182,20 +182,41 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
       prospect.isContacted = body.contacted !== false;
       prospect.contactedAt = new Date().toISOString();
       if (prospect.isContacted) {
-        prospect.status = 'contacted';
+        prospect.status = body.status || 'contacted';
         addExclusion(prospect.name, prospect.phone);
       }
+      prospect.updatedAt = new Date().toISOString();
       saveStoredProspects(prospects);
       return jsonResponse(prospect);
     }
 
     // Status change
     if (action === 'status' && method === 'PUT') {
-      if (body.status) prospect.status = body.status;
+      if (body.status) {
+        prospect.status = body.status;
+        if (
+          body.status === 'contacted' ||
+          body.status === 'waiting' ||
+          body.status === 'client_signed' ||
+          body.status === 'not_interested'
+        ) {
+          prospect.isContacted = true;
+          prospect.contactedAt = prospect.contactedAt || new Date().toISOString();
+          addExclusion(prospect.name, prospect.phone);
+        }
+      }
       if (body.notes !== undefined) prospect.notes = body.notes;
       prospect.updatedAt = new Date().toISOString();
       saveStoredProspects(prospects);
       return jsonResponse(prospect);
+    }
+
+    // Delete prospect from research (adds to permanent exclusion so it never comes back)
+    if ((action === 'delete' || !action) && method === 'DELETE') {
+      addExclusion(prospect.name, prospect.phone);
+      const remaining = prospects.filter((p) => p.id !== id);
+      saveStoredProspects(remaining);
+      return jsonResponse({ success: true, deletedId: id });
     }
 
     // Star toggle

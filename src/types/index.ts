@@ -12,6 +12,7 @@ export type LeadStatus =
   | 'research_required'
   | 'ready_to_contact'
   | 'contacted'
+  | 'waiting'
   | 'interested'
   | 'not_interested'
   | 'client_signed'
