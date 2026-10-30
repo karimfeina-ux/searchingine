@@ -65,18 +65,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onClearResearch
 }) => {
   const tr = t[lang] || t.en;
-  const [heroLocation, setHeroLocation] = useState('');
-  const [heroQuery, setHeroQuery] = useState('');
+  const [heroLocation, setHeroLocation] = useState(() => settings.cities[0] || 'Madrid');
+  const [heroQuery, setHeroQuery] = useState(() => settings.categories[0] || 'peluquería');
   const [filterHideContacted, setFilterHideContacted] = useState(true);
   const [filterHideClicked, setFilterHideClicked] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleHeroSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!heroLocation.trim() && !heroQuery.trim()) return;
+    const targetLoc = heroLocation.trim() || settings.cities[0] || 'Madrid';
+    const targetQ = heroQuery.trim() || settings.categories[0] || 'peluquería';
+    if (!heroLocation.trim()) setHeroLocation(targetLoc);
+    if (!heroQuery.trim()) setHeroQuery(targetQ);
     onPerformSearch({
-      location: heroLocation.trim(),
-      query: heroQuery.trim()
+      location: targetLoc,
+      query: targetQ
     });
   };
 

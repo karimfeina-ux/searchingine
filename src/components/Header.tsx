@@ -49,16 +49,19 @@ export const Header: React.FC<HeaderProps> = ({
   contactedCount = 0,
   onOpenDeployModal
 }) => {
-  const [locationInput, setLocationInput] = useState('');
-  const [keywordInput, setKeywordInput] = useState('');
+  const [locationInput, setLocationInput] = useState(() => 'Madrid');
+  const [keywordInput, setKeywordInput] = useState(() => 'peluquería');
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!locationInput.trim() && !keywordInput.trim()) return;
+    const loc = locationInput.trim() || 'Madrid';
+    const q = keywordInput.trim() || 'peluquería';
+    if (!locationInput.trim()) setLocationInput(loc);
+    if (!keywordInput.trim()) setKeywordInput(q);
     onPerformSearch({
-      location: locationInput.trim(),
-      query: keywordInput.trim()
+      location: loc,
+      query: q
     });
     setIsMobileSearchExpanded(false);
   };

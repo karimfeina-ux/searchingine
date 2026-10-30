@@ -109,9 +109,8 @@ async function handle(request: Request): Promise<Response> {
   } catch {
     return json({ error: 'Invalid JSON body' }, 400);
   }
-  const location = String(body.location || '').trim().slice(0, 120);
-  const query = String(body.query || '').trim().slice(0, 120);
-  if (!location || !query) return json({ error: 'Both location and query are required.' }, 400);
+  const location = (String(body.location || '').trim().slice(0, 120)) || 'Madrid';
+  const query = (String(body.query || '').trim().slice(0, 120)) || 'peluquería';
 
   // 1) Geocode location to bounding box and coordinates
   let bboxCoords: { south: number; north: number; west: number; east: number } | null = null;
@@ -141,8 +140,20 @@ async function handle(request: Request): Promise<Response> {
   const parseNominatimItem = (item: any) => {
     const xt = item.extratags || {};
     const addr = item.address || {};
-    // Skip if business has an existing website
-    if (xt.website || xt['contact:website'] || xt.url) return null;
+    const rawWeb = xt.website || xt['contact:website'] || xt.url || '';
+    const isSocialOnly = Boolean(
+      rawWeb && (
+        rawWeb.includes('instagram.com') ||
+        rawWeb.includes('facebook.com') ||
+        rawWeb.includes('tiktok.com') ||
+        rawWeb.includes('linktr.ee') ||
+        rawWeb.includes('wa.me') ||
+        rawWeb.includes('google.com/maps')
+      )
+    );
+
+    // Skip if business has an existing real independent website
+    if (rawWeb && !isSocialOnly) return null;
 
     const name = item.name || addr.shop || addr.amenity || addr.craft || item.display_name.split(',')[0];
     if (!name || name.trim().length === 0) return null;

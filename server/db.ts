@@ -270,10 +270,15 @@ export const getExcludedBusinessNamesAndPhones = (): { names: Set<string>; phone
   const names = new Set<string>();
   const phones = new Set<string>();
   for (const p of Object.values(store.prospects)) {
-    if (p.normalizedName) names.add(p.normalizedName.toLowerCase().trim());
-    if (p.phone) {
-      const cleanPhone = p.phone.replace(/\D/g, '');
-      if (cleanPhone.length >= 6) phones.add(cleanPhone);
+    // Only exclude businesses that the user has already contacted, clicked, or excluded
+    if (p.isContacted || p.isClicked || p.status === 'contacted' || p.status === 'excluded') {
+      if (p.phone) {
+        const cleanPhone = p.phone.replace(/\D/g, '');
+        if (cleanPhone.length >= 6) phones.add(cleanPhone);
+      }
+      if (p.normalizedName) {
+        names.add(p.normalizedName.toLowerCase().trim());
+      }
     }
   }
   return { names, phones };

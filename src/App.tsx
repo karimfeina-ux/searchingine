@@ -172,6 +172,30 @@ export default function App() {
         body: JSON.stringify({ location, query })
       });
       if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          setProspects((prev) => {
+            const map = new Map<string, Prospect>();
+            for (const item of data.items) {
+              map.set(item.id, item);
+            }
+            for (const p of prev) {
+              if (!map.has(p.id)) {
+                map.set(p.id, p);
+              }
+            }
+            const merged = Array.from(map.values());
+            saveStoredProspects(merged);
+            return merged;
+          });
+          setStats((prev) => computeStats(data.items.concat(prospects)));
+        } else if (data && data.total === 0) {
+          setActionError(
+            lang === 'es'
+              ? 'No se encontraron nuevos prospectos sin web en esta búsqueda. Prueba con otra categoría o ciudad.'
+              : 'No new uncontacted businesses without a website were found for this search. Try a different city or category.'
+          );
+        }
         await loadData();
         setCurrentTab('dashboard');
       } else {

@@ -159,9 +159,14 @@ export const deepSearchProspects = async (params: {
     if (!place || !place.name) continue;
     const normName = normalizeBusinessName(place.name);
     const cleanPhone = place.phone ? place.phone.replace(/\D/g, '') : '';
+    const genericNames = ['peluqueria', 'barberia', 'restaurante', 'bar', 'cafeteria', 'panaderia', 'taller', 'clinica', 'farmacia', 'dentista'];
+    const isGeneric = genericNames.includes(normName);
 
-    // Rule 3: Skip businesses already clicked or contacted
-    if (excludedNames.has(normName) || (cleanPhone.length >= 6 && excludedPhones.has(cleanPhone))) {
+    // Skip businesses already contacted or clicked
+    if (cleanPhone.length >= 6 && excludedPhones.has(cleanPhone)) {
+      continue;
+    }
+    if (!isGeneric && excludedNames.has(normName)) {
       continue;
     }
 
@@ -169,8 +174,8 @@ export const deepSearchProspects = async (params: {
       ? `${place.street}${place.city ? ', ' + place.city : ''}`
       : place.city || targetLocation;
 
-    // Rule 3: Use id "gp_" + the OSM id
-    const prospectId = `gp_${place.id}`;
+    // Use clean sanitized prospect ID without slashes
+    const prospectId = `gp_${String(place.id).replace('/', '_')}`;
 
     const contactChannels = [];
     if (place.phone) {
@@ -301,7 +306,7 @@ export const deepSearchProspects = async (params: {
     } catch {}
 
     saveProspect(prospect);
-    excludedNames.add(normName);
+    if (!isGeneric) excludedNames.add(normName);
     if (cleanPhone.length >= 6) excludedPhones.add(cleanPhone);
     qualifiedList.push(prospect);
   }
