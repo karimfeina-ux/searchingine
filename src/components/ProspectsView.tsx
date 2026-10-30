@@ -33,7 +33,7 @@ interface ProspectsViewProps {
   onVerifyAgain: (id: string) => void;
   onExportCsv: () => void;
   onMarkContacted?: (id: string) => void;
-  onClearResearch?: (options: { keepContacted: boolean; keepStarred: boolean }) => void;
+  onClearResearch?: (options: { keepContacted: boolean; keepStarred: boolean; cleanAll?: boolean }) => void;
   initialFilter?: 'all' | 'uncontacted' | 'contacted';
 }
 
@@ -121,9 +121,9 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
     }
   };
 
-  const handleExecuteClear = () => {
+  const handleExecuteClear = (cleanAll: boolean = false) => {
     if (onClearResearch) {
-      onClearResearch({ keepContacted: true, keepStarred: true });
+      onClearResearch({ keepContacted: !cleanAll, keepStarred: !cleanAll, cleanAll });
       setShowClearConfirmModal(false);
       setFeedbackToast(tr.cleanedSuccess);
       setTimeout(() => setFeedbackToast(null), 3000);
@@ -147,9 +147,9 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
       {showClearConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
           <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0f172a] p-6 shadow-2xl text-slate-100 space-y-4">
-            <div className="flex items-center gap-3 text-amber-400">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <Trash2 className="w-6 h-6" />
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30">
+                <Trash2 className="w-6 h-6 text-rose-400" />
               </div>
               <h3 className="text-base font-bold text-white">{tr.cleanResearchTitle}</h3>
             </div>
@@ -158,26 +158,39 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
             </p>
             <div className="rounded-xl bg-slate-900/90 p-3 border border-slate-800 text-[11px] text-slate-400 space-y-1">
               <div className="flex justify-between">
-                <span>{lang === 'es' ? 'Prospectos a limpiar (no contactados):' : 'Leads to remove (uncontacted):'}</span>
-                <span className="font-bold text-rose-400">{uncontactedCount}</span>
+                <span>{lang === 'es' ? 'Total de prospectos en lista:' : 'Total prospects in list:'}</span>
+                <span className="font-bold text-white">{prospects.length}</span>
               </div>
               <div className="flex justify-between">
-                <span>{lang === 'es' ? 'Prospectos protegidos (contactados y favoritos):' : 'Protected leads (contacted & starred):'}</span>
+                <span>{lang === 'es' ? 'Prospectos no contactados:' : 'Uncontacted leads:'}</span>
+                <span className="font-bold text-amber-400">{uncontactedCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{lang === 'es' ? 'Prospectos contactados:' : 'Contacted leads:'}</span>
                 <span className="font-bold text-emerald-400">{contactedCount}</span>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2.5 pt-2">
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setShowClearConfirmModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition cursor-pointer"
               >
                 {tr.cleanResearchCancel}
               </button>
               <button
-                onClick={handleExecuteClear}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-xs font-bold text-white shadow-lg shadow-rose-900/30 transition cursor-pointer"
+                type="button"
+                onClick={() => handleExecuteClear(false)}
+                className="w-full sm:w-auto px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-xs font-semibold transition cursor-pointer"
               >
-                {tr.cleanResearchConfirm}
+                {tr.cleanUncontactedConfirm}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExecuteClear(true)}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-xs font-bold text-white shadow-lg shadow-rose-900/30 transition cursor-pointer"
+              >
+                {tr.cleanAllConfirm}
               </button>
             </div>
           </div>
@@ -216,14 +229,15 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
         </div>
 
         {/* Clean Research List Button */}
-        {onClearResearch && uncontactedCount > 0 && (
+        {onClearResearch && prospects.length > 0 && (
           <button
+            type="button"
             onClick={() => setShowClearConfirmModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-300 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-800/40 transition cursor-pointer shrink-0 shadow-sm"
-            title={lang === 'es' ? 'Limpia prospectos no contactados antes de buscar otra región' : 'Clear uncontacted search list before researching a new region'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-300 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/50 transition cursor-pointer shrink-0 shadow-sm"
+            title={tr.cleanResearchDesc}
           >
             <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-            <span>{tr.cleanResearchBtn}</span>
+            <span>{tr.cleanToZero}</span>
           </button>
         )}
       </div>

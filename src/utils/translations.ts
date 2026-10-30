@@ -16,11 +16,14 @@ export const t = {
     quickSearchPlaceholder: 'Search by city, street, or category... (⌘K)',
     
     // Clean Research
-    cleanResearchBtn: 'Clean List (to 0)',
-    cleanResearchTitle: 'Clean entire research list to 0?',
-    cleanResearchDesc: 'Cleans the entire research list to 0 leads in one click so you can search a new region completely from scratch.',
+    cleanResearchBtn: 'Clean List to 0',
+    cleanResearchTitle: 'Clean research list to 0?',
+    cleanResearchDesc: 'Reset your research list completely to 0 leads so you can start a fresh search in any new city or category.',
     cleanResearchConfirm: 'Clean to 0',
     cleanResearchCancel: 'Cancel',
+    cleanToZero: 'Clean List to 0',
+    cleanAllConfirm: 'Clean Everything to 0',
+    cleanUncontactedConfirm: 'Clean Uncontacted Only',
     cleanedSuccess: 'Research list cleaned to 0 leads!',
     
     // Ban Has Website
@@ -126,12 +129,15 @@ export const t = {
     quickSearchPlaceholder: 'Buscar por ciudad, calle o categoría... (⌘K)',
     
     // Clean Research
-    cleanResearchBtn: 'Limpiar Búsquedas Anteriores',
-    cleanResearchTitle: '¿Limpiar la lista de búsqueda actual?',
-    cleanResearchDesc: 'Esto eliminará los prospectos no contactados para que puedas buscar en una nueva región desde cero. Los negocios contactados y con estrella permanecerán seguros en tu categoría de Contactados.',
-    cleanResearchConfirm: 'Limpiar Prospectos No Contactados',
+    cleanResearchBtn: 'Limpiar Lista a 0',
+    cleanResearchTitle: '¿Reiniciar la lista de búsqueda a 0?',
+    cleanResearchDesc: 'Reinicia la lista completa a 0 prospectos para comenzar a buscar en una nueva ciudad o sector desde cero.',
+    cleanResearchConfirm: 'Limpiar Todo a 0',
     cleanResearchCancel: 'Cancelar',
-    cleanedSuccess: '¡Lista de búsqueda limpiada! Lista para explorar una nueva región.',
+    cleanToZero: 'Limpiar Lista a 0',
+    cleanAllConfirm: 'Limpiar Todo a 0',
+    cleanUncontactedConfirm: 'Limpiar Solo No Contactados',
+    cleanedSuccess: '¡Lista de búsqueda reiniciada a 0 prospectos!',
     
     // Google Maps
     viewOnGoogleMaps: 'Ver en Google Maps',

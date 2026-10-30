@@ -47,7 +47,7 @@ interface DashboardViewProps {
   onMarkContacted?: (id: string) => void;
   onToggleStar?: (id: string) => void;
   onOpenDeployModal?: () => void;
-  onClearResearch?: (options: { keepContacted: boolean; keepStarred: boolean }) => void;
+  onClearResearch?: (options: { keepContacted: boolean; keepStarred: boolean; cleanAll?: boolean }) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -106,30 +106,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {showClearConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
           <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0f172a] p-6 shadow-2xl text-slate-100 space-y-4">
-            <div className="flex items-center gap-3 text-amber-400">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <Trash2 className="w-6 h-6" />
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30">
+                <Trash2 className="w-6 h-6 text-rose-400" />
               </div>
               <h3 className="text-base font-bold text-white">{tr.cleanResearchTitle}</h3>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
               {tr.cleanResearchDesc}
             </p>
-            <div className="flex items-center justify-end gap-2.5 pt-2">
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setShowClearConfirm(false)}
-                className="px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition cursor-pointer"
               >
                 {tr.cleanResearchCancel}
               </button>
               <button
+                type="button"
                 onClick={() => {
-                  if (onClearResearch) onClearResearch({ keepContacted: true, keepStarred: true });
+                  if (onClearResearch) onClearResearch({ keepContacted: true, keepStarred: true, cleanAll: false });
                   setShowClearConfirm(false);
                 }}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-xs font-bold text-white shadow-lg transition cursor-pointer"
+                className="w-full sm:w-auto px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-xs font-semibold transition cursor-pointer"
               >
-                {tr.cleanResearchConfirm}
+                {tr.cleanUncontactedConfirm}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onClearResearch) onClearResearch({ keepContacted: false, keepStarred: false, cleanAll: true });
+                  setShowClearConfirm(false);
+                }}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-xs font-bold text-white shadow-lg shadow-rose-900/30 transition cursor-pointer"
+              >
+                {tr.cleanAllConfirm}
               </button>
             </div>
           </div>
@@ -219,15 +231,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Clean Button in Search Bar */}
-              {onClearResearch && uncontactedCount > 0 && (
+              {onClearResearch && (topProspects.length > 0 || stats.totalLeads > 0) && (
                 <button
                   type="button"
                   onClick={() => setShowClearConfirm(true)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/40 transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-rose-300 bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/60 shadow-sm transition cursor-pointer"
                   title={tr.cleanResearchDesc}
                 >
-                  <Trash2 className="w-3 h-3 text-rose-400" />
-                  <span>{tr.cleanResearchBtn}</span>
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{tr.cleanToZero}</span>
                 </button>
               )}
             </div>
@@ -312,6 +324,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {onClearResearch && (topProspects.length > 0 || stats.totalLeads > 0) && (
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-300 bg-rose-950/50 hover:bg-rose-900/70 border border-rose-800/60 shadow-sm transition cursor-pointer"
+                title={tr.cleanResearchDesc}
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>{tr.cleanToZero}</span>
+              </button>
+            )}
+
             <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-800">
               <input
                 type="checkbox"

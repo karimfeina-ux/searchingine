@@ -126,14 +126,26 @@ export async function onRequestPost({ request }: { request: Request }): Promise<
 
   // 1. Origin host check: Reject requests whose Origin host differs from the site host
   const origin = request.headers.get('origin');
-  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedHost = (request.headers.get('x-forwarded-host') || '').split(':')[0].toLowerCase();
   const host = (forwardedHost || request.headers.get('host') || new URL(request.url).host || '').split(':')[0].toLowerCase();
 
   if (origin) {
     try {
       const originHost = new URL(origin).hostname.toLowerCase();
-      const isMismatch = host && originHost !== host && originHost !== 'localhost' && originHost !== '127.0.0.1';
-      if (isMismatch) {
+      const isSameHost =
+        !originHost ||
+        originHost === host ||
+        originHost === forwardedHost ||
+        originHost.endsWith('.run.app') ||
+        originHost.endsWith('.aistudio.google.com') ||
+        originHost.includes('aistudio') ||
+        originHost === 'localhost' ||
+        originHost === '127.0.0.1' ||
+        host === 'localhost' ||
+        host === '0.0.0.0' ||
+        host === '127.0.0.1';
+
+      if (!isSameHost) {
         return new Response(JSON.stringify({ error: 'Forbidden: Origin host mismatch' }), {
           status: 403,
           headers: { 'Content-Type': 'application/json' }
@@ -234,9 +246,11 @@ ${overpassStatements}
 out center tags 300;
   `.trim();
 
-  // 6. Query Overpass API with fallback
+  // 6. Query Overpass API with resilient fallback across official mirrors
   const endpoints = [
+    'https://overpass.openstreetmap.fr/api/interpreter',
     'https://overpass-api.de/api/interpreter',
+    'https://overpass.osm.ch/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter'
   ];
 
@@ -246,7 +260,7 @@ out center tags 300;
   for (const endpoint of endpoints) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 16000);
+      const timer = setTimeout(() => controller.abort(), 12000);
 
       const res = await fetch(endpoint, {
         method: 'POST',

@@ -323,7 +323,7 @@ export default function App() {
     }
   };
 
-  const handleClearResearch = async (options: { keepContacted: boolean; keepStarred: boolean } = { keepContacted: true, keepStarred: true }) => {
+  const handleClearResearch = async (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true, keepStarred: true }) => {
     try {
       const res = await apiFetch('/api/prospects/clear', {
         method: 'POST',
@@ -331,17 +331,33 @@ export default function App() {
         body: JSON.stringify(options)
       });
       if (res.ok) {
-        setProspects((prev) => {
-          const next = prev.filter((p) => {
-            const isContacted = Boolean(p.isContacted || p.status === 'contacted');
-            const isStarred = Boolean(p.isStarred);
-            if (options.keepContacted && isContacted) return true;
-            if (options.keepStarred && isStarred) return true;
-            return false;
+        if (options.cleanAll || (!options.keepContacted && !options.keepStarred)) {
+          setProspects([]);
+          saveStoredProspects([]);
+          setStats((prev) => ({
+            ...prev,
+            totalLeads: 0,
+            noWebsiteCount: 0,
+            highPriorityCount: 0,
+            readyToContactCount: 0,
+            clickedCount: 0,
+            contactedCount: 0,
+            clientsWonCount: 0,
+            avgScore: 0
+          }));
+        } else {
+          setProspects((prev) => {
+            const next = prev.filter((p) => {
+              const isContacted = Boolean(p.isContacted || p.status === 'contacted');
+              const isStarred = Boolean(p.isStarred);
+              if (options.keepContacted && isContacted) return true;
+              if (options.keepStarred && isStarred) return true;
+              return false;
+            });
+            saveStoredProspects(next);
+            return next;
           });
-          saveStoredProspects(next);
-          return next;
-        });
+        }
         apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
       }
     } catch (err) {

@@ -399,9 +399,10 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
 
   // Clear research list
   if (path === '/api/prospects/clear' && (method === 'POST' || method === 'DELETE')) {
-    const keepContacted = body.keepContacted !== false;
-    const keepStarred = body.keepStarred !== false;
-    const kept = clearStoredProspects({ keepContacted, keepStarred });
+    const cleanAll = body.cleanAll === true || (body.keepContacted === false && body.keepStarred === false);
+    const keepContacted = !cleanAll && body.keepContacted !== false;
+    const keepStarred = !cleanAll && body.keepStarred !== false;
+    const kept = clearStoredProspects({ keepContacted, keepStarred, cleanAll });
     return jsonResponse({ success: true, remainingCount: kept.length });
   }
 
