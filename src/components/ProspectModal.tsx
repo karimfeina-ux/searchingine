@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 
 import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
+import { getLeadStatusTheme } from '../utils/statusTheme.ts';
 
 interface ProspectModalProps {
   prospect: Prospect;

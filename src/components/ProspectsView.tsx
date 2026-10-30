@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
+import { getLeadStatusTheme } from '../utils/statusTheme.ts';
 
 interface ProspectsViewProps {
   prospects: Prospect[];
@@ -440,12 +441,23 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
               {filtered.map((prospect) => {
                 const mapsUrl = getGoogleMapsUrl(prospect);
                 const isLeadContacted = Boolean(prospect.isContacted || prospect.status === 'contacted');
+                const theme = getLeadStatusTheme(prospect.status, prospect.isContacted);
 
                 return (
                   <tr
                     key={prospect.id}
                     onClick={() => onSelectProspect(prospect)}
-                    className="cursor-pointer transition hover:bg-slate-800/40 group"
+                    className={`cursor-pointer transition hover:bg-slate-800/40 group ${
+                      prospect.status === 'client_signed'
+                        ? 'bg-purple-950/20 hover:bg-purple-950/30'
+                        : prospect.status === 'waiting'
+                        ? 'bg-amber-950/20 hover:bg-amber-950/30'
+                        : prospect.status === 'not_interested'
+                        ? 'bg-rose-950/20 hover:bg-rose-950/30'
+                        : isLeadContacted
+                        ? 'bg-cyan-950/15 hover:bg-cyan-950/25'
+                        : ''
+                    }`}
                   >
                     {/* Star */}
                     <td className="py-3 pl-4 pr-2" onClick={(e) => { e.stopPropagation(); onToggleStar(prospect.id); }}>
@@ -539,22 +551,30 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
                       )}
                     </td>
 
-                    {/* Pipeline Status Dropdown */}
+                    {/* Pipeline Status Dropdown & Badge */}
                     <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
-                      <select
-                        value={prospect.status}
-                        onChange={(e) => onUpdateStatus(prospect.id, e.target.value as LeadStatus)}
-                        className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-0.5 text-[11px] font-medium text-slate-300 focus:border-cyan-500 focus:outline-none"
-                      >
-                        <option value="new">{tr.newLead}</option>
-                        <option value="high_priority">{tr.highPriority}</option>
-                        <option value="ready_to_contact">{tr.readyToContact}</option>
-                        <option value="contacted">{tr.contactedStatus}</option>
-                        <option value="waiting">⏳ {tr.optionWaiting}</option>
-                        <option value="client_signed">🤝 {tr.optionClientWon}</option>
-                        <option value="not_interested">❌ {tr.optionNotInterested}</option>
-                        <option value="excluded">{tr.excluded}</option>
-                      </select>
+                      <div className="flex items-center gap-1.5">
+                        {(isLeadContacted || prospect.status === 'not_interested' || prospect.status === 'waiting' || prospect.status === 'client_signed') && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold shrink-0 ${theme.badgeBg}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${theme.dotColor}`} />
+                            <span>{lang === 'es' ? theme.shortLabelEs : theme.shortLabelEn}</span>
+                          </span>
+                        )}
+                        <select
+                          value={prospect.status}
+                          onChange={(e) => onUpdateStatus(prospect.id, e.target.value as LeadStatus)}
+                          className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-0.5 text-[11px] font-medium text-slate-300 focus:border-cyan-500 focus:outline-none"
+                        >
+                          <option value="new">{tr.newLead}</option>
+                          <option value="high_priority">{tr.highPriority}</option>
+                          <option value="ready_to_contact">{tr.readyToContact}</option>
+                          <option value="contacted">{tr.contactedStatus}</option>
+                          <option value="waiting">⏳ {tr.optionWaiting}</option>
+                          <option value="client_signed">🤝 {tr.optionClientWon}</option>
+                          <option value="not_interested">❌ {tr.optionNotInterested}</option>
+                          <option value="excluded">{tr.excluded}</option>
+                        </select>
+                      </div>
                     </td>
 
                     {/* Actions */}
@@ -596,12 +616,15 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
           {filtered.map((prospect) => {
             const mapsUrl = getGoogleMapsUrl(prospect);
             const isLeadContacted = Boolean(prospect.isContacted || prospect.status === 'contacted');
+            const theme = getLeadStatusTheme(prospect.status, prospect.isContacted);
 
             return (
               <div
                 key={prospect.id}
                 onClick={() => onSelectProspect(prospect)}
-                className="cursor-pointer overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-4 transition-all hover:border-cyan-500/50 hover:bg-slate-900/90 hover:shadow-xl group flex flex-col justify-between space-y-3"
+                className={`cursor-pointer overflow-hidden rounded-2xl border p-4 transition-all hover:shadow-xl group flex flex-col justify-between space-y-3 ${
+                  theme.cardBg
+                } ${theme.border} ${theme.ring}`}
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
@@ -611,9 +634,17 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
                           {prospect.name}
                         </span>
                       </div>
-                      <span className="inline-block rounded-md bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                        {prospect.category}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="inline-block rounded-md bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                          {prospect.category}
+                        </span>
+                        {(isLeadContacted || prospect.status === 'not_interested' || prospect.status === 'waiting' || prospect.status === 'client_signed') && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${theme.badgeBg}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${theme.dotColor}`} />
+                            <span>{lang === 'es' ? theme.shortLabelEs : theme.shortLabelEn}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">

@@ -19,6 +19,7 @@ import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { AdminLogin } from './components/AdminLogin.tsx';
 import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
 import { GoogleMapsProspectsView } from './components/GoogleMapsProspectsView.tsx';
+import { ContactedListView } from './components/ContactedListView.tsx';
 import { apiFetch } from './services/apiBridge.ts';
 import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets } from './services/clientDataEngine.ts';
 import { Loader2, AlertCircle, X, Compass, Database, CheckCircle2, Settings } from 'lucide-react';
@@ -95,6 +96,13 @@ export default function App() {
   const [isResearchRunning, setIsResearchRunning] = useState<boolean>(false);
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [contactToast, setContactToast] = useState<{
+    businessName: string;
+    status: LeadStatus;
+    title: string;
+    message: string;
+    showCta: boolean;
+  } | null>(null);
 
   // Resilient data loading: individual safe fetches ensure no single error stops the site from loading
   const loadData = useCallback(async () => {
@@ -375,6 +383,7 @@ export default function App() {
 
   const handleMarkNotInterested = async (id: string) => {
     try {
+      const targetProspect = prospects.find((p) => p.id === id);
       apiFetch(`/api/prospects/${id}/not-interested`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -390,6 +399,14 @@ export default function App() {
       if (selectedProspect?.id === id) {
         setSelectedProspect(null);
       }
+      setContactToast({
+        businessName: targetProspect?.name || 'Business',
+        status: 'not_interested',
+        title: lang === 'es' ? '❌ Descartado de la búsqueda' : '❌ Removed & Excluded',
+        message: lang === 'es' ? 'Negocio eliminado de las listas de prospección' : 'Business excluded from future research lists',
+        showCta: false
+      });
+      setTimeout(() => setContactToast(null), 4000);
     } catch (err) {
       console.error('Failed to mark not interested:', err);
     }
@@ -397,6 +414,7 @@ export default function App() {
 
   const handleMarkContacted = async (id: string, notes?: string, status: LeadStatus = 'contacted') => {
     try {
+      const targetProspect = prospects.find((p) => p.id === id);
       const res = await apiFetch(`/api/prospects/${id}/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -414,6 +432,16 @@ export default function App() {
           setSelectedProspect((prev) => (prev ? { ...prev, ...updated, status, isContacted: true } : null));
         }
         apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
+
+        const name = targetProspect?.name || 'Business';
+        setContactToast({
+          businessName: name,
+          status,
+          title: lang === 'es' ? '📩 ¡Movido a Contactados!' : '📩 Pushed to Contacted Pipeline!',
+          message: lang === 'es' ? `"${name}" está guardado en tu lista de contactados.` : `"${name}" is saved in your Contacted Pipeline.`,
+          showCta: true
+        });
+        setTimeout(() => setContactToast(null), 5000);
       }
     } catch (err) {
       console.error('Failed to mark contacted:', err);
@@ -427,6 +455,7 @@ export default function App() {
     }
 
     try {
+      const targetProspect = prospects.find((p) => p.id === id);
       const res = await apiFetch(`/api/prospects/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -434,6 +463,8 @@ export default function App() {
       });
       if (res.ok) {
         const isContactedLead = ['contacted', 'waiting', 'client_signed'].includes(status);
+        const isResetToNew = status === 'new';
+
         setProspects((prev) => {
           const next = prev.map((p) =>
             p.id === id
@@ -441,8 +472,8 @@ export default function App() {
                   ...p,
                   status,
                   notes: notes ?? p.notes,
-                  isContacted: isContactedLead ? true : p.isContacted,
-                  contactedAt: isContactedLead ? (p.contactedAt || new Date().toISOString()) : p.contactedAt
+                  isContacted: isResetToNew ? false : (isContactedLead ? true : p.isContacted),
+                  contactedAt: isResetToNew ? undefined : (isContactedLead ? (p.contactedAt || new Date().toISOString()) : p.contactedAt)
                 }
               : p
           );
@@ -457,14 +488,42 @@ export default function App() {
                   ...prev,
                   status,
                   notes: notes ?? prev.notes,
-                  isContacted: isContactedLead ? true : prev.isContacted,
-                  contactedAt: isContactedLead ? (prev.contactedAt || new Date().toISOString()) : prev.contactedAt
+                  isContacted: isResetToNew ? false : (isContactedLead ? true : prev.isContacted),
+                  contactedAt: isResetToNew ? undefined : (isContactedLead ? (prev.contactedAt || new Date().toISOString()) : prev.contactedAt)
                 }
               : null
           );
         }
         // Refresh stats
         apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
+
+        // Display toast feedback with direct CTA
+        const bName = targetProspect?.name || 'Business';
+        let toastTitle = lang === 'es' ? 'Estado Actualizado' : 'Status Updated';
+        let toastMessage = `"${bName}" -> ${status}`;
+
+        if (status === 'client_signed') {
+          toastTitle = lang === 'es' ? '🎉 ¡Cliente Firmado (+€500)!' : '🎉 Deal Won & Signed (+€500)!';
+          toastMessage = lang === 'es' ? `¡Felicidades! "${bName}" se ha añadido a Clientes Ganados.` : `Congratulations! "${bName}" is now a signed client.`;
+        } else if (status === 'waiting') {
+          toastTitle = lang === 'es' ? '⏳ Esperando Respuesta / Pago' : '⏳ Waiting for Response / Payment';
+          toastMessage = lang === 'es' ? `"${bName}" en seguimiento en la lista de contactados.` : `"${bName}" tracked in your active follow-up pipeline.`;
+        } else if (status === 'contacted') {
+          toastTitle = lang === 'es' ? '📩 ¡Movido a Contactados!' : '📩 Pushed to Contacted Pipeline!';
+          toastMessage = lang === 'es' ? `"${bName}" está guardado en tu lista de contactados.` : `"${bName}" is saved in your Contacted Pipeline.`;
+        } else if (isResetToNew) {
+          toastTitle = lang === 'es' ? '↩ Restablecido' : '↩ Restored';
+          toastMessage = lang === 'es' ? `"${bName}" devuelto a la lista de descubrimiento.` : `"${bName}" moved back to discovery.`;
+        }
+
+        setContactToast({
+          businessName: bName,
+          status,
+          title: toastTitle,
+          message: toastMessage,
+          showCta: !isResetToNew
+        });
+        setTimeout(() => setContactToast(null), 5000);
       }
     } catch (err) {
       console.error('Failed to update status:', err);
@@ -708,11 +767,23 @@ export default function App() {
           />
         )}
 
-        {(currentTab === 'prospects' || currentTab === 'contacted') && (
-          <ProspectsView
-            prospects={currentTab === 'contacted' ? prospects.filter((p) => p.isContacted || p.status === 'contacted' || p.status === 'waiting' || p.status === 'client_signed') : prospects}
+        {currentTab === 'contacted' && (
+          <ContactedListView
+            prospects={prospects}
             lang={lang}
-            initialFilter={currentTab === 'contacted' ? 'contacted' : 'uncontacted'}
+            onSelectProspect={handleSelectProspectById}
+            onUpdateStatus={handleUpdateProspectStatus}
+            onDeleteNotInterested={handleMarkNotInterested}
+            onToggleStar={handleToggleStar}
+            onNavigateToDiscovery={() => setCurrentTab('dashboard')}
+          />
+        )}
+
+        {currentTab === 'prospects' && (
+          <ProspectsView
+            prospects={prospects}
+            lang={lang}
+            initialFilter="uncontacted"
             onSelectProspect={handleSelectProspectById}
             onToggleStar={handleToggleStar}
             onUpdateStatus={handleUpdateProspectStatus}
@@ -799,6 +870,39 @@ export default function App() {
         onClose={() => setIsQuickSearchOpen(false)}
         onSelectProspect={handleSelectProspectById}
       />
+
+      {/* Contact Outcome Notification Toast with 1-Click Landing Page Push */}
+      {contactToast && (
+        <div className="fixed top-20 right-4 z-50 max-w-sm w-full bg-[#0d1627] border border-cyan-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-200 text-slate-100 flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 shrink-0 mt-0.5">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0 space-y-1">
+            <h4 className="text-xs font-bold text-white">{contactToast.title}</h4>
+            <p className="text-[11px] text-slate-300 leading-tight">{contactToast.message}</p>
+            {contactToast.showCta && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentTab('contacted');
+                  setContactToast(null);
+                }}
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 text-white text-xs font-bold shadow-md hover:brightness-110 transition cursor-pointer"
+              >
+                <span>{lang === 'es' ? 'Ver en Lista de Contactados →' : 'View Contacted Pipeline →'}</span>
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setContactToast(null)}
+            className="text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer"
+            aria-label="Close notification"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Offline Status Toast Indicator */}
       <OfflineIndicator lang={lang} />

@@ -97,6 +97,17 @@ export const ContactOutcomeMenu: React.FC<ContactOutcomeMenuProps> = ({
             <span>{compact ? (lang === 'es' ? '⏳ Esperando' : '⏳ Waiting') : tr.waitingBadge}</span>
             <ChevronDown className="h-3 w-3 opacity-80" />
           </button>
+        ) : prospect.status === 'not_interested' ? (
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-bold hover:bg-rose-500/30 transition cursor-pointer"
+            title="Refused / Not interested"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+            <span>{compact ? (lang === 'es' ? '❌ Rechazado' : '❌ Refused') : (lang === 'es' ? '❌ No Interesado' : '❌ Not Interested')}</span>
+            <ChevronDown className="h-3 w-3 opacity-80" />
+          </button>
         ) : isContacted ? (
           <button
             type="button"
@@ -206,6 +217,25 @@ export const ContactOutcomeMenu: React.FC<ContactOutcomeMenuProps> = ({
                   </div>
                 </div>
               </button>
+
+              {/* Reset to uncontacted */}
+              {(isContacted || prospect.status === 'not_interested') && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectStatus('new', '')}
+                  className="w-full flex items-start gap-2.5 px-2.5 py-2 rounded-xl text-left hover:bg-slate-800 transition cursor-pointer text-slate-400 hover:text-slate-200 group mt-0.5"
+                >
+                  <Sparkles className="h-4 w-4 text-slate-500 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-medium leading-tight">
+                      <span>{lang === 'es' ? 'Restablecer a No Contactado' : 'Reset to Uncontacted'}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {lang === 'es' ? 'Devolver a la lista de descubrimiento' : 'Move back to active discovery'}
+                    </div>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         </div>

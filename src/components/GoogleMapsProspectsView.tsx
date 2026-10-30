@@ -68,7 +68,7 @@ export const GoogleMapsProspectsView: React.FC<GoogleMapsProspectsViewProps> = (
   isSearching,
   searchError
 }) => {
-  const apiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '').trim();
+  const apiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDHtD7D1qnxakr_Czlie845lvbclWhU9xw').trim();
 
   // Search parameters
   const [cityInput, setCityInput] = useState(() => settings.cities[0] || 'Madrid, Spain');

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
+import { getLeadStatusTheme } from '../utils/statusTheme.ts';
 import type { LeadStatus } from '../types/index.ts';
 
 interface DashboardViewProps {
@@ -334,16 +335,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               const mapsUrl = getGoogleMapsUrl(p);
               const isContacted = Boolean(p.isContacted || p.status === 'contacted');
               const isClicked = p.isClicked;
+              const theme = getLeadStatusTheme(p.status, p.isContacted);
 
               return (
                 <div
                   key={p.id}
                   onClick={() => onSelectProspect(p)}
                   className={`group relative rounded-2xl border p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3 ${
-                    isContacted
-                      ? 'border-emerald-500/30 bg-[#0a1618]/60 hover:border-emerald-500/50'
-                      : 'border-slate-800/80 bg-[#0d1424]/80 hover:border-cyan-500/40 hover:shadow-xl hover:shadow-cyan-950/20'
-                  }`}
+                    theme.cardBg
+                  } ${theme.border} ${theme.ring}`}
                 >
                   {/* Top Bar: Category, Score & Badges */}
                   <div>
