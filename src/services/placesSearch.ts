@@ -28,6 +28,29 @@ export async function runRealSearch(params: { location?: string; query?: string 
   const query = (params.query || '').trim();
   if (!location || !query) throw new Error('Enter both a location and a business type.');
 
+  // 1. Try Google Maps endpoint first
+  try {
+    const gmpRes = await window.fetch('/api/search/google-maps', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('leadhunter_admin_token') || ''}`
+      },
+      body: JSON.stringify({ location, query, onlyNoWebsite: false, pageSize: 20 })
+    });
+
+    if (gmpRes.ok) {
+      const gmpData = await gmpRes.json();
+      if (Array.isArray(gmpData.items) && gmpData.items.length > 0) {
+        saveStoredProspects(gmpData.items.concat(getStoredProspects()));
+        return gmpData;
+      }
+    }
+  } catch (err) {
+    console.warn('Google Maps search notice, checking fallback:', err);
+  }
+
+  // 2. Fallback to OpenStreetMap Overpass API
   const res = await window.fetch('/api/places-search', {
     method: 'POST',
     headers: {

@@ -601,7 +601,8 @@ router.get('/deploy/project-files', (_req, res) => {
       'functions/_lib/auth.ts',
       'functions/api/auth/login.ts',
       'functions/api/places-search.ts',
-      'functions/api/search/google-maps.ts'
+      'functions/api/search/google-maps.ts',
+      'functions/api/search/deep-prospect.ts'
     ];
 
     const files: Array<{ path: string; content: string }> = [];

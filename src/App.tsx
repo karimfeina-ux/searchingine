@@ -226,45 +226,56 @@ export default function App() {
     setIsResearchRunning(true);
     setActionError(null);
     try {
-      const res = await apiFetch('/api/search/deep-prospect', {
+      // 1. Try Google Maps live search first
+      let res = await apiFetch('/api/search/google-maps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location, query })
+        body: JSON.stringify({ location, query, onlyNoWebsite: false, pageSize: 20 })
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && Array.isArray(data.items) && data.items.length > 0) {
-          setProspects((prev) => {
-            const map = new Map<string, Prospect>();
-            for (const item of data.items) {
-              map.set(item.id, item);
-            }
-            for (const p of prev) {
-              if (!map.has(p.id)) {
-                map.set(p.id, p);
-              }
-            }
-            const merged = Array.from(map.values());
-            saveStoredProspects(merged);
-            return merged;
-          });
-          setStats((prev) => computeStats(data.items.concat(prospects)));
-        } else if (data && data.total === 0) {
-          setActionError(
-            lang === 'es'
-              ? 'No se encontraron nuevos prospectos sin web en esta búsqueda. Prueba con otra categoría o ciudad.'
-              : 'No new uncontacted businesses without a website were found for this search. Try a different city or category.'
-          );
+      let data = res.ok ? await res.json() : null;
+
+      // 2. Fallback to deep-prospect if google-maps returned no items
+      if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+        res = await apiFetch('/api/search/deep-prospect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ location, query })
+        });
+        if (res.ok) {
+          data = await res.json();
         }
+      }
+
+      if (data && Array.isArray(data.items) && data.items.length > 0) {
+        setProspects((prev) => {
+          const map = new Map<string, Prospect>();
+          for (const item of data.items) {
+            map.set(item.id, item);
+          }
+          for (const p of prev) {
+            if (!map.has(p.id)) {
+              map.set(p.id, p);
+            }
+          }
+          const merged = Array.from(map.values());
+          saveStoredProspects(merged);
+          return merged;
+        });
+        setStats((prev) => computeStats(data.items.concat(prospects)));
         await loadData();
         setCurrentTab('dashboard');
+      } else if (data && data.total === 0) {
+        setActionError(
+          lang === 'es'
+            ? 'No se encontraron nuevos prospectos sin web en esta búsqueda. Prueba con otra categoría o ciudad.'
+            : 'No new uncontacted businesses without a website were found for this search. Try a different city or category.'
+        );
       } else {
-        const data = await res.json();
-        setActionError(data.error || 'Failed to complete deep search');
+        setActionError(data?.error || 'Failed to complete search');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error during deep search:', err);
-      setActionError('Network error while running deep search');
+      setActionError(err?.message || 'Network error while running search');
     } finally {
       setIsResearchRunning(false);
     }
