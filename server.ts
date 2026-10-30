@@ -4,9 +4,13 @@ import dotenv from 'dotenv';
 import apiRouter from './server/routes.ts';
 import { initScheduler } from './server/scheduler.ts';
 
+import fs from 'fs';
+
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', true);
+
 const PORT = Number(process.env.APP_PORT || process.env.DEFAULT_APP_PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -21,12 +25,15 @@ app.use('/api', apiRouter);
 // Initialize Autonomous Scheduler
 initScheduler();
 
-// Start HTTP server immediately so port binds in milliseconds and avoids warmup timeouts
+let viteInstance: any = null;
 let viteMiddleware: any = null;
 
 if (!isProduction) {
   // Delegate front-end requests to Vite middleware
   app.use((req, res, next) => {
+    if (req.originalUrl.startsWith('/api')) {
+      return next();
+    }
     if (viteMiddleware) {
       return viteMiddleware(req, res, next);
     }
@@ -42,6 +49,23 @@ if (!isProduction) {
       }
     }, 50);
   });
+
+  // SPA fallback in development: transforms index.html with Vite
+  app.use('*', async (req, res, next) => {
+    if (req.originalUrl.startsWith('/api')) {
+      return next();
+    }
+    try {
+      const template = fs.readFileSync(path.resolve('index.html'), 'utf-8');
+      if (viteInstance) {
+        const html = await viteInstance.transformIndexHtml(req.originalUrl, template);
+        return res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+      }
+      res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+    } catch (e) {
+      next(e);
+    }
+  });
 } else {
   const distPath = path.resolve('dist');
   app.use(express.static(distPath));
@@ -51,7 +75,7 @@ if (!isProduction) {
 }
 
 const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`LeadHunter AI running on http://localhost:${PORT}`);
+  console.log(`LeadHunter AI running on http://0.0.0.0:${PORT}`);
 
   if (!isProduction) {
     (async () => {
@@ -64,6 +88,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
           },
           appType: 'spa',
         });
+        viteInstance = vite;
         viteMiddleware = vite.middlewares;
         console.log('Vite middleware mounted successfully.');
       } catch (err) {

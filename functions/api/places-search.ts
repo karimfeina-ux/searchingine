@@ -126,12 +126,14 @@ export async function onRequestPost({ request }: { request: Request }): Promise<
 
   // 1. Origin host check: Reject requests whose Origin host differs from the site host
   const origin = request.headers.get('origin');
-  const host = request.headers.get('host') || new URL(request.url).host;
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const host = (forwardedHost || request.headers.get('host') || new URL(request.url).host || '').split(':')[0].toLowerCase();
 
   if (origin) {
     try {
-      const originHost = new URL(origin).host;
-      if (originHost !== host) {
+      const originHost = new URL(origin).hostname.toLowerCase();
+      const isMismatch = host && originHost !== host && originHost !== 'localhost' && originHost !== '127.0.0.1';
+      if (isMismatch) {
         return new Response(JSON.stringify({ error: 'Forbidden: Origin host mismatch' }), {
           status: 403,
           headers: { 'Content-Type': 'application/json' }
