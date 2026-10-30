@@ -163,6 +163,19 @@ export const CloudflareDeployModal: React.FC<CloudflareDeployModalProps> = ({
       }
     ];
 
+    let filesToPush = coreFiles;
+    try {
+      const liveRes = await fetch('/api/deploy/project-files');
+      if (liveRes.ok) {
+        const liveData = await liveRes.json();
+        if (Array.isArray(liveData.files) && liveData.files.length > 0) {
+          filesToPush = liveData.files;
+        }
+      }
+    } catch {
+      // Fallback to coreFiles
+    }
+
     try {
       const result = await pushToGitHub(
         {
@@ -172,7 +185,7 @@ export const CloudflareDeployModal: React.FC<CloudflareDeployModalProps> = ({
           token: token.trim(),
           commitMessage: commitMsg.trim()
         },
-        coreFiles,
+        filesToPush,
         (step) => setLogs((prev) => [...prev, step])
       );
 
