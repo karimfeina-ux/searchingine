@@ -69,7 +69,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [heroQuery, setHeroQuery] = useState(() => settings.categories[0] || 'peluquería');
   const [filterHideContacted, setFilterHideContacted] = useState(true);
   const [filterHideClicked, setFilterHideClicked] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleHeroSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,51 +104,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
 
-      {/* Confirmation Modal to Clean Research List */}
-      {showClearConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0f172a] p-6 shadow-2xl text-slate-100 space-y-4">
-            <div className="flex items-center gap-3 text-rose-400">
-              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30">
-                <Trash2 className="w-6 h-6 text-rose-400" />
-              </div>
-              <h3 className="text-base font-bold text-white">{tr.cleanResearchTitle}</h3>
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              {tr.cleanResearchDesc}
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowClearConfirm(false)}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition cursor-pointer"
-              >
-                {tr.cleanResearchCancel}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onClearResearch) onClearResearch({ keepContacted: true, keepStarred: true, cleanAll: false });
-                  setShowClearConfirm(false);
-                }}
-                className="w-full sm:w-auto px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-xs font-semibold transition cursor-pointer"
-              >
-                {tr.cleanUncontactedConfirm}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onClearResearch) onClearResearch({ keepContacted: false, keepStarred: false, cleanAll: true });
-                  setShowClearConfirm(false);
-                }}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-xs font-bold text-white shadow-lg shadow-rose-900/30 transition cursor-pointer"
-              >
-                {tr.cleanAllConfirm}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Hero Section with Deep Search Console */}
       <div className="relative overflow-hidden rounded-3xl border border-cyan-500/30 bg-gradient-to-b from-[#0c162d] via-[#091022] to-[#080d1a] p-5 sm:p-8 shadow-2xl shadow-cyan-950/20 backdrop-blur-xl">
@@ -214,49 +168,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             </div>
 
-            {/* Quick Territory Presets & Clean Button */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] text-slate-400 font-medium">{tr.quickPresets}</span>
-                {presets.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setHeroLocation(preset.loc);
-                      setHeroQuery(preset.cat);
-                    }}
-                    className="rounded-lg bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 px-2.5 py-1 text-[11px] text-slate-300 hover:text-cyan-300 transition cursor-pointer"
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Google Map Explorer & Clean Buttons */}
-              <div className="flex items-center gap-2">
+            {/* Quick Territory Presets */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+              <span className="text-[11px] text-slate-400 font-medium">{tr.quickPresets}</span>
+              {presets.map((preset, idx) => (
                 <button
+                  key={idx}
                   type="button"
-                  onClick={() => onNavigateTab('map')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-700/60 shadow-sm transition cursor-pointer"
-                  title="Open live Google Map explorer"
+                  onClick={() => {
+                    setHeroLocation(preset.loc);
+                    setHeroQuery(preset.cat);
+                  }}
+                  className="rounded-lg bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 px-2.5 py-1 text-[11px] text-slate-300 hover:text-cyan-300 transition cursor-pointer"
                 >
-                  <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{lang === 'es' ? 'Ver en Mapa Google' : 'View on Google Map'}</span>
+                  {preset.label}
                 </button>
-
-                {onClearResearch && (topProspects.length > 0 || stats.totalLeads > 0) && (
-                  <button
-                    type="button"
-                    onClick={() => setShowClearConfirm(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-rose-300 bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/60 shadow-sm transition cursor-pointer"
-                    title={tr.cleanResearchDesc}
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                    <span>{tr.cleanToZero}</span>
-                  </button>
-                )}
-              </div>
+              ))}
             </div>
           </form>
         </div>
@@ -339,15 +266,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {onClearResearch && (topProspects.length > 0 || stats.totalLeads > 0) && (
+            {onClearResearch && (
               <button
                 type="button"
-                onClick={() => setShowClearConfirm(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-300 bg-rose-950/50 hover:bg-rose-900/70 border border-rose-800/60 shadow-sm transition cursor-pointer"
-                title={tr.cleanResearchDesc}
+                onClick={() => {
+                  onClearResearch({ cleanAll: true, keepContacted: false, keepStarred: false });
+                }}
+                disabled={topProspects.length === 0 && stats.totalLeads === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-300 bg-rose-950/50 hover:bg-rose-900/70 border border-rose-800/60 shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                title={lang === 'es' ? 'Limpiar lista a 0' : 'Clean list to 0'}
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>{tr.cleanToZero}</span>
+                <span>Clean</span>
               </button>
             )}
 

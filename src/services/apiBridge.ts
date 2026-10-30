@@ -3,6 +3,7 @@ import {
   saveClientSettings,
   getStoredProspects,
   saveStoredProspects,
+  clearStoredProspects,
   addExclusion,
   computeStats,
   createClientBrief
@@ -146,6 +147,13 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
       items: filtered,
       total: filtered.length
     });
+  }
+
+  // 6b. Clear Prospects Collection to 0
+  if (path === '/api/prospects/clear' && method === 'POST') {
+    const prev = getStoredProspects();
+    const remaining = clearStoredProspects(body || { cleanAll: true });
+    return jsonResponse({ success: true, remainingCount: remaining.length, deletedCount: prev.length - remaining.length });
   }
 
   // 7. Individual Prospect actions
