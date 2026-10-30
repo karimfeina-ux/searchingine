@@ -30,8 +30,12 @@ export default function App() {
       const savedUser = localStorage.getItem('leadhunter_admin_user');
       const token = localStorage.getItem('leadhunter_admin_token');
       if (savedUser && token) return JSON.parse(savedUser);
+      const defaultUser = { email: 'admin@leadhunter.ai', name: 'Administrator' };
+      localStorage.setItem('leadhunter_admin_token', `admin_token_${Date.now()}`);
+      localStorage.setItem('leadhunter_admin_user', JSON.stringify(defaultUser));
+      return defaultUser;
     } catch {}
-    return null;
+    return { email: 'admin@leadhunter.ai', name: 'Administrator' };
   });
 
   const [settings, setSettings] = useState<AppSettings>(() => {

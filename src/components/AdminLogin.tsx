@@ -117,7 +117,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@domain.com"
+                  placeholder="admin@leadhunter.ai"
                   autoComplete="username"
                   required
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-900/60 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 rounded-xl text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all duration-200"
@@ -126,9 +126,12 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
-                Security Key
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400">
+                  Security Key
+                </label>
+                <span className="text-[10px] text-slate-500 font-mono">Default: admin</span>
+              </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                   <Lock className="h-4 w-4" />
@@ -137,7 +140,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="admin"
                   autoComplete="current-password"
                   required
                   className="w-full pl-10 pr-11 py-2.5 bg-slate-900/60 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 rounded-xl text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all duration-200"
@@ -145,7 +148,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
