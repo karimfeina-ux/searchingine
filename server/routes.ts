@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
 import {
+  banProspectHasWebsite,
   clearProspects,
   deleteProspect,
   getOutreachDrafts,
@@ -198,10 +199,22 @@ router.post('/prospects/:id/contact', (req, res) => {
   }
 });
 
+router.post('/prospects/:id/ban-website', (req, res) => {
+  try {
+    const result = banProspectHasWebsite(req.params.id);
+    if (!result.success) {
+      return res.status(404).json({ error: 'Prospect not found' });
+    }
+    res.json({ success: true, banned: true, name: result.name });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/prospects/clear', (req, res) => {
   try {
-    const { keepContacted = true, keepStarred = true } = req.body || {};
-    const result = clearProspects({ keepContacted: Boolean(keepContacted), keepStarred: Boolean(keepStarred) });
+    const { keepContacted = false, keepStarred = false, cleanAll = true } = req.body || {};
+    const result = clearProspects({ keepContacted: Boolean(keepContacted), keepStarred: Boolean(keepStarred), cleanAll: Boolean(cleanAll) });
     res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

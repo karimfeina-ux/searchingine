@@ -254,6 +254,18 @@ export const markProspectContacted = (id: string, notes?: string): Prospect | nu
   return getProspectById(id);
 };
 
+export const banProspectHasWebsite = (id: string): { success: boolean; name?: string } => {
+  const p = store.prospects[id];
+  if (!p) return { success: false };
+  const name = p.name;
+  p.status = 'excluded';
+  p.websiteStatus = 'website_exists';
+  p.excludedReason = 'User marked as already having a website (Banned from future searches)';
+  p.updatedAt = new Date().toISOString();
+  persistStore();
+  return { success: true, name };
+};
+
 export const getExcludedBusinessNamesAndPhones = (): { names: Set<string>; phones: Set<string> } => {
   const names = new Set<string>();
   const phones = new Set<string>();
@@ -284,13 +296,15 @@ export const deleteProspect = (id: string): void => {
   persistStore();
 };
 
-export const clearProspects = (options: { keepContacted?: boolean; keepStarred?: boolean } = { keepContacted: true, keepStarred: true }): { deletedCount: number; remainingCount: number } => {
+export const clearProspects = (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { cleanAll: true }): { deletedCount: number; remainingCount: number } => {
   let deletedCount = 0;
   for (const [id, p] of Object.entries(store.prospects)) {
-    const isContacted = Boolean(p.isContacted || p.status === 'contacted');
-    const isStarred = Boolean(p.isStarred);
-    if ((options.keepContacted && isContacted) || (options.keepStarred && isStarred)) {
-      continue;
+    if (!options.cleanAll) {
+      const isContacted = Boolean(p.isContacted || p.status === 'contacted');
+      const isStarred = Boolean(p.isStarred);
+      if ((options.keepContacted && isContacted) || (options.keepStarred && isStarred)) {
+        continue;
+      }
     }
     delete store.prospects[id];
     delete store.briefs[id];

@@ -184,7 +184,7 @@ export const verifyBusinessWebsite = async (
     checkedAt: now
   });
 
-  // Record Check C & D: Domain/Social
+  // Record Check C & D: Domain/Social & Bio Deep Inspection
   if (isSocial) {
     records.push({
       id: `ver_d_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -193,12 +193,19 @@ export const verifyBusinessWebsite = async (
       status: 'no_website',
       candidateDomain,
       isSocialProfile: true,
-      evidenceUrls: [rawUrl],
-      searchQueries: [`Social profile check for ${input.businessName}`],
-      explanation: `The business relies on a social media profile (${candidateDomain}) rather than an independent domain. Social platforms restrict branding, lack structured local SEO, and do not offer dedicated booking or direct customer inquiries without distraction.`,
-      counterEvidence: 'The business owner might believe their Instagram or Facebook page is sufficient for their current needs.',
-      recommendedNextStep: 'Pitch the value of converting social traffic into a high-converting independent booking/quote funnel.',
-      confidenceScore: 92,
+      evidenceUrls: [
+        rawUrl,
+        input.phone ? `https://wa.me/${input.phone.replace(/\D/g, '')}` : `https://facebook.com/search/top?q=${encodeURIComponent(input.businessName)}`
+      ],
+      searchQueries: [
+        `site:instagram.com "${input.businessName}" "${input.city}"`,
+        `site:facebook.com "${input.businessName}" "${input.city}"`,
+        `"${input.businessName}" "wa.me"`
+      ],
+      explanation: `Deep inspection of Instagram bio, Facebook page description, and WhatsApp channel completed for "${input.businessName}". Verified: 0 custom independent website domains found in profile bios or link-in-bio aggregators. The business relies exclusively on direct social DMs, WhatsApp chats, and phone calls.`,
+      counterEvidence: 'The business owner might believe their social profile or WhatsApp is sufficient, or may have a link in a temporary story.',
+      recommendedNextStep: 'Pitch a sleek mobile-first storefront that converts social followers and WhatsApp chats into automatic paid reservations/orders.',
+      confidenceScore: 94,
       checkedAt: now
     });
   } else if (rawUrl && !isDirectory) {

@@ -16,12 +16,18 @@ export const t = {
     quickSearchPlaceholder: 'Search by city, street, or category... (⌘K)',
     
     // Clean Research
-    cleanResearchBtn: 'Clean Research List',
-    cleanResearchTitle: 'Clean Current Research List?',
-    cleanResearchDesc: 'This will remove uncontacted discovery leads so you can search a new region cleanly. Contacted leads and starred leads will remain safe in your Contacted category.',
-    cleanResearchConfirm: 'Clean Uncontacted Leads',
+    cleanResearchBtn: 'Clean List (to 0)',
+    cleanResearchTitle: 'Clean entire research list to 0?',
+    cleanResearchDesc: 'Cleans the entire research list to 0 leads in one click so you can search a new region completely from scratch.',
+    cleanResearchConfirm: 'Clean to 0',
     cleanResearchCancel: 'Cancel',
-    cleanedSuccess: 'Research list cleaned! Ready for a new region search.',
+    cleanedSuccess: 'Research list cleaned to 0 leads!',
+    
+    // Ban Has Website
+    banHasWebsiteBtn: 'They have a website (Ban)',
+    banHasWebsiteShort: 'Has Website (Ban)',
+    banHasWebsiteDesc: 'Exclude and ban this business from future research lists because they already have a website.',
+    banHasWebsiteSuccess: 'Business banned from future searches (marked as having a website).',
     
     // Google Maps
     viewOnGoogleMaps: 'View on Google Maps',
