@@ -213,7 +213,7 @@ async function handle(request: Request): Promise<Response> {
           }
         }
       }
-      if (verifiedPlaces.length >= 8) {
+      if (verifiedPlaces.length >= 35) {
         break;
       }
     } catch {

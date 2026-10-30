@@ -65,6 +65,8 @@ interface StoreData {
   briefs: Record<string, WebsiteBrief>;
   jobs: DailyJobRun[];
   outreachDrafts: Record<string, OutreachDraft[]>;
+  bannedNames: string[];
+  bannedPhones: string[];
 }
 
 let store: StoreData = {
@@ -73,7 +75,9 @@ let store: StoreData = {
   verifications: {},
   briefs: {},
   jobs: [],
-  outreachDrafts: {}
+  outreachDrafts: {},
+  bannedNames: [],
+  bannedPhones: []
 };
 
 // Load persistent data from JSON if present
@@ -87,7 +91,9 @@ try {
       verifications: parsed.verifications || {},
       briefs: parsed.briefs || {},
       jobs: parsed.jobs || [],
-      outreachDrafts: parsed.outreachDrafts || {}
+      outreachDrafts: parsed.outreachDrafts || {},
+      bannedNames: Array.isArray(parsed.bannedNames) ? parsed.bannedNames : [],
+      bannedPhones: Array.isArray(parsed.bannedPhones) ? parsed.bannedPhones : []
     };
   }
 } catch (err) {
@@ -223,13 +229,27 @@ export const saveProspect = (p: Prospect): void => {
   persistStore();
 };
 
-export const updateProspectStatus = (id: string, status: string, notes?: string): void => {
+export const updateProspectStatus = (id: string, status: string, notes?: string): Prospect | null => {
   const p = store.prospects[id];
-  if (!p) return;
+  if (!p) return null;
   p.status = status as any;
+  if (['contacted', 'waiting', 'client_signed'].includes(status)) {
+    p.isContacted = true;
+    p.contactedAt = p.contactedAt || new Date().toISOString();
+  }
+  if (status === 'not_interested') {
+    p.status = 'excluded';
+    p.excludedReason = 'Not interested after contact (Permanently excluded from research)';
+    if (p.normalizedName) store.bannedNames.push(p.normalizedName.toLowerCase().trim());
+    if (p.phone) {
+      const clean = p.phone.replace(/\D/g, '');
+      if (clean.length >= 6) store.bannedPhones.push(clean);
+    }
+  }
   if (notes !== undefined) p.notes = notes;
   p.updatedAt = new Date().toISOString();
   persistStore();
+  return getProspectById(id);
 };
 
 export const markProspectClicked = (id: string): Prospect | null => {
@@ -258,8 +278,30 @@ export const deleteProspect = (id: string): { success: boolean; deleted?: Prospe
   const p = store.prospects[id];
   if (!p) return { success: false };
   delete store.prospects[id];
+  delete store.briefs[id];
+  delete store.verifications[id];
+  delete store.outreachDrafts[id];
   persistStore();
   return { success: true, deleted: p };
+};
+
+export const banAndExcludeProspect = (id: string, reason: string = 'Not interested / Deleted from research'): { success: boolean; name?: string } => {
+  const p = store.prospects[id];
+  if (!p) return { success: false };
+  const name = p.name;
+  if (p.normalizedName) {
+    store.bannedNames.push(p.normalizedName.toLowerCase().trim());
+  }
+  if (p.phone) {
+    const cleanPhone = p.phone.replace(/\D/g, '');
+    if (cleanPhone.length >= 6) store.bannedPhones.push(cleanPhone);
+  }
+  delete store.prospects[id];
+  delete store.briefs[id];
+  delete store.verifications[id];
+  delete store.outreachDrafts[id];
+  persistStore();
+  return { success: true, name };
 };
 
 export const banProspectHasWebsite = (id: string): { success: boolean; name?: string } => {
@@ -269,17 +311,30 @@ export const banProspectHasWebsite = (id: string): { success: boolean; name?: st
   p.status = 'excluded';
   p.websiteStatus = 'website_exists';
   p.excludedReason = 'User marked as already having a website (Banned from future searches)';
+  if (p.normalizedName) store.bannedNames.push(p.normalizedName.toLowerCase().trim());
+  if (p.phone) {
+    const clean = p.phone.replace(/\D/g, '');
+    if (clean.length >= 6) store.bannedPhones.push(clean);
+  }
   p.updatedAt = new Date().toISOString();
   persistStore();
   return { success: true, name };
 };
 
 export const getExcludedBusinessNamesAndPhones = (): { names: Set<string>; phones: Set<string> } => {
-  const names = new Set<string>();
-  const phones = new Set<string>();
+  const names = new Set<string>(store.bannedNames || []);
+  const phones = new Set<string>(store.bannedPhones || []);
   for (const p of Object.values(store.prospects)) {
-    // Only exclude businesses that the user has already contacted, clicked, or excluded
-    if (p.isContacted || p.isClicked || p.status === 'contacted' || p.status === 'excluded') {
+    // Exclude businesses that are contacted, waiting, signed, clicked, not interested, or excluded
+    if (
+      p.isContacted ||
+      p.isClicked ||
+      p.status === 'contacted' ||
+      p.status === 'waiting' ||
+      p.status === 'client_signed' ||
+      p.status === 'not_interested' ||
+      p.status === 'excluded'
+    ) {
       if (p.phone) {
         const cleanPhone = p.phone.replace(/\D/g, '');
         if (cleanPhone.length >= 6) phones.add(cleanPhone);
@@ -299,14 +354,6 @@ export const toggleProspectStar = (id: string): boolean => {
   p.updatedAt = new Date().toISOString();
   persistStore();
   return Boolean(p.isStarred);
-};
-
-export const deleteProspect = (id: string): void => {
-  delete store.prospects[id];
-  delete store.briefs[id];
-  delete store.verifications[id];
-  delete store.outreachDrafts[id];
-  persistStore();
 };
 
 export const clearProspects = (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { cleanAll: true }): { deletedCount: number; remainingCount: number } => {

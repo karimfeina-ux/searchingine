@@ -25,12 +25,15 @@ import {
   Loader2
 } from 'lucide-react';
 
+import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
+
 interface ProspectModalProps {
   prospect: Prospect;
   settings: AppSettings;
   lang: 'en' | 'es';
   onClose: () => void;
   onUpdateStatus: (id: string, status: LeadStatus, notes?: string) => void;
+  onDeleteNotInterested?: (id: string) => void;
   onToggleStar: (id: string) => void;
   onReverify: (id: string) => Promise<void>;
   onRegenerateBrief: (id: string) => Promise<void>;
@@ -43,6 +46,7 @@ export const ProspectModal: React.FC<ProspectModalProps> = ({
   lang,
   onClose,
   onUpdateStatus,
+  onDeleteNotInterested,
   onToggleStar,
   onReverify,
   onRegenerateBrief,
@@ -199,18 +203,13 @@ Base Web Price: €${settings.baseWebsitePrice} | Hosting: €${settings.monthly
               </div>
             </div>
 
-            {/* Quick Contact Toggle */}
-            <button
-              onClick={() => onUpdateStatus(prospect.id, prospect.status === 'contacted' ? 'ready_to_contact' : 'contacted')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                prospect.status === 'contacted' || prospect.isContacted
-                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-950'
-                  : 'bg-slate-800/80 hover:bg-emerald-950/40 hover:text-emerald-300 text-slate-300 border-slate-700'
-              }`}
-            >
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{prospect.status === 'contacted' || prospect.isContacted ? 'Contacted ✓' : 'Mark Contacted'}</span>
-            </button>
+            {/* Contact Outcome Menu */}
+            <ContactOutcomeMenu
+              prospect={prospect}
+              lang={lang}
+              onUpdateStatus={onUpdateStatus}
+              onDeleteNotInterested={onDeleteNotInterested || ((id) => onUpdateStatus(id, 'not_interested'))}
+            />
 
             {/* Close Button */}
             <button
@@ -414,8 +413,9 @@ Base Web Price: €${settings.baseWebsitePrice} | Hosting: €${settings.monthly
                     <option value="high_priority">Status: High Priority Opportunity</option>
                     <option value="ready_to_contact">Status: Ready to Contact</option>
                     <option value="contacted">Status: Contacted</option>
-                    <option value="interested">Status: Interested / Meeting Booked</option>
-                    <option value="client_signed">Status: Client Signed (€500+)</option>
+                    <option value="waiting">Status: ⏳ Waiting for Response / Payment</option>
+                    <option value="client_signed">Status: 🤝 Client Signed (€500+)</option>
+                    <option value="not_interested">Status: ❌ Not Interested (Delete & Exclude from Research)</option>
                     <option value="excluded">Status: Excluded</option>
                   </select>
 
@@ -812,12 +812,19 @@ Base Web Price: €${settings.baseWebsitePrice} | Hosting: €${settings.monthly
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => onUpdateStatus(prospect.id, 'contacted')}
-              className="rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition"
-            >
-              {lang === 'es' ? 'Marcar Contactado' : 'Mark as Contacted'}
-            </button>
+            <ContactOutcomeMenu
+              prospect={prospect}
+              lang={lang}
+              onUpdateStatus={onUpdateStatus}
+              onDeleteNotInterested={
+                onDeleteNotInterested
+                  ? (id) => {
+                      onDeleteNotInterested(id);
+                      onClose();
+                    }
+                  : undefined
+              }
+            />
             <button
               onClick={onClose}
               className="rounded-xl bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition"

@@ -100,7 +100,7 @@ export async function searchGoogleMapsBusinesses(params: {
   let places: GooglePlaceResult[] = [];
   let nextPageToken: string | undefined = undefined;
   let pageCount = 0;
-  const maxPages = 3;
+  const maxPages = 4;
 
   do {
     const requestBody: Record<string, any> = {
@@ -109,6 +109,8 @@ export async function searchGoogleMapsBusinesses(params: {
     };
     if (nextPageToken) {
       requestBody.pageToken = nextPageToken;
+      // Brief pause to allow next page token propagation
+      await new Promise((r) => setTimeout(r, 350));
     }
     if (params.minRating && params.minRating > 0 && !nextPageToken) {
       requestBody.minRating = Math.min(Math.max(params.minRating, 1.0), 5.0);
@@ -143,7 +145,7 @@ export async function searchGoogleMapsBusinesses(params: {
     }
     nextPageToken = data.nextPageToken;
     pageCount++;
-  } while (nextPageToken && pageCount < maxPages && places.length < 60);
+  } while (nextPageToken && pageCount < maxPages && places.length < 80);
 
   const { names: excludedNames, phones: excludedPhones } = getExcludedBusinessNamesAndPhones();
   const settings = getSettings();

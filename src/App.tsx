@@ -20,7 +20,7 @@ import { AdminLogin } from './components/AdminLogin.tsx';
 import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
 import { GoogleMapsProspectsView } from './components/GoogleMapsProspectsView.tsx';
 import { apiFetch } from './services/apiBridge.ts';
-import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects } from './services/clientDataEngine.ts';
+import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets } from './services/clientDataEngine.ts';
 import { Loader2, AlertCircle, X, Compass, Database, CheckCircle2, Settings } from 'lucide-react';
 
 export default function App() {
@@ -183,14 +183,23 @@ export default function App() {
       const res = await apiFetch('/api/search/google-maps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(searchParams)
+        body: JSON.stringify({ ...searchParams, pageSize: 60 })
       });
       if (res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.items) && data.items.length > 0) {
+          const { names: excludedNames, phones: excludedPhones } = getExcludedSets();
+          // Filter out any business already contacted or deleted from research
+          const validItems = data.items.filter((item: Prospect) => {
+            const cleanPhone = (item.phone || '').replace(/\D/g, '');
+            if (cleanPhone.length >= 6 && excludedPhones.has(cleanPhone)) return false;
+            if (item.normalizedName && excludedNames.has(item.normalizedName.toLowerCase().trim())) return false;
+            return true;
+          });
+
           setProspects((prev) => {
             const map = new Map<string, Prospect>();
-            for (const item of data.items) {
+            for (const item of validItems) {
               map.set(item.id, item);
             }
             for (const p of prev) {
@@ -202,7 +211,7 @@ export default function App() {
             saveStoredProspects(merged);
             return merged;
           });
-          setStats((prev) => computeStats(data.items.concat(prospects)));
+          setStats((prev) => computeStats(validItems.concat(prospects)));
         } else if (data && data.total === 0) {
           setActionError(
             lang === 'es'
@@ -222,15 +231,16 @@ export default function App() {
       setIsResearchRunning(false);
     }
   };
+
   const handlePerformSearch = async ({ location, query }: { location: string; query: string }) => {
     setIsResearchRunning(true);
     setActionError(null);
     try {
-      // 1. Try Google Maps live search first
+      // 1. Try Google Maps live search first with bigger page size
       let res = await apiFetch('/api/search/google-maps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location, query, onlyNoWebsite: false, pageSize: 20 })
+        body: JSON.stringify({ location, query, onlyNoWebsite: false, pageSize: 60 })
       });
       let data = res.ok ? await res.json() : null;
 
@@ -247,9 +257,17 @@ export default function App() {
       }
 
       if (data && Array.isArray(data.items) && data.items.length > 0) {
+        const { names: excludedNames, phones: excludedPhones } = getExcludedSets();
+        const validItems = data.items.filter((item: Prospect) => {
+          const cleanPhone = (item.phone || '').replace(/\D/g, '');
+          if (cleanPhone.length >= 6 && excludedPhones.has(cleanPhone)) return false;
+          if (item.normalizedName && excludedNames.has(item.normalizedName.toLowerCase().trim())) return false;
+          return true;
+        });
+
         setProspects((prev) => {
           const map = new Map<string, Prospect>();
-          for (const item of data.items) {
+          for (const item of validItems) {
             map.set(item.id, item);
           }
           for (const p of prev) {
@@ -261,7 +279,7 @@ export default function App() {
           saveStoredProspects(merged);
           return merged;
         });
-        setStats((prev) => computeStats(data.items.concat(prospects)));
+        setStats((prev) => computeStats(validItems.concat(prospects)));
         await loadData();
         setCurrentTab('dashboard');
       } else if (data && data.total === 0) {
@@ -355,22 +373,45 @@ export default function App() {
     }
   };
 
-  const handleMarkContacted = async (id: string, notes?: string) => {
+  const handleMarkNotInterested = async (id: string) => {
+    try {
+      apiFetch(`/api/prospects/${id}/not-interested`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Not interested (Deleted from research)' })
+      }).catch(() => {});
+      deleteProspectClient(id);
+      setProspects((prev) => {
+        const next = prev.filter((p) => p.id !== id);
+        saveStoredProspects(next);
+        setStats(computeStats(next));
+        return next;
+      });
+      if (selectedProspect?.id === id) {
+        setSelectedProspect(null);
+      }
+    } catch (err) {
+      console.error('Failed to mark not interested:', err);
+    }
+  };
+
+  const handleMarkContacted = async (id: string, notes?: string, status: LeadStatus = 'contacted') => {
     try {
       const res = await apiFetch(`/api/prospects/${id}/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes })
+        body: JSON.stringify({ notes, status })
       });
       if (res.ok) {
         const updated = await res.json();
         setProspects((prev) => {
-          const next = prev.map((p) => (p.id === id ? updated : p));
+          const next = prev.map((p) => (p.id === id ? { ...updated, status, isContacted: true } : p));
           saveStoredProspects(next);
+          setStats(computeStats(next));
           return next;
         });
         if (selectedProspect?.id === id) {
-          setSelectedProspect(updated);
+          setSelectedProspect((prev) => (prev ? { ...prev, ...updated, status, isContacted: true } : null));
         }
         apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
       }
@@ -380,6 +421,11 @@ export default function App() {
   };
 
   const handleUpdateProspectStatus = async (id: string, status: LeadStatus, notes?: string) => {
+    if (status === 'not_interested') {
+      await handleMarkNotInterested(id);
+      return;
+    }
+
     try {
       const res = await apiFetch(`/api/prospects/${id}/status`, {
         method: 'PUT',
@@ -387,7 +433,7 @@ export default function App() {
         body: JSON.stringify({ status, notes })
       });
       if (res.ok) {
-        const updated = await res.json();
+        const isContactedLead = ['contacted', 'waiting', 'client_signed'].includes(status);
         setProspects((prev) => {
           const next = prev.map((p) =>
             p.id === id
@@ -395,15 +441,27 @@ export default function App() {
                   ...p,
                   status,
                   notes: notes ?? p.notes,
-                  isContacted: status === 'contacted' ? true : p.isContacted
+                  isContacted: isContactedLead ? true : p.isContacted,
+                  contactedAt: isContactedLead ? (p.contactedAt || new Date().toISOString()) : p.contactedAt
                 }
               : p
           );
           saveStoredProspects(next);
+          setStats(computeStats(next));
           return next;
         });
         if (selectedProspect?.id === id) {
-          setSelectedProspect((prev) => (prev ? { ...prev, status, notes: notes ?? prev.notes, isContacted: status === 'contacted' ? true : prev.isContacted } : null));
+          setSelectedProspect((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status,
+                  notes: notes ?? prev.notes,
+                  isContacted: isContactedLead ? true : prev.isContacted,
+                  contactedAt: isContactedLead ? (prev.contactedAt || new Date().toISOString()) : prev.contactedAt
+                }
+              : null
+          );
         }
         // Refresh stats
         apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
@@ -621,6 +679,8 @@ export default function App() {
               lang={lang}
               onSelectProspect={handleSelectProspectById}
               onSearchGoogleMaps={handleSearchGoogleMaps}
+              onUpdateStatus={handleUpdateProspectStatus}
+              onDeleteNotInterested={handleMarkNotInterested}
               isSearching={isResearchRunning}
               searchError={actionError}
             />
@@ -640,6 +700,8 @@ export default function App() {
             isResearchRunning={isResearchRunning}
             onPerformSearch={handlePerformSearch}
             onMarkContacted={handleMarkContacted}
+            onUpdateStatus={handleUpdateProspectStatus}
+            onDeleteNotInterested={handleMarkNotInterested}
             onToggleStar={handleToggleStar}
             onOpenDeployModal={() => setIsDeployModalOpen(true)}
             onClearResearch={handleClearResearch}
@@ -648,12 +710,13 @@ export default function App() {
 
         {(currentTab === 'prospects' || currentTab === 'contacted') && (
           <ProspectsView
-            prospects={currentTab === 'contacted' ? prospects.filter((p) => p.isContacted || p.status === 'contacted') : prospects}
+            prospects={currentTab === 'contacted' ? prospects.filter((p) => p.isContacted || p.status === 'contacted' || p.status === 'waiting' || p.status === 'client_signed') : prospects}
             lang={lang}
             initialFilter={currentTab === 'contacted' ? 'contacted' : 'uncontacted'}
             onSelectProspect={handleSelectProspectById}
             onToggleStar={handleToggleStar}
             onUpdateStatus={handleUpdateProspectStatus}
+            onDeleteNotInterested={handleMarkNotInterested}
             onVerifyAgain={handleReverify}
             onExportCsv={handleExportCsv}
             onMarkContacted={handleMarkContacted}
@@ -710,6 +773,7 @@ export default function App() {
           lang={lang}
           onClose={() => setSelectedProspect(null)}
           onUpdateStatus={handleUpdateProspectStatus}
+          onDeleteNotInterested={handleMarkNotInterested}
           onToggleStar={handleToggleStar}
           onReverify={handleReverify}
           onRegenerateBrief={handleRegenerateBrief}

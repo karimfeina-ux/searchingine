@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
 import {
+  banAndExcludeProspect,
   banProspectHasWebsite,
   clearProspects,
   deleteProspect,
@@ -25,7 +26,7 @@ import {
 import { getSchedulerStatus, setupCronSchedule, toggleScheduler, triggerRunNow } from './scheduler.ts';
 import { verifyBusinessWebsite } from './verificationEngine.ts';
 import { calculateLeadScore } from './leadScoring.ts';
-import { generatePersonalizedBrief } from './websiteConceptGenerator.ts';
+import { generatePersonalizedBrief, buildProgrammaticBrief } from './websiteConceptGenerator.ts';
 import { generateOutreachDraft } from './outreachGenerator.ts';
 import { deepSearchProspects } from './researchEngine.ts';
 
@@ -122,7 +123,7 @@ router.post('/search/google-maps', async (req, res) => {
     const settings = getSettings();
     for (const prospect of results.items) {
       try {
-        const brief = await generatePersonalizedBrief(prospect, settings);
+        const brief = buildProgrammaticBrief(prospect, settings);
         saveWebsiteBrief(brief);
         prospect.brief = brief;
       } catch {}
@@ -272,6 +273,19 @@ router.post('/prospects/:id/ban-website', (req, res) => {
       return res.status(404).json({ error: 'Prospect not found' });
     }
     res.json({ success: true, banned: true, name: result.name });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/prospects/:id/not-interested', (req, res) => {
+  try {
+    const { reason = 'Not interested after contact (Deleted from research)' } = req.body || {};
+    const result = banAndExcludeProspect(req.params.id, reason);
+    if (!result.success) {
+      return res.status(404).json({ error: 'Prospect not found' });
+    }
+    res.json({ success: true, excluded: true, name: result.name });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

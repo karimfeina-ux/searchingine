@@ -24,15 +24,18 @@ import {
   Compass
 } from 'lucide-react';
 
+import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
+
 interface ProspectsViewProps {
   prospects: Prospect[];
   lang: 'en' | 'es';
   onSelectProspect: (prospect: Prospect) => void;
   onToggleStar: (id: string) => void;
-  onUpdateStatus: (id: string, status: LeadStatus) => void;
+  onUpdateStatus: (id: string, status: LeadStatus, notes?: string) => void;
   onVerifyAgain: (id: string) => void;
   onExportCsv: () => void;
   onMarkContacted?: (id: string) => void;
+  onDeleteNotInterested?: (id: string) => void;
   onClearResearch?: (options: { keepContacted: boolean; keepStarred: boolean; cleanAll?: boolean }) => void;
   initialFilter?: 'all' | 'uncontacted' | 'contacted';
 }
@@ -46,13 +49,14 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
   onVerifyAgain,
   onExportCsv,
   onMarkContacted,
+  onDeleteNotInterested,
   onClearResearch,
   initialFilter = 'uncontacted'
 }) => {
   const tr = t[lang] || t.en;
   const [search, setSearch] = useState('');
   // Default to uncontacted so users don't see contacted businesses in their new search list
-  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'uncontacted' | 'contacted' | 'clicked' | 'high_priority'>(initialFilter);
+  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'uncontacted' | 'contacted' | 'waiting' | 'client_signed' | 'clicked' | 'high_priority'>(initialFilter);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedWebsiteStatus, setSelectedWebsiteStatus] = useState<string>('all');
   const [selectedLeadStatus, setSelectedLeadStatus] = useState<string>('all');
@@ -74,10 +78,19 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
   // Filter & sort
   const filtered = prospects
     .filter((p) => {
-      const isLeadContacted = Boolean(p.isContacted || p.status === 'contacted');
+      const isLeadContactedOrDone = Boolean(
+        p.isContacted ||
+        p.status === 'contacted' ||
+        p.status === 'waiting' ||
+        p.status === 'client_signed' ||
+        p.status === 'not_interested' ||
+        p.status === 'excluded'
+      );
 
-      if (pipelineFilter === 'uncontacted' && isLeadContacted) return false;
-      if (pipelineFilter === 'contacted' && !isLeadContacted) return false;
+      if (pipelineFilter === 'uncontacted' && isLeadContactedOrDone) return false;
+      if (pipelineFilter === 'contacted' && !isLeadContactedOrDone) return false;
+      if (pipelineFilter === 'waiting' && p.status !== 'waiting') return false;
+      if (pipelineFilter === 'client_signed' && p.status !== 'client_signed') return false;
       if (pipelineFilter === 'clicked' && !p.isClicked) return false;
       if (pipelineFilter === 'high_priority' && p.leadScore < 80) return false;
 
@@ -130,8 +143,10 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
     }
   };
 
-  const uncontactedCount = prospects.filter((p) => !p.isContacted && p.status !== 'contacted').length;
+  const uncontactedCount = prospects.filter((p) => !p.isContacted && p.status !== 'contacted' && p.status !== 'waiting' && p.status !== 'client_signed').length;
   const contactedCount = prospects.filter((p) => p.isContacted || p.status === 'contacted').length;
+  const waitingCount = prospects.filter((p) => p.status === 'waiting').length;
+  const signedCount = prospects.filter((p) => p.status === 'client_signed').length;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
@@ -202,7 +217,9 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           {[
             { id: 'uncontacted', label: tr.filterUncontacted, count: uncontactedCount },
-            { id: 'contacted', label: tr.filterContactedOnly, count: contactedCount, isHighlight: true },
+            { id: 'contacted', label: tr.filterContactedOnly, count: contactedCount },
+            { id: 'waiting', label: tr.filterWaiting, count: waitingCount, isAmber: true },
+            { id: 'client_signed', label: tr.filterSignedClients, count: signedCount, isHighlight: true },
             { id: 'all', label: tr.filterAll, count: prospects.length },
             { id: 'high_priority', label: tr.filterHighScore, count: prospects.filter((p) => p.leadScore >= 80).length },
             { id: 'clicked', label: tr.filterViewed, count: prospects.filter((p) => p.isClicked).length },
@@ -212,15 +229,21 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
               onClick={() => setPipelineFilter(tab.id as any)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition cursor-pointer select-none ${
                 pipelineFilter === tab.id
-                  ? tab.isHighlight
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-950'
-                    : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-950'
+                  ? (tab as any).isHighlight
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-950 font-bold'
+                    : (tab as any).isAmber
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm shadow-amber-950 font-bold'
+                    : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-950 font-bold'
                   : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <span>{tab.label}</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                pipelineFilter === tab.id && tab.isHighlight ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-800/80 text-slate-300'
+                pipelineFilter === tab.id && (tab as any).isHighlight
+                  ? 'bg-emerald-500/30 text-emerald-200'
+                  : pipelineFilter === tab.id && (tab as any).isAmber
+                  ? 'bg-amber-500/30 text-amber-200'
+                  : 'bg-slate-800/80 text-slate-300'
               }`}>
                 {tab.count}
               </span>
@@ -527,7 +550,9 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
                         <option value="high_priority">{tr.highPriority}</option>
                         <option value="ready_to_contact">{tr.readyToContact}</option>
                         <option value="contacted">{tr.contactedStatus}</option>
-                        <option value="client_signed">{tr.clientSigned}</option>
+                        <option value="waiting">⏳ {tr.optionWaiting}</option>
+                        <option value="client_signed">🤝 {tr.optionClientWon}</option>
+                        <option value="not_interested">❌ {tr.optionNotInterested}</option>
                         <option value="excluded">{tr.excluded}</option>
                       </select>
                     </td>
@@ -535,19 +560,13 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
                     {/* Actions */}
                     <td className="py-3 pr-4 pl-2 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
-                        {onMarkContacted && (
-                          <button
-                            onClick={(e) => handleContactAction(e, prospect.id)}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-semibold border transition cursor-pointer ${
-                              isLeadContacted
-                                ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30'
-                                : 'bg-slate-800/80 hover:bg-emerald-950/40 hover:text-emerald-300 text-slate-300 border-slate-700'
-                            }`}
-                            title={isLeadContacted ? 'Contacted' : 'Mark as Contacted'}
-                          >
-                            {isLeadContacted ? tr.contactedBadge : tr.markContacted}
-                          </button>
-                        )}
+                        <ContactOutcomeMenu
+                          prospect={prospect}
+                          lang={lang}
+                          onUpdateStatus={onUpdateStatus}
+                          onDeleteNotInterested={onDeleteNotInterested || ((id) => onUpdateStatus(id, 'not_interested'))}
+                          compact={true}
+                        />
                         {prospect.brief && (
                           <button
                             onClick={(e) => handleCopyPrompt(e, prospect)}
@@ -664,16 +683,12 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
 
                 {/* Card Footer Actions */}
                 <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={(e) => handleContactAction(e, prospect.id)}
-                    className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold border transition cursor-pointer text-center ${
-                      isLeadContacted
-                        ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40'
-                        : 'bg-slate-800 hover:bg-emerald-950/50 hover:text-emerald-300 text-slate-200 border-slate-700'
-                    }`}
-                  >
-                    {isLeadContacted ? tr.contactedBadge : tr.markContacted}
-                  </button>
+                  <ContactOutcomeMenu
+                    prospect={prospect}
+                    lang={lang}
+                    onUpdateStatus={onUpdateStatus}
+                    onDeleteNotInterested={onDeleteNotInterested || ((id) => onUpdateStatus(id, 'not_interested'))}
+                  />
 
                   <a
                     href={mapsUrl}

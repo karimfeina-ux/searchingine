@@ -227,11 +227,10 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
               gmpAttribution: 'Google Maps'
             });
           }
+        } catch (gmpErr) {
+          console.warn('Google Maps edge search error:', gmpErr);
         }
-      } catch (gmpErr) {
-        console.warn('Google Maps edge search error:', gmpErr);
       }
-    }
 
     // 2. Fallback to OpenStreetMap if Google Maps returned 0 or no key
     const osmRequest = new Request('http://localhost/api/places-search', {

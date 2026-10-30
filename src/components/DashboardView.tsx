@@ -24,6 +24,9 @@ import {
   Trash2
 } from 'lucide-react';
 
+import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
+import type { LeadStatus } from '../types/index.ts';
+
 interface DashboardViewProps {
   stats: {
     totalLeads: number;
@@ -45,6 +48,8 @@ interface DashboardViewProps {
   isResearchRunning: boolean;
   onPerformSearch: (searchData: { location: string; query: string }) => void;
   onMarkContacted?: (id: string) => void;
+  onUpdateStatus?: (id: string, status: LeadStatus, notes?: string) => void;
+  onDeleteNotInterested?: (id: string) => void;
   onToggleStar?: (id: string) => void;
   onOpenDeployModal?: () => void;
   onClearResearch?: (options: { keepContacted: boolean; keepStarred: boolean; cleanAll?: boolean }) => void;
@@ -60,6 +65,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onPerformSearch,
   isResearchRunning,
   onMarkContacted,
+  onUpdateStatus,
+  onDeleteNotInterested,
   onToggleStar,
   onOpenDeployModal,
   onClearResearch
@@ -93,8 +100,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Filter prospects: By default exclude contacted leads from active discovery list!
   const displayedProspects = topProspects.filter((p) => {
-    const isContacted = Boolean(p.isContacted || p.status === 'contacted');
-    if (filterHideContacted && isContacted) return false;
+    const isContactedOrDone = Boolean(
+      p.isContacted ||
+      p.status === 'contacted' ||
+      p.status === 'waiting' ||
+      p.status === 'client_signed' ||
+      p.status === 'not_interested' ||
+      p.status === 'excluded'
+    );
+    if (filterHideContacted && isContactedOrDone) return false;
     if (filterHideClicked && p.isClicked) return false;
     return true;
   });
@@ -339,12 +353,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {p.category}
                         </span>
 
-                        {isContacted && (
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-950 border border-emerald-500/30 text-[10px] font-mono text-emerald-300">
+                        {p.status === 'client_signed' ? (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-950 border border-emerald-400/40 text-[10px] font-bold text-emerald-300">
+                            <Sparkles className="h-3 w-3 text-emerald-400" />
+                            <span>{tr.signedBadge}</span>
+                          </span>
+                        ) : p.status === 'waiting' ? (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-950/80 border border-amber-500/40 text-[10px] font-bold text-amber-300">
+                            <Clock className="h-3 w-3 text-amber-400" />
+                            <span>{tr.waitingBadge}</span>
+                          </span>
+                        ) : isContacted ? (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-cyan-950 border border-cyan-500/30 text-[10px] font-mono text-cyan-300">
                             <Check className="h-3 w-3" />
                             <span>{tr.contactedBadge}</span>
                           </span>
-                        )}
+                        ) : null}
 
                         {isClicked && !isContacted && (
                           <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-950 border border-indigo-500/30 text-[10px] font-mono text-indigo-300">
@@ -393,7 +417,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </p>
                   </div>
 
-                  {/* Action Bar Bottom with Google Maps Link & Contact Button */}
+                  {/* Action Bar Bottom with Google Maps Link & Contact Outcome Menu */}
                   <div className="pt-3.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       {/* Direct Google Maps Link to confirm info */}
@@ -421,22 +445,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {/* One-click Mark Contacted */}
-                      {onMarkContacted && (
-                        <button
-                          type="button"
-                          onClick={() => onMarkContacted(p.id)}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                            isContacted
-                              ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-slate-800/80 hover:bg-emerald-950/60 hover:text-emerald-300 hover:border-emerald-500/30 text-slate-300 border border-slate-700'
-                          }`}
-                          title={isContacted ? 'Already in Contacted Category' : 'Move to Contacted Category'}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                          <span>{isContacted ? tr.contactedBadge : tr.markContacted}</span>
-                        </button>
-                      )}
+                      {/* Contact Outcome Menu with Option 1 (Not Interested / Delete), Option 2 (Waiting), Option 3 (Signed Client) */}
+                      <ContactOutcomeMenu
+                        prospect={p}
+                        lang={lang}
+                        onUpdateStatus={onUpdateStatus || ((id, status, notes) => onMarkContacted?.(id))}
+                        onDeleteNotInterested={onDeleteNotInterested || ((id) => {})}
+                      />
 
                       {/* View Dossier Arrow */}
                       <div className="flex items-center gap-1 text-xs font-semibold text-cyan-400 group-hover:translate-x-0.5 transition-transform">
