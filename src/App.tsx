@@ -18,6 +18,7 @@ import { QuickSearchModal } from './components/QuickSearchModal.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { AdminLogin } from './components/AdminLogin.tsx';
 import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
+import { GoogleMapsProspectsView } from './components/GoogleMapsProspectsView.tsx';
 import { apiFetch } from './services/apiBridge.ts';
 import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects } from './services/clientDataEngine.ts';
 import { Loader2, AlertCircle, X, Compass, Database, CheckCircle2, Settings } from 'lucide-react';
@@ -161,7 +162,66 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Google Maps quota exceeded listener
+  const [hasGmpQuotaExceeded, setHasGmpQuotaExceeded] = useState(false);
+  useEffect(() => {
+    const handleQuota = () => setHasGmpQuotaExceeded(true);
+    window.addEventListener('gmp-quota-exceeded', handleQuota);
+    return () => window.removeEventListener('gmp-quota-exceeded', handleQuota);
+  }, []);
+
   // Handlers
+  const handleSearchGoogleMaps = async (searchParams: {
+    location: string;
+    query: string;
+    onlyNoWebsite?: boolean;
+    minRating?: number;
+  }) => {
+    setIsResearchRunning(true);
+    setActionError(null);
+    try {
+      const res = await apiFetch('/api/search/google-maps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchParams)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          setProspects((prev) => {
+            const map = new Map<string, Prospect>();
+            for (const item of data.items) {
+              map.set(item.id, item);
+            }
+            for (const p of prev) {
+              if (!map.has(p.id)) {
+                map.set(p.id, p);
+              }
+            }
+            const merged = Array.from(map.values());
+            saveStoredProspects(merged);
+            return merged;
+          });
+          setStats((prev) => computeStats(data.items.concat(prospects)));
+        } else if (data && data.total === 0) {
+          setActionError(
+            lang === 'es'
+              ? 'No se encontraron negocios con esos filtros en Google Maps.'
+              : 'No businesses found matching those filters on Google Maps.'
+          );
+        }
+        await loadData();
+      } else {
+        const data = await res.json();
+        setActionError(data.error || 'Failed to search Google Maps');
+      }
+    } catch (err: any) {
+      console.error('Error during Google Maps search:', err);
+      setActionError(err.message || 'Network error while searching Google Maps');
+    } finally {
+      setIsResearchRunning(false);
+    }
+  };
   const handlePerformSearch = async ({ location, query }: { location: string; query: string }) => {
     setIsResearchRunning(true);
     setActionError(null);
@@ -517,6 +577,15 @@ export default function App() {
         onOpenDeployModal={() => setIsDeployModalOpen(true)}
       />
 
+      {/* Quota Banner */}
+      {hasGmpQuotaExceeded && (
+        <div className="bg-amber-500/20 border-b border-amber-500/40 text-amber-200 px-4 py-2 text-xs md:text-sm text-center sticky top-0 z-50 backdrop-blur-md">
+          <span>
+            Google Maps Platform quota reached or error encountered. Please check your Google Cloud account quotas.
+          </span>
+        </div>
+      )}
+
       {/* Main Viewport Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 pb-20">
         {actionError && (
@@ -532,6 +601,20 @@ export default function App() {
             >
               <X className="h-4 w-4" />
             </button>
+          </div>
+        )}
+
+        {currentTab === 'map' && (
+          <div className="-mx-3 sm:-mx-6 -mt-3 sm:-mt-6 -mb-20">
+            <GoogleMapsProspectsView
+              prospects={prospects}
+              settings={settings}
+              lang={lang}
+              onSelectProspect={handleSelectProspectById}
+              onSearchGoogleMaps={handleSearchGoogleMaps}
+              isSearching={isResearchRunning}
+              searchError={actionError}
+            />
           </div>
         )}
 

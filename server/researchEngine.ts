@@ -123,6 +123,8 @@ function generateDailyReportMarkdown(job: DailyJobRun, topLeads: Prospect[], set
   return md;
 }
 
+import { searchGoogleMapsBusinesses, getGoogleMapsApiKey } from './googleMapsService.ts';
+
 export const deepSearchProspects = async (params: {
   query?: string;
   location?: string;
@@ -133,11 +135,57 @@ export const deepSearchProspects = async (params: {
   location: string;
   category: string;
   query: string;
+  source?: string;
 }> => {
   const targetLocation = (params.location || 'Madrid, Spain').trim();
   const targetQuery = (params.query || params.category || 'peluquería').trim();
+  const settings = getSettings();
+  const now = new Date().toISOString();
 
-  // Query OpenStreetMap via official places-search Cloudflare function
+  // 1. Check if Google Maps Platform is configured and has an API Key
+  const googleMapsKey = getGoogleMapsApiKey();
+  if (googleMapsKey) {
+    try {
+      console.log(`[ResearchEngine] Searching Google Maps Places API (New) for "${targetQuery}" in "${targetLocation}"...`);
+      const gmpResult = await searchGoogleMapsBusinesses({
+        location: targetLocation,
+        query: targetQuery,
+        onlyNoWebsite: false,
+        pageSize: 20
+      });
+
+      if (gmpResult.items && gmpResult.items.length > 0) {
+        // Persist discovered Google Maps prospects into local DB
+        for (const prospect of gmpResult.items) {
+          try {
+            const brief = buildProgrammaticBrief(prospect, settings);
+            saveWebsiteBrief(brief);
+            prospect.brief = brief;
+          } catch {}
+
+          if (prospect.verifications && prospect.verifications.length > 0) {
+            for (const v of prospect.verifications) {
+              saveVerification(v);
+            }
+          }
+          saveProspect(prospect);
+        }
+
+        return {
+          items: gmpResult.items,
+          total: gmpResult.total,
+          location: targetLocation,
+          category: targetQuery,
+          query: `${targetLocation} ${targetQuery}`,
+          source: 'google_maps_places_new'
+        };
+      }
+    } catch (gmpErr) {
+      console.warn('[ResearchEngine] Google Maps search notice (falling back to OpenStreetMap):', gmpErr);
+    }
+  }
+
+  // 2. Fallback: Query OpenStreetMap via official places-search Cloudflare function
   const { onRequestPost } = await import('../functions/api/places-search.ts');
   const dummyRequest = new Request('http://localhost:3000/api/places-search', {
     method: 'POST',
@@ -150,8 +198,6 @@ export const deepSearchProspects = async (params: {
   const places = Array.isArray(data.places) ? data.places : [];
 
   const { names: excludedNames, phones: excludedPhones } = getExcludedBusinessNamesAndPhones();
-  const settings = getSettings();
-  const now = new Date().toISOString();
 
   const qualifiedList: Prospect[] = [];
 

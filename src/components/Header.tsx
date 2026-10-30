@@ -68,6 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const tabs = [
     { id: 'dashboard', label: lang === 'es' ? 'Descubrimiento AI' : 'AI Discover', icon: Compass },
+    { id: 'map', label: lang === 'es' ? 'Mapa Google' : 'Google Map', icon: MapPin },
     { id: 'prospects', label: lang === 'es' ? 'Todos los Clientes' : 'All Leads', icon: Database, badge: totalLeadsCount },
     { id: 'contacted', label: lang === 'es' ? 'Contactados' : 'Contacted', icon: CheckCircle2, badge: contactedCount },
     { id: 'reports', label: lang === 'es' ? 'Informes' : 'Reports', icon: FileText },

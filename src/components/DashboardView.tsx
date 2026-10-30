@@ -233,18 +233,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ))}
               </div>
 
-              {/* Clean Button in Search Bar */}
-              {onClearResearch && (topProspects.length > 0 || stats.totalLeads > 0) && (
+              {/* Google Map Explorer & Clean Buttons */}
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowClearConfirm(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-rose-300 bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/60 shadow-sm transition cursor-pointer"
-                  title={tr.cleanResearchDesc}
+                  onClick={() => onNavigateTab('map')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-700/60 shadow-sm transition cursor-pointer"
+                  title="Open live Google Map explorer"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                  <span>{tr.cleanToZero}</span>
+                  <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{lang === 'es' ? 'Ver en Mapa Google' : 'View on Google Map'}</span>
                 </button>
-              )}
+
+                {onClearResearch && (topProspects.length > 0 || stats.totalLeads > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowClearConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-rose-300 bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/60 shadow-sm transition cursor-pointer"
+                    title={tr.cleanResearchDesc}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    <span>{tr.cleanToZero}</span>
+                  </button>
+                )}
+              </div>
             </div>
           </form>
         </div>

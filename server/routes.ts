@@ -100,6 +100,50 @@ router.post('/search/deep-prospect', async (req, res) => {
   }
 });
 
+// Google Maps Platform Live Business Research (Places API New)
+router.post('/search/google-maps', async (req, res) => {
+  try {
+    const { query, location, onlyNoWebsite, minRating, minReviews, pageSize } = req.body || {};
+    const { searchGoogleMapsBusinesses, getGoogleMapsApiKey } = await import('./googleMapsService.ts');
+    
+    if (!getGoogleMapsApiKey()) {
+      return res.status(400).json({ error: 'Google Maps API key is not configured.' });
+    }
+
+    const results = await searchGoogleMapsBusinesses({
+      query: (query || 'barbershop').trim(),
+      location: (location || 'Madrid, Spain').trim(),
+      onlyNoWebsite: Boolean(onlyNoWebsite),
+      minRating: minRating ? Number(minRating) : undefined,
+      minReviews: minReviews ? Number(minReviews) : undefined,
+      pageSize: pageSize ? Number(pageSize) : 20
+    });
+
+    const settings = getSettings();
+    for (const prospect of results.items) {
+      try {
+        const brief = await generatePersonalizedBrief(prospect, settings);
+        saveWebsiteBrief(brief);
+        prospect.brief = brief;
+      } catch {}
+
+      if (prospect.verifications && prospect.verifications.length > 0) {
+        for (const v of prospect.verifications) {
+          saveVerification(v);
+        }
+      }
+      saveProspect(prospect);
+    }
+
+    res.json({
+      ...results,
+      gmpAttribution: 'Google Maps'
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Google Maps search failed.' });
+  }
+});
+
 // Settings
 router.get('/settings', (req, res) => {
   try {
@@ -446,15 +490,26 @@ router.get('/export/csv', (req, res) => {
 });
 
 // Research Providers Status
-router.get('/providers/status', (req, res) => {
+router.get('/providers/status', async (req, res) => {
   try {
     const settings = getSettings();
     const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY');
-    const hasGooglePlacesKey = Boolean(settings.providerKeys?.googlePlacesKey);
+    const { getGoogleMapsApiKey } = await import('./googleMapsService.ts');
+    const hasGoogleMapsKey = Boolean(getGoogleMapsApiKey());
     const hasSerperKey = Boolean(settings.providerKeys?.serperApiKey);
 
     res.json({
       providers: [
+        {
+          name: 'Google Maps Platform (Places API New)',
+          type: 'Commercial Listings, Reviews, Contacts & Official Links',
+          status: hasGoogleMapsKey ? 'connected' : 'not_configured',
+          pricing: 'Google Maps Platform',
+          rateLimits: 'Real-time high-throughput API',
+          notes: hasGoogleMapsKey
+            ? 'Active with Places API (New) Text Search, verified business status, official Google Maps URLs, and phone extraction.'
+            : 'Configured via VITE_GOOGLE_MAPS_API_KEY for commercial discovery.'
+        },
         {
           name: 'OpenStreetMap Overpass API',
           type: 'Business Discovery & Cadastre',
@@ -478,14 +533,6 @@ router.get('/providers/status', (req, res) => {
           pricing: 'Integrated via AI Studio Environment',
           rateLimits: 'Dynamic per AI Studio quota',
           notes: hasGeminiKey ? 'Active via server-side process.env.GEMINI_API_KEY.' : 'Using high-fidelity programmatic synthesis engine until key is provided in Secrets.'
-        },
-        {
-          name: 'Google Places API (Optional)',
-          type: 'Commercial Listings & Review Extraction',
-          status: hasGooglePlacesKey ? 'connected' : 'not_configured',
-          pricing: 'Google Cloud Platform (User Key)',
-          rateLimits: 'Configured in GCP console',
-          notes: 'Optional provider. Configure in Settings to supplement OpenStreetMap data.'
         },
         {
           name: 'Serper.dev Web Search API (Optional)',
