@@ -119,10 +119,9 @@ To synchronize prospects, statuses (contacted, waiting, signed, not interested),
 3. Name it: `leadhunter_db`.
 4. Click **Create**.
 
-### Step 2: Initialize Database Schema
-1. In your newly created `leadhunter_db` page, click the **Console** tab.
-2. Open `schema.sql` from your project repository, copy all the SQL text, paste it into the console, and click **Execute**.
-*(Or run in your terminal: `npx wrangler d1 execute leadhunter_db --file=./schema.sql`)*
+### Step 2: Initialize Database Schema (Automated)
+LeadHunter AI automatically executes `CREATE TABLE IF NOT EXISTS` on the first request to your Cloudflare Functions!
+*(Optional manual execution: Open `schema.sql`, copy all text, and run it in the Cloudflare D1 Console, or run `npx wrangler d1 execute leadhunter_db --file=./schema.sql`)*
 
 ### Step 3: Bind D1 Database to Your Cloudflare Pages Project
 1. In Cloudflare Dashboard, go to **Compute (Workers & Pages)** → click your Pages project (`leadhunter-ai` or `searchingine`).
@@ -133,5 +132,8 @@ To synchronize prospects, statuses (contacted, waiting, signed, not interested),
 4. Click **Save**.
 5. Trigger a new deployment (or push a commit to Git) so Cloudflare Pages activates the `DB` binding.
 
-Now, whenever you update a client on your PC, it is saved in your D1 cloud database and immediately visible when you open the site on your phone!
+### Permanent Contacted Client Guarantee:
+- Whenever you mark a client as **Contacted**, **Waiting**, or **Deal Won** on your PC, it is written directly to your D1 cloud database.
+- When you open `https://<your-project>.pages.dev` on your mobile phone, the phone loads the contacted clients and registers them in the Contacted tab.
+- Clicking **"Clean Search Leads"** only clears the uncontacted search results—your contacted leads are permanently preserved and NEVER deleted.
 

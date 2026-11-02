@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 app.set('trust proxy', true);
 
-const PORT = Number(process.env.APP_PORT || process.env.DEFAULT_APP_PORT || 3000);
+const PORT = Number(process.env.PORT || process.env.APP_PORT || process.env.DEFAULT_APP_PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Ensure HMR is disabled in AI Studio container environment

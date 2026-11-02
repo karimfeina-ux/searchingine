@@ -217,13 +217,24 @@ export const findExistingProspect = (normalizedName: string, city: string, phone
 
 export const saveProspect = (p: Prospect): void => {
   const existing = store.prospects[p.id];
+  const wasContacted = Boolean(
+    existing?.isContacted ||
+    (existing?.status && ['contacted', 'waiting', 'client_signed'].includes(existing.status))
+  );
+  const isNowContacted = Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))
+  );
+  const isContacted = wasContacted || isNowContacted;
+
   store.prospects[p.id] = {
     ...existing,
     ...p,
+    status: (wasContacted && p.status === 'new' && existing?.status) ? existing.status : p.status,
     isClicked: p.isClicked ?? existing?.isClicked ?? false,
     clickedAt: p.clickedAt ?? existing?.clickedAt,
-    isContacted: p.isContacted ?? existing?.isContacted ?? false,
-    contactedAt: p.contactedAt ?? existing?.contactedAt,
+    isContacted,
+    contactedAt: existing?.contactedAt || p.contactedAt || (isContacted ? new Date().toISOString() : undefined),
     updatedAt: new Date().toISOString()
   };
   persistStore();
@@ -365,15 +376,19 @@ export const toggleProspectStar = (id: string): boolean => {
   return Boolean(p.isStarred);
 };
 
-export const clearProspects = (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { cleanAll: true }): { deletedCount: number; remainingCount: number } => {
+export const clearProspects = (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true }): { deletedCount: number; remainingCount: number } => {
   let deletedCount = 0;
   for (const [id, p] of Object.entries(store.prospects)) {
-    if (!options.cleanAll) {
-      const isContacted = Boolean(p.isContacted || p.status === 'contacted');
-      const isStarred = Boolean(p.isStarred);
-      if ((options.keepContacted && isContacted) || (options.keepStarred && isStarred)) {
-        continue;
-      }
+    const isContactedLead = Boolean(
+      p.isContacted ||
+      (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))
+    );
+    // CRITICAL: Contacted clients are permanent records and must NEVER be deleted when clearing search results!
+    if (isContactedLead) {
+      continue;
+    }
+    if (options.keepStarred && p.isStarred) {
+      continue;
     }
     delete store.prospects[id];
     delete store.briefs[id];

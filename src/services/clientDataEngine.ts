@@ -196,17 +196,16 @@ export function deleteProspectClient(prospectId: string): { remaining: Prospect[
   return { remaining, deleted: target };
 }
 
-export function clearStoredProspects(options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { cleanAll: true }): Prospect[] {
-  if (options.cleanAll) {
-    saveStoredProspects([]);
-    return [];
-  }
+export function clearStoredProspects(options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true }): Prospect[] {
   const current = getStoredProspects();
   const kept = current.filter((p) => {
-    const isContacted = Boolean(p.isContacted || p.status === 'contacted');
-    const isStarred = Boolean(p.isStarred);
-    if (options.keepContacted && isContacted) return true;
-    if (options.keepStarred && isStarred) return true;
+    const isContactedLead = Boolean(
+      p.isContacted ||
+      (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))
+    );
+    // Contacted leads are permanent and never deleted when clearing search results
+    if (isContactedLead) return true;
+    if (options.keepStarred && p.isStarred) return true;
     return false;
   });
   saveStoredProspects(kept);

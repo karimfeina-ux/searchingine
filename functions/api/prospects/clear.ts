@@ -9,8 +9,12 @@ export const onRequestPost = async ({ request, env }: { request: Request; env: D
   }
 
   try {
-    const body: any = await request.json().catch(() => ({ cleanAll: true }));
-    const result = await d1ClearProspects(env.DB, body);
+    const body: any = await request.json().catch(() => ({}));
+    const result = await d1ClearProspects(env.DB, {
+      ...body,
+      keepContacted: true,
+      cleanAll: false
+    });
     return json(result);
   } catch (err: any) {
     return json({ error: err?.message || 'Error clearing prospects' }, 500);

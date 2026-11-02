@@ -146,9 +146,21 @@ export default function App() {
             }
             const unsynced: Prospect[] = [];
             for (const p of prev) {
-              if (!map.has(p.id)) {
+              const remote = map.get(p.id);
+              if (!remote) {
                 map.set(p.id, p);
-                unsynced.push(p);
+                if (p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status)) {
+                  unsynced.push(p);
+                }
+              } else {
+                // If local lead was contacted/waiting/signed and remote isn't yet, preserve contacted status
+                const isLocalContacted = Boolean(p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status));
+                const isRemoteContacted = Boolean(remote.isContacted || ['contacted', 'waiting', 'client_signed'].includes(remote.status));
+                if (isLocalContacted && !isRemoteContacted) {
+                  const merged: Prospect = { ...remote, ...p, isContacted: true };
+                  map.set(p.id, merged);
+                  unsynced.push(merged);
+                }
               }
             }
             if (unsynced.length > 0) {
@@ -158,9 +170,9 @@ export default function App() {
                 body: JSON.stringify({ items: unsynced })
               }).catch(() => {});
             }
-            const merged = Array.from(map.values());
-            saveStoredProspects(merged);
-            return merged;
+            const mergedList = Array.from(map.values());
+            saveStoredProspects(mergedList);
+            return mergedList;
           });
         } else {
           // If server has 0 records, check if this device has existing records to migrate safely!
@@ -174,7 +186,8 @@ export default function App() {
             }).catch(() => {});
             setProspects(localItems);
           } else {
-            setProspects([]);
+            // Keep any contacted leads in current state
+            setProspects((prev) => prev.filter((p) => p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status)));
           }
         }
       }
@@ -497,7 +510,7 @@ export default function App() {
 
   const handleMarkContacted = async (id: string, notes?: string, status: LeadStatus = 'contacted') => {
     try {
-      const targetProspect = prospects.find((p) => p.id === id);
+      const targetProspect = prospects.find((p) => p.id === id) || (selectedProspect?.id === id ? selectedProspect : undefined);
       const res = await apiFetch(`/api/prospects/${id}/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -505,15 +518,35 @@ export default function App() {
       });
       if (res.ok) {
         const updated = await res.json();
+        const contactRecord: Prospect = {
+          ...(targetProspect || {}),
+          ...updated,
+          id,
+          status,
+          isContacted: true,
+          contactedAt: updated.contactedAt || targetProspect?.contactedAt || new Date().toISOString()
+        } as Prospect;
+
         setProspects((prev) => {
-          const next = prev.map((p) => (p.id === id ? { ...updated, status, isContacted: true } : p));
+          const exists = prev.some((p) => p.id === id);
+          const next = exists
+            ? prev.map((p) => (p.id === id ? contactRecord : p))
+            : [contactRecord, ...prev];
           saveStoredProspects(next);
           setStats(computeStats(next));
           return next;
         });
         if (selectedProspect?.id === id) {
-          setSelectedProspect((prev) => (prev ? { ...prev, ...updated, status, isContacted: true } : null));
+          setSelectedProspect((prev) => (prev ? { ...prev, ...contactRecord } : null));
         }
+
+        // Cross-device sync: guarantee batch upsert so D1 on Cloudflare has the complete record
+        apiFetch('/api/prospects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: [contactRecord] })
+        }).catch(() => {});
+
         apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
 
         const name = targetProspect?.name || 'Business';
@@ -521,7 +554,7 @@ export default function App() {
           businessName: name,
           status,
           title: lang === 'es' ? '📩 ¡Movido a Contactados!' : '📩 Pushed to Contacted Pipeline!',
-          message: lang === 'es' ? `"${name}" está guardado en tu lista de contactados.` : `"${name}" is saved in your Contacted Pipeline.`,
+          message: lang === 'es' ? `"${name}" está guardado para siempre en tus contactados.` : `"${name}" is registered forever in your Contacted Pipeline.`,
           showCta: true
         });
         setTimeout(() => setContactToast(null), 5000);
@@ -538,7 +571,7 @@ export default function App() {
     }
 
     try {
-      const targetProspect = prospects.find((p) => p.id === id);
+      const targetProspect = prospects.find((p) => p.id === id) || (selectedProspect?.id === id ? selectedProspect : undefined);
       const res = await apiFetch(`/api/prospects/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -548,22 +581,27 @@ export default function App() {
         const isContactedLead = ['contacted', 'waiting', 'client_signed'].includes(status);
         const isResetToNew = status === 'new';
 
+        let updatedRecord: Prospect | null = null;
         setProspects((prev) => {
-          const next = prev.map((p) =>
-            p.id === id
-              ? {
-                  ...p,
-                  status,
-                  notes: notes ?? p.notes,
-                  isContacted: isResetToNew ? false : (isContactedLead ? true : p.isContacted),
-                  contactedAt: isResetToNew ? undefined : (isContactedLead ? (p.contactedAt || new Date().toISOString()) : p.contactedAt)
-                }
-              : p
-          );
+          const next = prev.map((p) => {
+            if (p.id === id) {
+              const rec: Prospect = {
+                ...p,
+                status,
+                notes: notes ?? p.notes,
+                isContacted: isResetToNew ? false : (isContactedLead ? true : p.isContacted),
+                contactedAt: isResetToNew ? undefined : (isContactedLead ? (p.contactedAt || new Date().toISOString()) : p.contactedAt)
+              };
+              updatedRecord = rec;
+              return rec;
+            }
+            return p;
+          });
           saveStoredProspects(next);
           setStats(computeStats(next));
           return next;
         });
+
         if (selectedProspect?.id === id) {
           setSelectedProspect((prev) =>
             prev
@@ -576,6 +614,15 @@ export default function App() {
                 }
               : null
           );
+        }
+
+        // Cross-device sync: guarantee batch upsert
+        if (updatedRecord) {
+          apiFetch('/api/prospects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: [updatedRecord] })
+          }).catch(() => {});
         }
         // Refresh stats
         apiFetch('/api/stats').then((r) => r.json()).then(setStats).catch(() => {});
@@ -613,40 +660,29 @@ export default function App() {
     }
   };
 
-  const handleClearResearch = async (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { cleanAll: true }) => {
-    // 1. Instantly clear client state and localStorage to 0
-    if (options.cleanAll || (!options.keepContacted && !options.keepStarred)) {
-      setProspects([]);
-      saveStoredProspects([]);
-      setStats({
-        totalLeads: 0,
-        noWebsiteCount: 0,
-        highPriorityCount: 0,
-        readyToContactCount: 0,
-        clickedCount: 0,
-        contactedCount: 0,
-        clientsWonCount: 0,
-        avgScore: 0
+  const handleClearResearch = async (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true, keepStarred: true }) => {
+    // CRITICAL USER REQUIREMENT:
+    // When clicking clean, it ONLY cleans the uncontacted search results.
+    // Contacted, waiting, and signed leads are registered FOREVER and never deleted!
+    setProspects((prev) => {
+      const next = prev.filter((p) => {
+        const isContactedLead = Boolean(
+          p.isContacted ||
+          (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))
+        );
+        return isContactedLead || (options.keepStarred && p.isStarred);
       });
-    } else {
-      setProspects((prev) => {
-        const next = prev.filter((p) => {
-          const isContacted = Boolean(p.isContacted || p.status === 'contacted');
-          const isStarred = Boolean(p.isStarred);
-          return (options.keepContacted && isContacted) || (options.keepStarred && isStarred);
-        });
-        saveStoredProspects(next);
-        setStats(computeStats(next));
-        return next;
-      });
-    }
+      saveStoredProspects(next);
+      setStats(computeStats(next));
+      return next;
+    });
 
-    // 2. Notify backend
+    // Notify backend with strict keepContacted: true
     try {
       await apiFetch('/api/prospects/clear', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(options)
+        body: JSON.stringify({ keepContacted: true, keepStarred: Boolean(options.keepStarred), cleanAll: false })
       });
     } catch (err) {
       console.warn('Backend clear notice:', err);

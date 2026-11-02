@@ -119,9 +119,10 @@ export async function d1GetProspects(
   }
 ) {
   await ensureTables(db);
+  // Prioritize contacted leads first so they are never omitted by limits
   const rows = await db
-    .prepare('SELECT data FROM prospects ORDER BY updated_at DESC LIMIT ?')
-    .bind(filters.limit || 500)
+    .prepare('SELECT data FROM prospects ORDER BY is_contacted DESC, updated_at DESC LIMIT ?')
+    .bind(filters.limit || 1000)
     .all<{ data: string }>();
 
   let items = (rows.results || []).map((r) => {
@@ -133,10 +134,10 @@ export async function d1GetProspects(
   }).filter(Boolean);
 
   if (filters.hideContacted) {
-    items = items.filter((p: any) => !p.isContacted && p.status !== 'contacted');
+    items = items.filter((p: any) => !p.isContacted && p.status !== 'contacted' && p.status !== 'waiting' && p.status !== 'client_signed');
   }
   if (filters.isContacted) {
-    items = items.filter((p: any) => p.isContacted || p.status === 'contacted');
+    items = items.filter((p: any) => p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status));
   }
   if (filters.status) {
     items = items.filter((p: any) => p.status === filters.status);
@@ -184,12 +185,18 @@ export async function d1UpsertProspect(db: D1Database, prospect: any) {
   const status = prospect.status || 'new';
   const websiteStatus = prospect.websiteStatus || 'no_website';
   const leadScore = Number(prospect.leadScore || 0);
-  const isContacted = prospect.isContacted || status === 'contacted' ? 1 : 0;
+  const isContactedLead = Boolean(prospect.isContacted || ['contacted', 'waiting', 'client_signed'].includes(status));
+  const isContacted = isContactedLead ? 1 : 0;
   const isClicked = prospect.isClicked ? 1 : 0;
   const isStarred = prospect.isStarred ? 1 : 0;
-  const contactedAt = prospect.contactedAt || null;
+  const contactedAt = isContactedLead ? (prospect.contactedAt || now) : null;
   const notes = prospect.notes || null;
   const updatedAt = prospect.updatedAt || now;
+
+  prospect.isContacted = isContactedLead;
+  if (isContactedLead) {
+    prospect.contactedAt = contactedAt;
+  }
   prospect.updatedAt = updatedAt;
 
   const data = JSON.stringify(prospect);
@@ -206,14 +213,14 @@ export async function d1UpsertProspect(db: D1Database, prospect: any) {
         city = excluded.city,
         category = excluded.category,
         phone = excluded.phone,
-        status = excluded.status,
+        status = CASE WHEN prospects.is_contacted = 1 AND excluded.status = 'new' THEN prospects.status ELSE excluded.status END,
         website_status = excluded.website_status,
         lead_score = excluded.lead_score,
-        is_contacted = excluded.is_contacted,
-        is_clicked = excluded.is_clicked,
+        is_contacted = CASE WHEN prospects.is_contacted = 1 THEN 1 ELSE excluded.is_contacted END,
+        is_clicked = CASE WHEN prospects.is_clicked = 1 THEN 1 ELSE excluded.is_clicked END,
         is_starred = excluded.is_starred,
-        contacted_at = excluded.contacted_at,
-        notes = excluded.notes,
+        contacted_at = COALESCE(prospects.contacted_at, excluded.contacted_at),
+        notes = COALESCE(excluded.notes, prospects.notes),
         data = excluded.data,
         updated_at = excluded.updated_at
     `)
@@ -247,12 +254,18 @@ export async function d1UpsertBatch(db: D1Database, prospects: any[]) {
       const status = p.status || 'new';
       const websiteStatus = p.websiteStatus || 'no_website';
       const leadScore = Number(p.leadScore || 0);
-      const isContacted = p.isContacted || status === 'contacted' ? 1 : 0;
+      const isContactedLead = Boolean(p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(status));
+      const isContacted = isContactedLead ? 1 : 0;
       const isClicked = p.isClicked ? 1 : 0;
       const isStarred = p.isStarred ? 1 : 0;
-      const contactedAt = p.contactedAt || null;
+      const contactedAt = isContactedLead ? (p.contactedAt || now) : null;
       const notes = p.notes || null;
       const updatedAt = p.updatedAt || now;
+
+      p.isContacted = isContactedLead;
+      if (isContactedLead) {
+        p.contactedAt = contactedAt;
+      }
       p.updatedAt = updatedAt;
       const data = JSON.stringify(p);
 
@@ -268,14 +281,14 @@ export async function d1UpsertBatch(db: D1Database, prospects: any[]) {
             city = excluded.city,
             category = excluded.category,
             phone = excluded.phone,
-            status = excluded.status,
+            status = CASE WHEN prospects.is_contacted = 1 AND excluded.status = 'new' THEN prospects.status ELSE excluded.status END,
             website_status = excluded.website_status,
             lead_score = excluded.lead_score,
-            is_contacted = excluded.is_contacted,
-            is_clicked = excluded.is_clicked,
+            is_contacted = CASE WHEN prospects.is_contacted = 1 THEN 1 ELSE excluded.is_contacted END,
+            is_clicked = CASE WHEN prospects.is_clicked = 1 THEN 1 ELSE excluded.is_clicked END,
             is_starred = excluded.is_starred,
-            contacted_at = excluded.contacted_at,
-            notes = excluded.notes,
+            contacted_at = COALESCE(prospects.contacted_at, excluded.contacted_at),
+            notes = COALESCE(excluded.notes, prospects.notes),
             data = excluded.data,
             updated_at = excluded.updated_at
         `)
@@ -302,17 +315,10 @@ export async function d1DeleteProspect(db: D1Database, id: string) {
   return { success: true, deletedId: id, target };
 }
 
-export async function d1ClearProspects(db: D1Database, options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { cleanAll: true }) {
+export async function d1ClearProspects(db: D1Database, options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true }) {
   await ensureTables(db);
-  if (options.cleanAll) {
-    const res = await db.prepare('DELETE FROM prospects').run();
-    return { success: true, remainingCount: 0, deletedCount: (res.meta as any)?.changes || 0 };
-  }
-
-  let deleteQuery = 'DELETE FROM prospects WHERE 1=1';
-  if (options.keepContacted) {
-    deleteQuery += " AND is_contacted = 0 AND status != 'contacted'";
-  }
+  // CRITICAL RULE: Contacted clients are permanent records and must NEVER be wiped when cleaning search lists!
+  let deleteQuery = "DELETE FROM prospects WHERE is_contacted = 0 AND status NOT IN ('contacted', 'waiting', 'client_signed')";
   if (options.keepStarred) {
     deleteQuery += ' AND is_starred = 0';
   }

@@ -16,15 +16,15 @@ export const t = {
     quickSearchPlaceholder: 'Search by city, street, or category... (⌘K)',
     
     // Clean Research
-    cleanResearchBtn: 'Clean List to 0',
-    cleanResearchTitle: 'Clean research list to 0?',
-    cleanResearchDesc: 'Reset your research list completely to 0 leads so you can start a fresh search in any new city or category.',
-    cleanResearchConfirm: 'Clean to 0',
+    cleanResearchBtn: 'Clean Search Leads',
+    cleanResearchTitle: 'Clean search results list?',
+    cleanResearchDesc: 'This cleans only uncontacted search leads so you can begin fresh research in another city. All your contacted clients and active pipeline are 100% protected and remain FOREVER in your Contacted tab.',
+    cleanResearchConfirm: 'Clean Search Leads (Keep Contacted)',
     cleanResearchCancel: 'Cancel',
-    cleanToZero: 'Clean List to 0',
-    cleanAllConfirm: 'Clean Everything to 0',
-    cleanUncontactedConfirm: 'Clean Uncontacted Only',
-    cleanedSuccess: 'Research list cleaned to 0 leads!',
+    cleanToZero: 'Clean Search Leads',
+    cleanAllConfirm: 'Clean Search Leads',
+    cleanUncontactedConfirm: 'Clean Search Leads (Keep Contacted Forever)',
+    cleanedSuccess: 'Search list cleaned! Contacted clients safely preserved forever.',
     
     // Ban Has Website
     banHasWebsiteBtn: 'They have a website (Ban)',
@@ -139,15 +139,15 @@ export const t = {
     quickSearchPlaceholder: 'Buscar por ciudad, calle o categoría... (⌘K)',
     
     // Clean Research
-    cleanResearchBtn: 'Limpiar Lista a 0',
-    cleanResearchTitle: '¿Reiniciar la lista de búsqueda a 0?',
-    cleanResearchDesc: 'Reinicia la lista completa a 0 prospectos para comenzar a buscar en una nueva ciudad o sector desde cero.',
-    cleanResearchConfirm: 'Limpiar Todo a 0',
+    cleanResearchBtn: 'Limpiar Búsquedas',
+    cleanResearchTitle: '¿Limpiar la lista de búsquedas?',
+    cleanResearchDesc: 'Limpia únicamente los resultados de búsqueda no contactados para empezar una nueva prospección. Todos tus clientes contactados, en espera y ganados están 100% protegidos y se conservan PARA SIEMPRE en tu pestaña de Contactados.',
+    cleanResearchConfirm: 'Limpiar Búsquedas (Conservar Contactados)',
     cleanResearchCancel: 'Cancelar',
-    cleanToZero: 'Limpiar Lista a 0',
-    cleanAllConfirm: 'Limpiar Todo a 0',
-    cleanUncontactedConfirm: 'Limpiar Solo No Contactados',
-    cleanedSuccess: '¡Lista de búsqueda reiniciada a 0 prospectos!',
+    cleanToZero: 'Limpiar Búsquedas',
+    cleanAllConfirm: 'Limpiar Búsquedas',
+    cleanUncontactedConfirm: 'Limpiar Búsquedas (Conservar Contactados Siempre)',
+    cleanedSuccess: '¡Lista de búsqueda limpiada! Clientes contactados conservados para siempre.',
     
     // Google Maps
     viewOnGoogleMaps: 'Ver en Google Maps',

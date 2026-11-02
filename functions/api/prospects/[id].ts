@@ -20,20 +20,21 @@ export const onRequestGet = async ({ params, env }: { params: { id: string }; en
 };
 
 export const onRequestPut = async ({ params, request, env }: { params: { id: string }; request: Request; env: D1Env }) => {
-  if (!env.DB) {
-    return json({ error: 'Cloudflare D1 database binding DB is not configured' }, 503);
-  }
-
   try {
-    const existing = await d1GetProspectById(env.DB, params.id);
-    if (!existing) {
-      return json({ error: 'Prospect not found' }, 404);
+    const updates = await request.json().catch(() => ({}));
+    const now = new Date().toISOString();
+    let merged = { ...updates, id: params.id, updatedAt: now };
+
+    if (env.DB) {
+      const existing = await d1GetProspectById(env.DB, params.id);
+      if (existing) {
+        merged = { ...existing, ...updates, id: params.id, updatedAt: now };
+      }
+      const saved = await d1UpsertProspect(env.DB, merged);
+      return json(saved);
     }
 
-    const updates = await request.json().catch(() => ({}));
-    const merged = { ...existing, ...updates, id: params.id, updatedAt: new Date().toISOString() };
-    const saved = await d1UpsertProspect(env.DB, merged);
-    return json(saved);
+    return json({ ...merged, d1Configured: false });
   } catch (err: any) {
     return json({ error: err?.message || 'Error updating prospect' }, 500);
   }

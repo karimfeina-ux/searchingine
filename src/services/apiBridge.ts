@@ -172,10 +172,10 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
     return jsonResponse({ success: true, count: itemsToSave.length, total: merged.length });
   }
 
-  // 6c. Clear Prospects Collection to 0
+  // 6c. Clear Prospects Collection (Permanently preserves contacted leads)
   if (path === '/api/prospects/clear' && method === 'POST') {
     const prev = getStoredProspects();
-    const remaining = clearStoredProspects(body || { cleanAll: true });
+    const remaining = clearStoredProspects({ ...(body || {}), keepContacted: true, cleanAll: false });
     return jsonResponse({ success: true, remainingCount: remaining.length, deletedCount: prev.length - remaining.length });
   }
 
@@ -197,7 +197,12 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
     const id = prospectMatch[1];
     const action = prospectMatch[2] || '';
     const prospects = getStoredProspects();
-    const prospect = prospects.find((p) => p.id === id);
+    let prospect: Prospect | undefined = prospects.find((p) => p.id === id);
+
+    if (!prospect && body.prospect) {
+      prospect = { ...body.prospect, id } as Prospect;
+      prospects.push(prospect);
+    }
 
     if (!prospect) {
       return jsonResponse({ error: 'Prospect not found' }, 404);

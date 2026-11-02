@@ -4,18 +4,27 @@ import { D1Env, d1AddExclusion, d1GetProspectById, d1UpsertProspect, handleOptio
 export const onRequestOptions = async () => handleOptions();
 
 export const onRequestPut = async ({ params, request, env }: { params: { id: string }; request: Request; env: D1Env }) => {
-  if (!env.DB) {
-    return json({ error: 'Cloudflare D1 database binding DB is not configured' }, 503);
-  }
-
   try {
-    const prospect = await d1GetProspectById(env.DB, params.id);
-    if (!prospect) {
-      return json({ error: 'Prospect not found' }, 404);
-    }
-
     const body: any = await request.json().catch(() => ({}));
     const now = new Date().toISOString();
+    let prospect: any = null;
+
+    if (env.DB) {
+      prospect = await d1GetProspectById(env.DB, params.id);
+    }
+
+    if (!prospect && body.prospect) {
+      prospect = { ...body.prospect, id: params.id };
+    }
+
+    if (!prospect) {
+      prospect = {
+        id: params.id,
+        name: body.name || 'Business Contact',
+        status: body.status || 'new',
+        updatedAt: now
+      };
+    }
 
     if (body.status) {
       prospect.status = body.status;
@@ -23,7 +32,6 @@ export const onRequestPut = async ({ params, request, env }: { params: { id: str
       if (isContactedLead) {
         prospect.isContacted = true;
         prospect.contactedAt = prospect.contactedAt || now;
-        await d1AddExclusion(env.DB, prospect.name, prospect.phone);
       } else if (body.status === 'new') {
         prospect.isContacted = false;
         prospect.contactedAt = undefined;
@@ -35,8 +43,16 @@ export const onRequestPut = async ({ params, request, env }: { params: { id: str
     }
 
     prospect.updatedAt = now;
-    const saved = await d1UpsertProspect(env.DB, prospect);
-    return json(saved);
+
+    if (env.DB) {
+      if (prospect.isContacted) {
+        await d1AddExclusion(env.DB, prospect.name, prospect.phone);
+      }
+      const saved = await d1UpsertProspect(env.DB, prospect);
+      return json(saved);
+    }
+
+    return json({ ...prospect, d1Configured: false });
   } catch (err: any) {
     return json({ error: err?.message || 'Error updating prospect status' }, 500);
   }

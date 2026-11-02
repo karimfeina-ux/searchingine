@@ -5,7 +5,7 @@ export const onRequestOptions = async () => handleOptions();
 
 export const onRequestGet = async ({ request, env }: { request: Request; env: D1Env }) => {
   if (!env.DB) {
-    return json({ error: 'Cloudflare D1 database binding DB is not configured' }, 503);
+    return json({ items: [], total: 0, d1Configured: false });
   }
 
   try {
@@ -34,7 +34,7 @@ export const onRequestGet = async ({ request, env }: { request: Request; env: D1
 
 export const onRequestPost = async ({ request, env }: { request: Request; env: D1Env }) => {
   if (!env.DB) {
-    return json({ error: 'Cloudflare D1 database binding DB is not configured' }, 503);
+    return json({ success: true, count: 0, d1Configured: false });
   }
 
   try {
