@@ -67,9 +67,12 @@ export function saveClientSettings(updated: Partial<AppSettings>): AppSettings {
 export function isQualifiedProspect(p: Prospect): boolean {
   if (!p) return false;
   // Strictly NEVER show businesses with websites
-  if (p.websiteStatus === 'website_exists' || (p as any).hasWebsite) return false;
-  if (p.websiteCandidate) {
-    const lower = p.websiteCandidate.toLowerCase();
+  if ((p as any).hasWebsite) return false;
+  if (p.websiteStatus && ['website_exists', 'website_broken', 'website_outdated'].includes(p.websiteStatus)) {
+    return false;
+  }
+  if (p.websiteCandidate && p.websiteCandidate.trim() !== '') {
+    const lower = p.websiteCandidate.toLowerCase().trim();
     const isSocialOnly =
       lower.includes('instagram.com') ||
       lower.includes('facebook.com') ||
@@ -81,7 +84,10 @@ export function isQualifiedProspect(p: Prospect): boolean {
     if (!isSocialOnly) return false;
   }
   // Strictly NEVER show businesses with less than 2 pictures in their Google Maps profile
-  if (typeof p.photoCount === 'number' && p.photoCount < 2) return false;
+  const photoCount = typeof p.photoCount === 'number'
+    ? p.photoCount
+    : (Array.isArray(p.photos) ? p.photos.length : 0);
+  if (photoCount < 2) return false;
   return true;
 }
 

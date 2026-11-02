@@ -80,12 +80,15 @@ class LiveSyncEngine {
         this.syncNow();
       });
 
-      // Start automatic polling loop (every 5 seconds when tab is active)
-      this.startPolling(5000);
+      // Start automatic polling loop (every 4 seconds)
+      this.startPolling(4000);
+
+      // Perform immediate sync on engine boot
+      setTimeout(() => this.syncNow(), 150);
     }
   }
 
-  public startPolling(intervalMs = 5000): void {
+  public startPolling(intervalMs = 4000): void {
     if (this.pollIntervalId) {
       clearInterval(this.pollIntervalId);
     }
@@ -95,6 +98,11 @@ class LiveSyncEngine {
         this.syncNow();
       }
     }, intervalMs);
+  }
+
+  public reconnect(): void {
+    this.status = 'connected';
+    this.syncNow();
   }
 
   public async syncNow(): Promise<void> {
@@ -150,7 +158,7 @@ class LiveSyncEngine {
 
           const merged = Array.from(map.values()).filter(isQualifiedProspect);
 
-          if (hasChanges) {
+          if (hasChanges || localItems.length !== merged.length) {
             saveStoredProspects(merged);
             this.lastSyncedAt = new Date();
             this.status = 'connected';

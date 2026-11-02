@@ -3,6 +3,7 @@ import type { Prospect, LeadStatus } from '../types/index.ts';
 import { getGoogleMapsUrl } from '../utils/maps.ts';
 import { getLeadStatusTheme } from '../utils/statusTheme.ts';
 import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
+import { isQualifiedProspect } from '../services/clientDataEngine.ts';
 import {
   CheckCircle2,
   Clock,
@@ -54,6 +55,7 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
 
   // Filter only prospects that have been contacted or progressed
   const contactedPool = prospects.filter((p) => {
+    if (!isQualifiedProspect(p)) return false;
     return (
       p.isContacted ||
       p.status === 'contacted' ||
@@ -106,8 +108,8 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
       {/* Top Banner / Landing Page Header */}
       <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-[#0b1924] via-[#09131e] to-[#080d16] p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none animate-float-slow animate-glow-pulse" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none animate-float-reverse animate-glow-pulse" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
@@ -145,7 +147,7 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
           {/* Card 1: Total Contacted */}
           <div
             onClick={() => setFilterType('all')}
-            className={`p-4 rounded-2xl border transition cursor-pointer ${
+            className={`p-4 rounded-2xl border transition-all duration-300 hover-lift cursor-pointer ${
               filterType === 'all'
                 ? 'bg-cyan-950/40 border-cyan-500/60 ring-1 ring-cyan-500/30'
                 : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700'
@@ -162,7 +164,7 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
           {/* Card 2: Waiting for Response / Payment (Amber) */}
           <div
             onClick={() => setFilterType('waiting')}
-            className={`p-4 rounded-2xl border transition cursor-pointer ${
+            className={`p-4 rounded-2xl border transition-all duration-300 hover-lift cursor-pointer ${
               filterType === 'waiting'
                 ? 'bg-amber-950/40 border-amber-500/60 ring-2 ring-amber-500/40'
                 : 'bg-amber-950/20 border-amber-500/30 hover:border-amber-500/50'
@@ -184,7 +186,7 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
           {/* Card 3: Signed Clients / Won (Purple/Emerald) */}
           <div
             onClick={() => setFilterType('signed')}
-            className={`p-4 rounded-2xl border transition cursor-pointer ${
+            className={`p-4 rounded-2xl border transition-all duration-300 hover-lift cursor-pointer ${
               filterType === 'signed'
                 ? 'bg-purple-950/40 border-purple-400/80 ring-2 ring-purple-500/50'
                 : 'bg-gradient-to-br from-purple-950/25 to-emerald-950/25 border-purple-500/40 hover:border-purple-400/60'
@@ -208,7 +210,7 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
           {/* Card 4: Refused / Not Interested (Rose) */}
           <div
             onClick={() => setFilterType('refused')}
-            className={`p-4 rounded-2xl border transition cursor-pointer ${
+            className={`p-4 rounded-2xl border transition-all duration-300 hover-lift cursor-pointer ${
               filterType === 'refused'
                 ? 'bg-rose-950/40 border-rose-500/60 ring-2 ring-rose-500/40'
                 : 'bg-rose-950/20 border-rose-500/30 hover:border-rose-500/50'
@@ -352,7 +354,7 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
               <div
                 key={prospect.id}
                 onClick={() => onSelectProspect(prospect)}
-                className={`group relative rounded-2xl border p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3.5 ${theme.cardBg} ${theme.border} ${theme.ring}`}
+                className={`group relative rounded-2xl border p-5 transition-all duration-300 hover-lift cursor-pointer flex flex-col justify-between space-y-3.5 ${theme.cardBg} ${theme.border} ${theme.ring}`}
               >
                 <div>
                   {/* Top Header: Distinct Status Badge & Lead Score */}

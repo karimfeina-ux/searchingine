@@ -7,7 +7,8 @@ import {
   addExclusion,
   getExcludedSets,
   computeStats,
-  createClientBrief
+  createClientBrief,
+  isQualifiedProspect
 } from './clientDataEngine.ts';
 import type { Prospect } from '../types/index.ts';
 import { runRealSearch } from './placesSearch.ts';
@@ -114,7 +115,7 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
 
   // 6. Prospects Collection
   if (path === '/api/prospects' && method === 'GET') {
-    const prospects = getStoredProspects();
+    const prospects = getStoredProspects().filter(isQualifiedProspect);
     const status = url.searchParams.get('status');
     const websiteStatus = url.searchParams.get('websiteStatus');
     const search = (url.searchParams.get('search') || '').toLowerCase();
@@ -165,9 +166,11 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
       : [];
 
     for (const item of itemsToSave) {
-      map.set(item.id, { ...(map.get(item.id) || {}), ...item, updatedAt: new Date().toISOString() } as Prospect);
+      if (isQualifiedProspect(item)) {
+        map.set(item.id, { ...(map.get(item.id) || {}), ...item, updatedAt: new Date().toISOString() } as Prospect);
+      }
     }
-    const merged = Array.from(map.values());
+    const merged = Array.from(map.values()).filter(isQualifiedProspect);
     saveStoredProspects(merged);
     return jsonResponse({ success: true, count: itemsToSave.length, total: merged.length });
   }

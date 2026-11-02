@@ -196,6 +196,8 @@ export async function searchGoogleMapsBusinesses(params: {
       }
     } else {
       websiteStatus = 'no_website';
+    }
+
     // STRICT REQUIREMENT: Never show businesses that have websites
     if (hasWebsite) {
       continue;

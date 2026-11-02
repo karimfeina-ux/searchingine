@@ -26,6 +26,7 @@ import {
 
 import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
 import { getLeadStatusTheme } from '../utils/statusTheme.ts';
+import { isQualifiedProspect } from '../services/clientDataEngine.ts';
 
 interface ProspectsViewProps {
   prospects: Prospect[];
@@ -79,6 +80,8 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
   // Filter & sort
   const filtered = prospects
     .filter((p) => {
+      if (!isQualifiedProspect(p)) return false;
+
       const isLeadContactedOrDone = Boolean(
         p.isContacted ||
         p.status === 'contacted' ||
@@ -619,7 +622,7 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
               <div
                 key={prospect.id}
                 onClick={() => onSelectProspect(prospect)}
-                className={`cursor-pointer overflow-hidden rounded-2xl border p-4 transition-all hover:shadow-xl group flex flex-col justify-between space-y-3 ${
+                className={`cursor-pointer overflow-hidden rounded-2xl border p-4 transition-all duration-300 hover-lift group flex flex-col justify-between space-y-3 ${
                   theme.cardBg
                 } ${theme.border} ${theme.ring}`}
               >

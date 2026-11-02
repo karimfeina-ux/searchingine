@@ -3,6 +3,7 @@ import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow, useMap } from '@vis.
 import type { AppSettings, LeadStatus, Prospect } from '../types/index.ts';
 import { getGoogleMapsUrl } from '../utils/maps.ts';
 import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
+import { isQualifiedProspect } from '../services/clientDataEngine.ts';
 import {
   MapPin,
   Search,
@@ -89,6 +90,7 @@ export const GoogleMapsProspectsView: React.FC<GoogleMapsProspectsViewProps> = (
   // Filter prospects with valid coordinates
   const geolocatedProspects = useMemo(() => {
     return prospects.filter((p) => {
+      if (!isQualifiedProspect(p)) return false;
       const hasCoords = typeof p.latitude === 'number' && typeof p.longitude === 'number' && !isNaN(p.latitude) && !isNaN(p.longitude);
       if (!hasCoords) return false;
       if (filterHideContacted) {

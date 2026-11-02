@@ -18,11 +18,10 @@ import { QuickSearchModal } from './components/QuickSearchModal.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { AdminLogin } from './components/AdminLogin.tsx';
 import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
-import { DeviceSyncModal } from './components/DeviceSyncModal.tsx';
 import { GoogleMapsProspectsView } from './components/GoogleMapsProspectsView.tsx';
 import { ContactedListView } from './components/ContactedListView.tsx';
 import { apiFetch } from './services/apiBridge.ts';
-import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets, backupLocalData } from './services/clientDataEngine.ts';
+import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets, backupLocalData, isQualifiedProspect } from './services/clientDataEngine.ts';
 import { liveSync, type SyncMessage } from './services/liveSync.ts';
 import { Loader2, AlertCircle, X, Compass, Database, CheckCircle2, Settings } from 'lucide-react';
 
@@ -89,13 +88,14 @@ export default function App() {
 
   // UI state
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
+  const [searchLocation, setSearchLocation] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [lang, setLang] = useState<'en' | 'es'>('en');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [showWizard, setShowWizard] = useState<boolean>(false);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState<boolean>(false);
   const [isDeployModalOpen, setIsDeployModalOpen] = useState<boolean>(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
   const [isResearchRunning, setIsResearchRunning] = useState<boolean>(false);
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -112,6 +112,9 @@ export default function App() {
 
   // Resilient data loading with timestamp-aware merge logic across devices
   const loadData = useCallback(async () => {
+    // Automatically synchronize with https://searchingine.pages.dev/
+    await liveSync.syncNow().catch(() => {});
+
     const fetchEndpoint = async (url: string) => {
       try {
         const res = await apiFetch(url);
@@ -143,15 +146,16 @@ export default function App() {
         setStats(statsRes);
       }
       if (prospectsRes?.items) {
-        if (prospectsRes.items.length > 0) {
+        const qualifiedRemote = (prospectsRes.items as Prospect[]).filter(isQualifiedProspect);
+        if (qualifiedRemote.length > 0) {
           // Merge server prospects with local prospects using updatedAt timestamp
           setProspects((prev) => {
             const map = new Map<string, Prospect>();
-            for (const p of prospectsRes.items) {
+            for (const p of qualifiedRemote) {
               map.set(p.id, p);
             }
             const unsynced: Prospect[] = [];
-            for (const p of prev) {
+            for (const p of prev.filter(isQualifiedProspect)) {
               const remote = map.get(p.id);
               if (!remote) {
                 map.set(p.id, p);
@@ -178,13 +182,13 @@ export default function App() {
                 body: JSON.stringify({ items: unsynced })
               }).catch(() => {});
             }
-            const mergedList = Array.from(map.values());
+            const mergedList = Array.from(map.values()).filter(isQualifiedProspect);
             saveStoredProspects(mergedList);
             return mergedList;
           });
         } else {
           // If server has 0 records, check if this device has existing records to migrate safely
-          const localItems = getStoredProspects();
+          const localItems = getStoredProspects().filter(isQualifiedProspect);
           if (localItems.length > 0) {
             backupLocalData();
             apiFetch('/api/prospects', {
@@ -194,7 +198,7 @@ export default function App() {
             }).catch(() => {});
             setProspects(localItems);
           } else {
-            setProspects((prev) => prev.filter((p) => p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status)));
+            setProspects((prev) => prev.filter((p) => isQualifiedProspect(p) && (p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status))));
           }
         }
       }
@@ -217,21 +221,36 @@ export default function App() {
 
     loadData();
 
-    // Subscribe to live SSE events and cross-tab BroadcastChannel
+    // Subscribe to live events and cross-tab BroadcastChannel
     const unsubscribe = liveSync.subscribe((msg: SyncMessage) => {
       setLastSyncedAt(new Date());
       setSyncStatus(liveSync.status);
 
-      if (msg.type === 'prospect_updated' && msg.data) {
+      if (msg.type === 'prospects_synced' && Array.isArray(msg.data)) {
+        const qualified = (msg.data as Prospect[]).filter(isQualifiedProspect);
+        setProspects(qualified);
+        setStats(computeStats(qualified));
+      } else if (msg.type === 'prospect_updated' && msg.data) {
         const updated = msg.data as Prospect;
+        if (!isQualifiedProspect(updated)) {
+          setProspects((prev) => {
+            const next = prev.filter((p) => p.id !== updated.id);
+            saveStoredProspects(next);
+            setStats(computeStats(next));
+            return next;
+          });
+          setSelectedProspect((prev) => (prev && prev.id === updated.id ? null : prev));
+          return;
+        }
         setProspects((prev) => {
           const exists = prev.some((p) => p.id === updated.id);
           const next = exists
             ? prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
             : [updated, ...prev];
-          saveStoredProspects(next);
-          setStats(computeStats(next));
-          return next;
+          const qualifiedNext = next.filter(isQualifiedProspect);
+          saveStoredProspects(qualifiedNext);
+          setStats(computeStats(qualifiedNext));
+          return qualifiedNext;
         });
         setSelectedProspect((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
       } else if (msg.type === 'prospect_starred' && msg.data) {
@@ -280,46 +299,6 @@ export default function App() {
       if (e.detail?.lastSyncedAt) setLastSyncedAt(new Date(e.detail.lastSyncedAt));
     };
     window.addEventListener('leadhunter-sync-status', handleSyncStatus);
-
-    // Instant direct sync via QR Code / Sync Link (#sync=...)
-    if (typeof window !== 'undefined' && window.location.hash.includes('#sync=')) {
-      try {
-        const rawHash = window.location.hash.split('#sync=')[1];
-        if (rawHash) {
-          const decoded = decodeURIComponent(escape(atob(rawHash)));
-          const items = JSON.parse(decoded);
-          if (Array.isArray(items) && items.length > 0) {
-            setProspects((prev) => {
-              const map = new Map<string, Prospect>();
-              for (const p of prev) map.set(p.id, p);
-              for (const item of items) {
-                map.set(item.id, { ...(map.get(item.id) || {}), ...item, isContacted: true });
-              }
-              const merged = Array.from(map.values());
-              saveStoredProspects(merged);
-              setStats(computeStats(merged));
-              return merged;
-            });
-            apiFetch('/api/prospects', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items })
-            }).catch(() => {});
-            setContactToast({
-              businessName: 'Sync Complete',
-              status: 'contacted',
-              title: lang === 'es' ? '📱 ¡Móvil Sincronizado!' : '📱 Mobile Phone Synced!',
-              message: lang === 'es' ? `¡${items.length} clientes contactados sincronizados en tu móvil!` : `Successfully synced ${items.length} contacted clients to your phone!`,
-              showCta: true
-            });
-            setTimeout(() => setContactToast(null), 5000);
-            window.history.replaceState(null, '', window.location.pathname);
-          }
-        }
-      } catch (err) {
-        console.warn('Sync hash processing notice:', err);
-      }
-    }
 
     // Auto-sync when user switches tabs or unlocks/opens the website on mobile phone
     const handleSyncOnVisible = () => {
@@ -450,6 +429,8 @@ export default function App() {
   };
 
   const handlePerformSearch = async ({ location, query }: { location: string; query: string }) => {
+    if (location) setSearchLocation(location);
+    if (query) setSearchQuery(query);
     setIsResearchRunning(true);
     setActionError(null);
     try {
@@ -1010,11 +991,14 @@ export default function App() {
         totalLeadsCount={stats.totalLeads}
         contactedCount={stats.contactedCount}
         onOpenDeployModal={() => setIsDeployModalOpen(true)}
-        onOpenSyncModal={() => setIsSyncModalOpen(true)}
         syncStatus={syncStatus}
         lastSyncedAt={lastSyncedAt}
         onTriggerSync={handleTriggerManualSync}
         isSyncing={isManualSyncing}
+        searchLocation={searchLocation}
+        onSearchLocationChange={setSearchLocation}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
       />
 
       {/* Quota Banner */}
@@ -1078,6 +1062,10 @@ export default function App() {
             onToggleStar={handleToggleStar}
             onOpenDeployModal={() => setIsDeployModalOpen(true)}
             onClearResearch={handleClearResearch}
+            searchLocation={searchLocation}
+            onSearchLocationChange={setSearchLocation}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
           />
         )}
 
@@ -1227,17 +1215,6 @@ export default function App() {
         isOpen={isDeployModalOpen}
         onClose={() => setIsDeployModalOpen(false)}
         lang={lang}
-      />
-
-      {/* Device Sync Modal (QR & Link Direct Sync) */}
-      <DeviceSyncModal
-        isOpen={isSyncModalOpen}
-        onClose={() => setIsSyncModalOpen(false)}
-        prospects={prospects}
-        lang={lang}
-        onSyncImported={() => {
-          loadData();
-        }}
       />
 
       {/* Mobile Sticky Bottom Navigation Bar for Home Screen / PWA */}

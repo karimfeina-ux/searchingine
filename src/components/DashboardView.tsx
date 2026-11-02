@@ -26,6 +26,7 @@ import {
 
 import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
 import { getLeadStatusTheme } from '../utils/statusTheme.ts';
+import { isQualifiedProspect } from '../services/clientDataEngine.ts';
 import type { LeadStatus } from '../types/index.ts';
 
 interface DashboardViewProps {
@@ -54,6 +55,10 @@ interface DashboardViewProps {
   onToggleStar?: (id: string) => void;
   onOpenDeployModal?: () => void;
   onClearResearch?: (options: { keepContacted: boolean; keepStarred: boolean; cleanAll?: boolean }) => void;
+  searchLocation?: string;
+  onSearchLocationChange?: (val: string) => void;
+  searchQuery?: string;
+  onSearchQueryChange?: (val: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -70,20 +75,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onDeleteNotInterested,
   onToggleStar,
   onOpenDeployModal,
-  onClearResearch
+  onClearResearch,
+  searchLocation,
+  onSearchLocationChange,
+  searchQuery,
+  onSearchQueryChange
 }) => {
   const tr = t[lang] || t.en;
-  const [heroLocation, setHeroLocation] = useState(() => settings.cities[0] || 'Madrid');
-  const [heroQuery, setHeroQuery] = useState(() => settings.categories[0] || 'peluquería');
+  const [heroLocation, setHeroLocation] = useState(() => '');
+  const [heroQuery, setHeroQuery] = useState(() => '');
   const [filterHideContacted, setFilterHideContacted] = useState(true);
   const [filterHideClicked, setFilterHideClicked] = useState(false);
 
+  const locVal = searchLocation !== undefined ? searchLocation : heroLocation;
+  const setLocVal = onSearchLocationChange || setHeroLocation;
+  const queryVal = searchQuery !== undefined ? searchQuery : heroQuery;
+  const setQueryVal = onSearchQueryChange || setHeroQuery;
+
   const handleHeroSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const targetLoc = heroLocation.trim() || settings.cities[0] || 'Madrid';
-    const targetQ = heroQuery.trim() || settings.categories[0] || 'peluquería';
-    if (!heroLocation.trim()) setHeroLocation(targetLoc);
-    if (!heroQuery.trim()) setHeroQuery(targetQ);
+    const targetLoc = locVal.trim() || 'Madrid';
+    const targetQ = queryVal.trim() || 'peluquería';
     onPerformSearch({
       location: targetLoc,
       query: targetQ
@@ -101,6 +113,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Filter prospects: By default exclude contacted leads from active discovery list!
   const displayedProspects = topProspects.filter((p) => {
+    if (!isQualifiedProspect(p)) return false;
+
     const isContactedOrDone = Boolean(
       p.isContacted ||
       p.status === 'contacted' ||
@@ -122,8 +136,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Hero Section with Deep Search Console */}
       <div className="relative overflow-hidden rounded-3xl border border-cyan-500/30 bg-gradient-to-b from-[#0c162d] via-[#091022] to-[#080d1a] p-5 sm:p-8 shadow-2xl shadow-cyan-950/20 backdrop-blur-xl">
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-72 w-72 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none animate-float-slow animate-glow-pulse" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none animate-float-reverse animate-glow-pulse" />
 
         <div className="relative z-10 max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-950/60 px-3 py-1 text-xs font-bold text-cyan-300 shadow-sm backdrop-blur-md">
@@ -141,33 +155,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Deep AI Search Form */}
           <form onSubmit={handleHeroSubmit} className="mt-5 space-y-3">
-            <div className="flex flex-col sm:flex-row gap-2.5">
-              <div className="relative flex-1">
-                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+              <div className="relative flex-1 group">
+                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400 drop-shadow-[0_0_6px_rgba(6,182,212,0.6)] group-focus-within:scale-110 group-focus-within:text-cyan-300 transition-all pointer-events-none" />
                 <input
                   type="text"
-                  value={heroLocation}
-                  onChange={(e) => setHeroLocation(e.target.value)}
+                  value={locVal}
+                  onChange={(e) => setLocVal(e.target.value)}
                   placeholder={tr.searchCityPlaceholder}
-                  className="w-full rounded-xl border border-slate-700/80 bg-slate-950/90 pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 focus:outline-none transition shadow-inner"
+                  className="w-full h-12 sm:h-11 rounded-2xl border border-cyan-500/35 bg-[#060a14]/90 backdrop-blur-2xl pl-11 pr-4 py-3 sm:py-2.5 text-sm sm:text-xs font-semibold text-slate-100 placeholder:text-slate-500/80 placeholder:font-normal focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/40 focus:shadow-[0_0_25px_rgba(6,182,212,0.35)] focus:outline-none transition-all duration-300 shadow-inner"
                 />
               </div>
 
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
+              <div className="relative flex-1 group">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400 drop-shadow-[0_0_6px_rgba(99,102,241,0.6)] group-focus-within:scale-110 group-focus-within:text-indigo-300 transition-all pointer-events-none" />
                 <input
                   type="text"
-                  value={heroQuery}
-                  onChange={(e) => setHeroQuery(e.target.value)}
+                  value={queryVal}
+                  onChange={(e) => setQueryVal(e.target.value)}
                   placeholder={tr.searchQueryPlaceholder}
-                  className="w-full rounded-xl border border-slate-700/80 bg-slate-950/90 pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 focus:outline-none transition shadow-inner"
+                  className="w-full h-12 sm:h-11 rounded-2xl border border-indigo-500/35 bg-[#060a14]/90 backdrop-blur-2xl pl-11 pr-4 py-3 sm:py-2.5 text-sm sm:text-xs font-semibold text-slate-100 placeholder:text-slate-500/80 placeholder:font-normal focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/40 focus:shadow-[0_0_25px_rgba(99,102,241,0.35)] focus:outline-none transition-all duration-300 shadow-inner"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isResearchRunning}
-                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition duration-200 disabled:opacity-50 cursor-pointer shrink-0"
+                className="flex items-center justify-center gap-2 h-12 sm:h-11 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 px-6 py-3 sm:py-2.5 text-sm sm:text-xs font-bold text-white shadow-lg shadow-cyan-500/30 hover:from-cyan-400 hover:to-indigo-500 transition-all duration-300 disabled:opacity-50 cursor-pointer shrink-0 animate-gradient-shift hover-glow active:scale-95"
               >
                 {isResearchRunning ? (
                   <>
@@ -191,10 +205,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   key={idx}
                   type="button"
                   onClick={() => {
-                    setHeroLocation(preset.loc);
-                    setHeroQuery(preset.cat);
+                    setLocVal(preset.loc);
+                    setQueryVal(preset.cat);
                   }}
-                  className="rounded-lg bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 px-2.5 py-1 text-[11px] text-slate-300 hover:text-cyan-300 transition cursor-pointer"
+                  className="rounded-lg bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-800 px-2.5 py-1 text-[11px] text-slate-300 hover:text-cyan-300 transition-all duration-200 active:scale-95 cursor-pointer"
                 >
                   {preset.label}
                 </button>
@@ -206,12 +220,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 sm:p-5 rounded-2xl bg-[#0c1222]/80 border border-slate-800/80 backdrop-blur-xl">
+        <div className="p-4 sm:p-5 rounded-2xl bg-[#0c1222]/80 border border-slate-800/80 backdrop-blur-xl hover-lift cursor-default group">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">{tr.statsTotalLeads}</span>
-            <Building2 className="h-4 w-4 text-cyan-400" />
+            <Building2 className="h-4 w-4 text-cyan-400 group-hover:scale-110 group-hover:rotate-6 transition duration-300" />
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-white">
+          <div className="text-2xl sm:text-3xl font-extrabold text-white group-hover:text-cyan-300 transition-colors">
             {stats.totalLeads}
           </div>
           <div className="mt-1 text-[11px] text-cyan-400">
@@ -219,10 +233,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-[#0c1222]/80 border border-slate-800/80 backdrop-blur-xl">
+        <div className="p-4 sm:p-5 rounded-2xl bg-[#0c1222]/80 border border-slate-800/80 backdrop-blur-xl hover-lift cursor-default group">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">{tr.statsNoWebsite}</span>
-            <ShieldAlert className="h-4 w-4 text-amber-400" />
+            <ShieldAlert className="h-4 w-4 text-amber-400 group-hover:scale-110 group-hover:-rotate-6 transition duration-300" />
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-amber-400">
             {stats.noWebsiteCount}
@@ -234,24 +248,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div
           onClick={() => onNavigateTab('contacted')}
-          className="p-4 sm:p-5 rounded-2xl bg-[#0c1222]/80 border border-slate-800/80 backdrop-blur-xl hover:border-emerald-500/40 cursor-pointer transition"
+          className="p-4 sm:p-5 rounded-2xl bg-[#0c1222]/80 border border-slate-800/80 backdrop-blur-xl hover:border-emerald-500/50 hover-lift cursor-pointer transition-all group"
         >
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">{tr.statsContacted}</span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <CheckCircle2 className="h-4 w-4 text-emerald-400 group-hover:scale-110 group-hover:rotate-12 transition duration-300" />
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400">
             {stats.contactedCount}
           </div>
-          <div className="mt-1 text-[11px] text-emerald-300 flex items-center gap-1">
+          <div className="mt-1 text-[11px] text-emerald-300 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
             <span>{lang === 'es' ? 'Ver Categoría Contactados →' : 'View Contacted Category →'}</span>
           </div>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-[#0c1222]/80 border border-slate-800/80 backdrop-blur-xl">
+        <div className="p-4 sm:p-5 rounded-2xl bg-[#0c1222]/80 border border-slate-800/80 backdrop-blur-xl hover-lift cursor-default group">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">{tr.statsAvgScore}</span>
-            <TrendingUp className="h-4 w-4 text-indigo-400" />
+            <TrendingUp className="h-4 w-4 text-indigo-400 group-hover:scale-110 group-hover:-translate-y-0.5 transition duration-300" />
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-indigo-400">
             {stats.avgScore || 92}<span className="text-sm font-normal text-slate-500">/100</span>
@@ -341,7 +355,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div
                   key={p.id}
                   onClick={() => onSelectProspect(p)}
-                  className={`group relative rounded-2xl border p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3 ${
+                  className={`group relative rounded-2xl border p-5 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-3 hover-lift active:scale-[0.99] ${
                     theme.cardBg
                   } ${theme.border} ${theme.ring}`}
                 >

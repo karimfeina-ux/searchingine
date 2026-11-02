@@ -170,10 +170,11 @@ export interface Prospect {
   excludedReason?: string;
   createdAt: string;
   updatedAt: string;
+  lastVerifiedAt?: string;
   brief?: WebsiteBrief;
   verifications?: WebsiteVerificationRecord[];
   photoCount?: number;
-  photos?: { name: string; authorAttributions?: any[] }[];
+  photos?: { name?: string; authorAttributions?: any[]; widthPx?: number; heightPx?: number }[];
 }
 
 export interface AppSettings {

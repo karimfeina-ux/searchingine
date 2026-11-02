@@ -15,11 +15,8 @@ import {
   SlidersHorizontal,
   ChevronRight,
   Cloud,
-  Smartphone,
-  QrCode,
   RefreshCw
 } from 'lucide-react';
-import { PWAInstallButton } from './PWAInstallButton.tsx';
 
 interface HeaderProps {
   currentTab: string;
@@ -39,6 +36,10 @@ interface HeaderProps {
   lastSyncedAt?: Date;
   onTriggerSync?: () => void;
   isSyncing?: boolean;
+  searchLocation?: string;
+  onSearchLocationChange?: (val: string) => void;
+  searchQuery?: string;
+  onSearchQueryChange?: (val: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -58,18 +59,25 @@ export const Header: React.FC<HeaderProps> = ({
   syncStatus = 'connected',
   lastSyncedAt,
   onTriggerSync,
-  isSyncing = false
+  isSyncing = false,
+  searchLocation,
+  onSearchLocationChange,
+  searchQuery,
+  onSearchQueryChange
 }) => {
-  const [locationInput, setLocationInput] = useState(() => 'Madrid');
-  const [keywordInput, setKeywordInput] = useState(() => 'peluquería');
+  const [locationInput, setLocationInput] = useState(() => '');
+  const [keywordInput, setKeywordInput] = useState(() => '');
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
+
+  const locVal = searchLocation !== undefined ? searchLocation : locationInput;
+  const setLocVal = onSearchLocationChange || setLocationInput;
+  const queryVal = searchQuery !== undefined ? searchQuery : keywordInput;
+  const setQueryVal = onSearchQueryChange || setKeywordInput;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const loc = locationInput.trim() || 'Madrid';
-    const q = keywordInput.trim() || 'peluquería';
-    if (!locationInput.trim()) setLocationInput(loc);
-    if (!keywordInput.trim()) setKeywordInput(q);
+    const loc = locVal.trim() || 'Madrid';
+    const q = queryVal.trim() || 'peluquería';
     onPerformSearch({
       location: loc,
       query: q
@@ -97,9 +105,9 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => onSelectTab('dashboard')}
             className="flex items-center gap-2.5 cursor-pointer shrink-0 select-none group"
           >
-            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-cyan-400 p-0.5 shadow-md shadow-cyan-500/20 group-hover:shadow-cyan-500/40 transition">
+            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-cyan-400 p-0.5 shadow-md shadow-cyan-500/30 group-hover:shadow-cyan-400/50 transition animate-float">
               <div className="h-full w-full rounded-[10px] bg-[#090d18] flex items-center justify-center">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400 group-hover:scale-110 transition duration-300" />
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400 group-hover:scale-125 group-hover:rotate-12 transition duration-300" />
               </div>
             </div>
             <div>
@@ -121,32 +129,32 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden md:flex flex-1 max-w-2xl mx-auto justify-center px-2">
             <form
               onSubmit={handleSearchSubmit}
-              className="w-full flex items-center rounded-2xl bg-[#0e1526] border border-slate-700/70 p-1 shadow-lg shadow-black/40 focus-within:border-cyan-500/80 focus-within:ring-2 focus-within:ring-cyan-500/20 transition-all duration-200"
+              className="w-full flex items-center rounded-2xl bg-[#080d19]/90 border border-cyan-500/30 p-1.5 shadow-[0_0_20px_rgba(6,182,212,0.12)] backdrop-blur-2xl focus-within:border-cyan-400/80 focus-within:shadow-[0_0_25px_rgba(6,182,212,0.25)] transition-all duration-300"
             >
               {/* Location Input */}
-              <div className="flex-1 flex items-center min-w-0 px-2.5 py-1">
-                <MapPin className="h-4 w-4 text-cyan-400 shrink-0 mr-2" />
+              <div className="flex-1 flex items-center min-w-0 px-3 py-1.5 rounded-xl bg-slate-900/40 border border-transparent hover:border-cyan-500/30 focus-within:border-cyan-400/70 focus-within:bg-cyan-950/20 focus-within:shadow-[0_0_15px_rgba(6,182,212,0.25)] transition-all duration-300 group">
+                <MapPin className="h-4 w-4 text-cyan-400 shrink-0 mr-2 drop-shadow-[0_0_6px_rgba(6,182,212,0.6)] group-focus-within:scale-110 transition-transform" />
                 <input
                   type="text"
-                  value={locationInput}
-                  onChange={(e) => setLocationInput(e.target.value)}
+                  value={locVal}
+                  onChange={(e) => setLocVal(e.target.value)}
                   placeholder={lang === 'es' ? 'Región / Ciudad (ej. Miami, Valencia...)' : 'Region / City (e.g. Miami, London, Austin...)'}
-                  className="w-full bg-transparent text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 outline-none truncate font-medium"
+                  className="w-full bg-transparent text-xs sm:text-sm text-slate-100 placeholder:text-slate-500/90 outline-none truncate font-medium tracking-wide"
                 />
               </div>
 
               {/* Minimal Divider */}
-              <div className="h-6 w-px bg-slate-700/80 mx-1 shrink-0" />
+              <div className="h-6 w-px bg-cyan-500/20 mx-1 shrink-0 shadow-[0_0_8px_rgba(6,182,212,0.2)]" />
 
               {/* Business Type / Keyword Input */}
-              <div className="flex-[1.2] flex items-center min-w-0 px-2.5 py-1">
-                <Search className="h-4 w-4 text-indigo-400 shrink-0 mr-2" />
+              <div className="flex-[1.2] flex items-center min-w-0 px-3 py-1.5 rounded-xl bg-slate-900/40 border border-transparent hover:border-indigo-500/30 focus-within:border-indigo-400/70 focus-within:bg-indigo-950/20 focus-within:shadow-[0_0_15px_rgba(99,102,241,0.25)] transition-all duration-300 group">
+                <Search className="h-4 w-4 text-indigo-400 shrink-0 mr-2 drop-shadow-[0_0_6px_rgba(99,102,241,0.6)] group-focus-within:scale-110 transition-transform" />
                 <input
                   type="text"
-                  value={keywordInput}
-                  onChange={(e) => setKeywordInput(e.target.value)}
+                  value={queryVal}
+                  onChange={(e) => setQueryVal(e.target.value)}
                   placeholder={lang === 'es' ? 'Tipo de negocio (ej. Barbería, Café, Dentista...)' : 'Niche / Keyword (e.g. Barber, Coffee, Trades, Clinic...)'}
-                  className="w-full bg-transparent text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 outline-none truncate font-medium"
+                  className="w-full bg-transparent text-xs sm:text-sm text-slate-100 placeholder:text-slate-500/90 outline-none truncate font-medium tracking-wide"
                 />
               </div>
 
@@ -154,7 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="submit"
                 disabled={isSearching}
-                className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 active:scale-95 transition-all shadow-md shadow-cyan-500/20 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 active:scale-95 transition-all shadow-md shadow-cyan-500/20 disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover-glow animate-gradient-shift"
               >
                 {isSearching ? (
                   <>
@@ -194,20 +202,16 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Live Sync Status & Trigger (PC <-> Mobile) */}
+            {/* Automatic Cloud Sync Status Indicator */}
             <div
-              className={`flex items-center gap-1.5 h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl border text-xs transition select-none ${
+              className={`flex items-center gap-1.5 h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl border text-xs select-none ${
                 syncStatus === 'connected'
                   ? 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300'
                   : syncStatus === 'reconnecting'
                   ? 'border-amber-500/30 bg-amber-950/40 text-amber-300'
                   : 'border-slate-800 bg-slate-900/60 text-slate-400'
               }`}
-              title={
-                syncStatus === 'connected'
-                  ? (lang === 'es' ? 'Sincronizado automáticamente con searchingine.pages.dev' : 'Auto-synced with searchingine.pages.dev')
-                  : (lang === 'es' ? 'Reconectando sincronización...' : 'Reconnecting sync...')
-              }
+              title="Automatically synced with https://searchingine.pages.dev/"
             >
               <span
                 className={`h-2 w-2 rounded-full ${
@@ -219,21 +223,8 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               />
               <span className="hidden sm:inline text-[11px] font-semibold">
-                {syncStatus === 'connected'
-                  ? (lang === 'es' ? 'Sync Auto (PC & Móvil)' : 'Auto Sync (PC & Mobile)')
-                  : (lang === 'es' ? 'Reconectando' : 'Connecting')}
+                searchingine.pages.dev
               </span>
-              {onTriggerSync && (
-                <button
-                  type="button"
-                  onClick={onTriggerSync}
-                  disabled={isSyncing}
-                  className="p-0.5 text-slate-400 hover:text-white transition disabled:opacity-50 cursor-pointer"
-                  title={lang === 'es' ? 'Sincronizar ahora con searchingine.pages.dev' : 'Sync now with searchingine.pages.dev'}
-                >
-                  <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin text-cyan-400' : ''}`} />
-                </button>
-              )}
             </div>
 
             {/* Admin User Chip */}
@@ -243,9 +234,6 @@ export const Header: React.FC<HeaderProps> = ({
                 {userEmail}
               </span>
             </div>
-
-            {/* PWA Mobile & Desktop Home Screen Install Button */}
-            <PWAInstallButton lang={lang} />
 
             {/* Language switch */}
             <button
@@ -273,32 +261,32 @@ export const Header: React.FC<HeaderProps> = ({
         {isMobileSearchExpanded && (
           <form
             onSubmit={handleSearchSubmit}
-            className="md:hidden pt-1 pb-3 flex flex-col gap-2 animate-in slide-in-from-top-2 duration-200"
+            className="md:hidden pt-2 pb-3.5 flex flex-col gap-2.5 animate-in slide-in-from-top-2 duration-200"
           >
-            <div className="flex items-center rounded-xl bg-[#0e1526] border border-slate-700 px-3 py-2">
-              <MapPin className="h-4 w-4 text-cyan-400 shrink-0 mr-2" />
+            <div className="flex items-center rounded-2xl bg-[#080d19]/95 border border-cyan-500/40 px-3.5 py-3 shadow-[0_0_15px_rgba(6,182,212,0.15)] focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all">
+              <MapPin className="h-4 w-4 text-cyan-400 shrink-0 mr-2.5 drop-shadow-[0_0_6px_rgba(6,182,212,0.6)]" />
               <input
                 type="text"
-                value={locationInput}
-                onChange={(e) => setLocationInput(e.target.value)}
-                placeholder="Region / City (e.g. Miami, London...)"
-                className="w-full bg-transparent text-xs text-slate-100 placeholder:text-slate-500 outline-none"
+                value={locVal}
+                onChange={(e) => setLocVal(e.target.value)}
+                placeholder={lang === 'es' ? 'Región / Ciudad (ej. Miami, Valencia...)' : 'Region / City (e.g. Miami, London, Austin...)'}
+                className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500/80 outline-none font-medium"
               />
             </div>
-            <div className="flex items-center rounded-xl bg-[#0e1526] border border-slate-700 px-3 py-2">
-              <Search className="h-4 w-4 text-indigo-400 shrink-0 mr-2" />
+            <div className="flex items-center rounded-2xl bg-[#080d19]/95 border border-indigo-500/40 px-3.5 py-3 shadow-[0_0_15px_rgba(99,102,241,0.15)] focus-within:border-indigo-400 focus-within:shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all">
+              <Search className="h-4 w-4 text-indigo-400 shrink-0 mr-2.5 drop-shadow-[0_0_6px_rgba(99,102,241,0.6)]" />
               <input
                 type="text"
-                value={keywordInput}
-                onChange={(e) => setKeywordInput(e.target.value)}
-                placeholder="Niche (e.g. Barber, Coffee, Trades...)"
-                className="w-full bg-transparent text-xs text-slate-100 placeholder:text-slate-500 outline-none"
+                value={queryVal}
+                onChange={(e) => setQueryVal(e.target.value)}
+                placeholder={lang === 'es' ? 'Tipo de negocio (ej. Barbería, Café...)' : 'Niche / Keyword (e.g. Barber, Coffee...)'}
+                className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500/80 outline-none font-medium"
               />
             </div>
             <button
               type="submit"
               disabled={isSearching}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-cyan-500 to-indigo-600 shadow-md"
+              className="w-full h-11 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 shadow-[0_0_20px_rgba(6,182,212,0.35)] active:scale-95 transition-all cursor-pointer"
             >
               {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-cyan-200" />}
               <span>{lang === 'es' ? 'Escanear 10+ Negocios Sin Web' : 'Deep Hunt 10+ Verified Leads'}</span>

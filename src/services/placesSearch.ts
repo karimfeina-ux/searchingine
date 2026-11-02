@@ -5,7 +5,8 @@ import {
   getExcludedSets,
   getStoredProspects,
   normalizeBusinessName,
-  saveStoredProspects
+  saveStoredProspects,
+  isQualifiedProspect
 } from './clientDataEngine.ts';
 
 interface OsmPlace {
@@ -36,14 +37,15 @@ export async function runRealSearch(params: { location?: string; query?: string 
         'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('leadhunter_admin_token') || ''}`
       },
-      body: JSON.stringify({ location, query, onlyNoWebsite: false, pageSize: 20 })
+      body: JSON.stringify({ location, query, onlyNoWebsite: true, pageSize: 20 })
     });
 
     if (gmpRes.ok) {
       const gmpData = await gmpRes.json();
       if (Array.isArray(gmpData.items) && gmpData.items.length > 0) {
-        saveStoredProspects(gmpData.items.concat(getStoredProspects()));
-        return gmpData;
+        const qualifiedGmpItems = gmpData.items.filter(isQualifiedProspect);
+        saveStoredProspects(qualifiedGmpItems.concat(getStoredProspects()));
+        return { ...gmpData, items: qualifiedGmpItems, total: qualifiedGmpItems.length };
       }
     }
   } catch (err) {
@@ -165,8 +167,10 @@ export async function runRealSearch(params: { location?: string; query?: string 
     };
     prospect.brief = createClientBrief(prospect, settings);
 
-    knownIds.add(id);
-    items.push(prospect);
+    if (isQualifiedProspect(prospect)) {
+      knownIds.add(id);
+      items.push(prospect);
+    }
   }
 
   saveStoredProspects([...items, ...existing]);

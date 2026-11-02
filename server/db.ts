@@ -130,6 +130,31 @@ export const updateSettings = (partial: Partial<AppSettings>): AppSettings => {
   return { ...store.settings };
 };
 
+export const isQualifiedProspect = (p: Prospect): boolean => {
+  if (!p) return false;
+  if ((p as any).hasWebsite) return false;
+  if (p.websiteStatus && ['website_exists', 'website_broken', 'website_outdated'].includes(p.websiteStatus)) {
+    return false;
+  }
+  if (p.websiteCandidate && p.websiteCandidate.trim() !== '') {
+    const lower = p.websiteCandidate.toLowerCase().trim();
+    const isSocialOnly =
+      lower.includes('instagram.com') ||
+      lower.includes('facebook.com') ||
+      lower.includes('linktr.ee') ||
+      lower.includes('wa.me') ||
+      lower.includes('tiktok.com') ||
+      lower.includes('bio.link') ||
+      lower.includes('taplink.cc');
+    if (!isSocialOnly) return false;
+  }
+  const photoCount = typeof p.photoCount === 'number'
+    ? p.photoCount
+    : (Array.isArray(p.photos) ? p.photos.length : 0);
+  if (photoCount < 2) return false;
+  return true;
+};
+
 export const getProspects = (filter?: {
   status?: string;
   websiteStatus?: string;
@@ -142,7 +167,7 @@ export const getProspects = (filter?: {
   limit?: number;
   offset?: number;
 }): { items: Prospect[]; total: number } => {
-  let list = Object.values(store.prospects);
+  let list = Object.values(store.prospects).filter(isQualifiedProspect);
 
   if (filter?.status && filter.status !== 'all') {
     list = list.filter((p) => p.status === filter.status);
@@ -494,7 +519,7 @@ export const getOutreachDrafts = (prospectId: string): OutreachDraft[] => {
 };
 
 export const getStats = () => {
-  const list = Object.values(store.prospects);
+  const list = Object.values(store.prospects).filter(isQualifiedProspect);
   const total = list.length;
   const noWebsite = list.filter((p) => p.websiteStatus === 'no_website' || p.websiteStatus === 'possibly_no_website').length;
   const highPriority = list.filter((p) => p.leadScore >= 70).length;
