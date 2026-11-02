@@ -106,3 +106,32 @@ npx wrangler pages deploy dist --project-name=leadhunter-ai
 ```
 
 Wrangler will upload your `dist/` directory and mount your `/functions` automatically!
+
+---
+
+## Cross-Device Synchronization with Cloudflare D1 (Free Tier)
+
+To synchronize prospects, statuses (contacted, waiting, signed, not interested), notes, exclusions, and settings between your PC and mobile phone at $0 cost:
+
+### Step 1: Create the D1 Database
+1. In the [Cloudflare Dashboard](https://dash.cloudflare.com/), go to **Storage & Databases** → **D1 SQL Database**.
+2. Click **Create database**.
+3. Name it: `leadhunter_db`.
+4. Click **Create**.
+
+### Step 2: Initialize Database Schema
+1. In your newly created `leadhunter_db` page, click the **Console** tab.
+2. Open `schema.sql` from your project repository, copy all the SQL text, paste it into the console, and click **Execute**.
+*(Or run in your terminal: `npx wrangler d1 execute leadhunter_db --file=./schema.sql`)*
+
+### Step 3: Bind D1 Database to Your Cloudflare Pages Project
+1. In Cloudflare Dashboard, go to **Compute (Workers & Pages)** → click your Pages project (`leadhunter-ai` or `searchingine`).
+2. Go to **Settings** → **Functions** → scroll down to **D1 database bindings**.
+3. Click **Add binding**:
+   - **Variable name**: `DB` (must be capital letters `DB`)
+   - **D1 database**: Select `leadhunter_db` from the dropdown list.
+4. Click **Save**.
+5. Trigger a new deployment (or push a commit to Git) so Cloudflare Pages activates the `DB` binding.
+
+Now, whenever you update a client on your PC, it is saved in your D1 cloud database and immediately visible when you open the site on your phone!
+

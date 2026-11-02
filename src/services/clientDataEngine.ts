@@ -81,6 +81,32 @@ export function getStoredProspects(): Prospect[] {
   return [];
 }
 
+export function backupLocalData(): string | null {
+  try {
+    const prospects = localStorage.getItem(STORAGE_KEY_PROSPECTS);
+    const settings = localStorage.getItem(STORAGE_KEY_SETTINGS);
+    const exclusionsNames = localStorage.getItem(STORAGE_KEY_EXCLUSIONS_NAMES);
+    const exclusionsPhones = localStorage.getItem(STORAGE_KEY_EXCLUSIONS_PHONES);
+
+    if (!prospects && !settings && !exclusionsNames && !exclusionsPhones) return null;
+
+    const backup = {
+      timestamp: new Date().toISOString(),
+      prospects: prospects ? JSON.parse(prospects) : [],
+      settings: settings ? JSON.parse(settings) : null,
+      exclusionsNames: exclusionsNames ? JSON.parse(exclusionsNames) : [],
+      exclusionsPhones: exclusionsPhones ? JSON.parse(exclusionsPhones) : []
+    };
+
+    const key = `leadhunter_backup_${Date.now()}`;
+    localStorage.setItem(key, JSON.stringify(backup));
+    return key;
+  } catch (err) {
+    console.warn('Backup local data warning:', err);
+    return null;
+  }
+}
+
 export function saveStoredProspects(prospects: Prospect[]) {
   try {
     localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(prospects));
@@ -140,6 +166,13 @@ export function addExclusion(name: string, phone?: string) {
     if (clean.length >= 6) phones.add(clean);
   }
   saveExcludedSets(names, phones);
+  if (typeof window !== 'undefined' && window.fetch) {
+    window.fetch('/api/exclusions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone })
+    }).catch(() => {});
+  }
 }
 
 export function isExcluded(name: string, phone?: string): boolean {

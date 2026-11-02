@@ -604,31 +604,42 @@ router.get('/download/dist-zip', async (_req, res) => {
 // Get repository deployment files for 1-click GitHub push
 router.get('/deploy/project-files', (_req, res) => {
   try {
-    const filesToRead = [
-      'package.json',
-      '.npmrc',
-      'vite.config.ts',
-      'wrangler.toml',
-      'DEPLOYMENT.md',
-      'public/_redirects',
-      'public/_headers',
-      'functions/_lib/auth.ts',
-      'functions/api/auth/login.ts',
-      'functions/api/places-search.ts',
-      'functions/api/search/google-maps.ts',
-      'functions/api/search/deep-prospect.ts'
-    ];
-
     const files: Array<{ path: string; content: string }> = [];
-    for (const relPath of filesToRead) {
-      const fullPath = path.resolve(process.cwd(), relPath);
-      if (fs.existsSync(fullPath)) {
-        files.push({
-          path: relPath,
-          content: fs.readFileSync(fullPath, 'utf-8')
-        });
+
+    function collectFiles(dirRel: string) {
+      const fullDir = path.resolve(process.cwd(), dirRel);
+      if (!fs.existsSync(fullDir)) return;
+      const entries = fs.readdirSync(fullDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+        const subRel = path.join(dirRel, entry.name);
+        const subFull = path.join(fullDir, entry.name);
+        if (entry.isDirectory()) {
+          collectFiles(subRel);
+        } else if (entry.isFile()) {
+          try {
+            files.push({
+              path: subRel.replace(/\\/g, '/'),
+              content: fs.readFileSync(subFull, 'utf-8')
+            });
+          } catch {}
+        }
       }
     }
+
+    const topLevel = ['schema.sql', 'wrangler.toml', 'package.json', '.npmrc', 'vite.config.ts', 'index.html', 'DEPLOYMENT.md'];
+    for (const f of topLevel) {
+      const full = path.resolve(process.cwd(), f);
+      if (fs.existsSync(full)) {
+        try {
+          files.push({ path: f, content: fs.readFileSync(full, 'utf-8') });
+        } catch {}
+      }
+    }
+
+    collectFiles('public');
+    collectFiles('functions');
+    collectFiles('src');
 
     res.json({ files });
   } catch (err: any) {

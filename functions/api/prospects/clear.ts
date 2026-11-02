@@ -1,26 +1,18 @@
 // Cloudflare Pages Function -> POST /api/prospects/clear
-// Acknowledges clear command at the edge
+import { D1Env, d1ClearProspects, handleOptions, json } from '../../_lib/d1';
 
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-store',
-      'Access-Control-Allow-Origin': '*'
-    }
-  });
+export const onRequestOptions = async () => handleOptions();
 
-export const onRequestOptions = async () => {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
-  });
-};
+export const onRequestPost = async ({ request, env }: { request: Request; env: D1Env }) => {
+  if (!env.DB) {
+    return json({ success: true, deletedCount: 0, remainingCount: 0 });
+  }
 
-export const onRequestPost = async () => {
-  return json({ success: true, deletedCount: 0, remainingCount: 0 });
+  try {
+    const body: any = await request.json().catch(() => ({ cleanAll: true }));
+    const result = await d1ClearProspects(env.DB, body);
+    return json(result);
+  } catch (err: any) {
+    return json({ error: err?.message || 'Error clearing prospects' }, 500);
+  }
 };

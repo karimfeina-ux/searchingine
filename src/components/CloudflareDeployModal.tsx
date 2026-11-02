@@ -18,7 +18,8 @@ import {
   ArrowRight,
   FileCode,
   Layers,
-  Sparkles
+  Sparkles,
+  Database
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { pushToGitHub, testGitHubConnection, type DeployStepLog } from '../services/githubDeployer.ts';
@@ -499,6 +500,59 @@ export const CloudflareDeployModal: React.FC<CloudflareDeployModalProps> = ({
                   </div>
                   <p className="text-slate-400 text-[11px]">
                     Elimina la línea de <code className="text-red-400 bg-slate-800 px-1 py-0.5 rounded">"esbuild": "^0.25.0",</code> y haz clic en <strong>Commit changes</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Cross-Device Sync (Cloudflare D1 Database) */}
+            <div className="rounded-xl border border-indigo-500/30 bg-gradient-to-b from-indigo-950/20 to-slate-900/60 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  <Database className="h-3 w-3" />
+                  {lang === 'es' ? 'SINCRONIZACIÓN PC Y MÓVIL (Cloudflare D1)' : 'PC & MOBILE SYNC (Cloudflare D1)'}
+                </span>
+                <span className="text-xs text-emerald-400 font-medium">
+                  {lang === 'es' ? 'Plan Gratuito ($0)' : 'Free Tier ($0)'}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-white">
+                {lang === 'es' ? 'Sincronizar Estados y Contactados entre PC y Móvil' : 'Synchronize Statuses and Contacted between PC & Phone'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'es'
+                  ? 'Para que los clientes contactados y estados marcados en tu PC se vean automáticamente en tu móvil:'
+                  : 'To synchronize contacted clients and statuses between your PC and phone:'}
+              </p>
+              <div className="space-y-2 text-xs">
+                <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                  <p className="font-semibold text-slate-200">
+                    {lang === 'es' ? '1. Crea la base de datos en Cloudflare:' : '1. Create the database in Cloudflare:'}
+                  </p>
+                  <p className="text-slate-400 text-[11px]">
+                    {lang === 'es'
+                      ? 'Ve a Storage & Databases → D1 SQL Database → Create database → Nómbrala "leadhunter_db".'
+                      : 'Go to Storage & Databases → D1 SQL Database → Create database → Name it "leadhunter_db".'}
+                  </p>
+                </div>
+                <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                  <p className="font-semibold text-slate-200">
+                    {lang === 'es' ? '2. Ejecuta el archivo schema.sql:' : '2. Execute schema.sql:'}
+                  </p>
+                  <p className="text-slate-400 text-[11px]">
+                    {lang === 'es'
+                      ? 'En la pestaña "Console" de tu base de datos D1, pega el contenido de schema.sql y haz clic en Execute.'
+                      : 'In the Console tab of your D1 database, paste schema.sql contents and click Execute.'}
+                  </p>
+                </div>
+                <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                  <p className="font-semibold text-slate-200">
+                    {lang === 'es' ? '3. Vincula la base de datos a tu proyecto Pages:' : '3. Bind the database to your Pages project:'}
+                  </p>
+                  <p className="text-slate-400 text-[11px]">
+                    {lang === 'es'
+                      ? 'En tu proyecto Pages → Settings → Functions → D1 database bindings → Add binding: Nombre: "DB", Base de datos: "leadhunter_db". Guarda y listo.'
+                      : 'In your Pages project → Settings → Functions → D1 database bindings → Add binding: Name: "DB", Database: "leadhunter_db". Save and you are done.'}
                   </p>
                 </div>
               </div>

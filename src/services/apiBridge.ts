@@ -5,6 +5,7 @@ import {
   saveStoredProspects,
   clearStoredProspects,
   addExclusion,
+  getExcludedSets,
   computeStats,
   createClientBrief
 } from './clientDataEngine.ts';
@@ -149,11 +150,45 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
     });
   }
 
-  // 6b. Clear Prospects Collection to 0
+  // 6b. Prospects Batch Save / Upsert Fallback
+  if (path === '/api/prospects' && (method === 'POST' || method === 'PUT')) {
+    const existing = getStoredProspects();
+    const map = new Map<string, Prospect>();
+    for (const p of existing) map.set(p.id, p);
+
+    const itemsToSave: Prospect[] = Array.isArray(body)
+      ? body
+      : body.items && Array.isArray(body.items)
+      ? body.items
+      : body.id
+      ? [body]
+      : [];
+
+    for (const item of itemsToSave) {
+      map.set(item.id, { ...(map.get(item.id) || {}), ...item, updatedAt: new Date().toISOString() } as Prospect);
+    }
+    const merged = Array.from(map.values());
+    saveStoredProspects(merged);
+    return jsonResponse({ success: true, count: itemsToSave.length, total: merged.length });
+  }
+
+  // 6c. Clear Prospects Collection to 0
   if (path === '/api/prospects/clear' && method === 'POST') {
     const prev = getStoredProspects();
     const remaining = clearStoredProspects(body || { cleanAll: true });
     return jsonResponse({ success: true, remainingCount: remaining.length, deletedCount: prev.length - remaining.length });
+  }
+
+  // 6d. Exclusions fallback
+  if (path === '/api/exclusions') {
+    if (method === 'POST') {
+      if (body.name || body.phone) {
+        addExclusion(body.name, body.phone);
+      }
+      return jsonResponse({ success: true });
+    }
+    const { names, phones } = getExcludedSets();
+    return jsonResponse({ names: Array.from(names), phones: Array.from(phones) });
   }
 
   // 7. Individual Prospect actions

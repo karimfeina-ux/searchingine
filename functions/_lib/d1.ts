@@ -1,0 +1,419 @@
+// Cloudflare D1 Database Helper for LeadHunter AI
+// Serverless SQLite database client running at the Cloudflare edge
+
+export interface D1PreparedStatement {
+  bind(...values: any[]): D1PreparedStatement;
+  first<T = unknown>(colName?: string): Promise<T | null>;
+  run<T = unknown>(): Promise<{ success: boolean; meta: any; results?: T[] }>;
+  all<T = unknown>(): Promise<{ success: boolean; results: T[]; meta: any }>;
+}
+
+export interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<Array<{ success: boolean; results?: T[]; meta: any }>>;
+  exec(query: string): Promise<{ count: number; duration: number }>;
+}
+
+export interface D1Env {
+  DB?: D1Database;
+  ADMIN_EMAIL?: string;
+  ADMIN_PASSWORD?: string;
+  AUTH_SECRET?: string;
+  VITE_GOOGLE_MAPS_API_KEY?: string;
+  GOOGLE_MAPS_API_KEY?: string;
+}
+
+export const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Access-Control-Allow-Origin': '*'
+    }
+  });
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+};
+
+export const handleOptions = () => new Response(null, { headers: corsHeaders });
+
+let tablesInitialized = false;
+
+export async function ensureTables(db?: D1Database): Promise<boolean> {
+  if (!db) return false;
+  if (tablesInitialized) return true;
+
+  try {
+    await db.batch([
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS prospects (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          normalized_name TEXT,
+          city TEXT,
+          category TEXT,
+          phone TEXT,
+          status TEXT DEFAULT 'new',
+          website_status TEXT,
+          lead_score REAL DEFAULT 0,
+          is_contacted INTEGER DEFAULT 0,
+          is_clicked INTEGER DEFAULT 0,
+          is_starred INTEGER DEFAULT 0,
+          contacted_at TEXT,
+          notes TEXT,
+          data TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `),
+      db.prepare(`CREATE INDEX IF NOT EXISTS idx_prospects_status ON prospects (status)`),
+      db.prepare(`CREATE INDEX IF NOT EXISTS idx_prospects_contacted ON prospects (is_contacted)`),
+      db.prepare(`CREATE INDEX IF NOT EXISTS idx_prospects_updated ON prospects (updated_at)`),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS exclusions (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          value TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      `),
+      db.prepare(`CREATE INDEX IF NOT EXISTS idx_exclusions_type_val ON exclusions (type, value)`),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          data TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+    ]);
+    tablesInitialized = true;
+    return true;
+  } catch (err) {
+    console.error('D1 table initialization notice:', err);
+    return false;
+  }
+}
+
+export function normalizeBusinessName(name: string): string {
+  return (name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export async function d1GetProspects(
+  db: D1Database,
+  filters: {
+    status?: string | null;
+    websiteStatus?: string | null;
+    search?: string | null;
+    hideContacted?: boolean;
+    isContacted?: boolean;
+    limit?: number;
+  }
+) {
+  await ensureTables(db);
+  const rows = await db
+    .prepare('SELECT data FROM prospects ORDER BY updated_at DESC LIMIT ?')
+    .bind(filters.limit || 500)
+    .all<{ data: string }>();
+
+  let items = (rows.results || []).map((r) => {
+    try {
+      return JSON.parse(r.data);
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+
+  if (filters.hideContacted) {
+    items = items.filter((p: any) => !p.isContacted && p.status !== 'contacted');
+  }
+  if (filters.isContacted) {
+    items = items.filter((p: any) => p.isContacted || p.status === 'contacted');
+  }
+  if (filters.status) {
+    items = items.filter((p: any) => p.status === filters.status);
+  }
+  if (filters.websiteStatus) {
+    items = items.filter((p: any) => p.websiteStatus === filters.websiteStatus);
+  }
+  if (filters.search) {
+    const q = filters.search.toLowerCase();
+    items = items.filter(
+      (p: any) =>
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.category && p.category.toLowerCase().includes(q)) ||
+        (p.city && p.city.toLowerCase().includes(q))
+    );
+  }
+
+  return { items, total: items.length };
+}
+
+export async function d1GetProspectById(db: D1Database, id: string) {
+  await ensureTables(db);
+  const row = await db
+    .prepare('SELECT data FROM prospects WHERE id = ?')
+    .bind(id)
+    .first<{ data: string }>();
+
+  if (!row) return null;
+  try {
+    return JSON.parse(row.data);
+  } catch {
+    return null;
+  }
+}
+
+export async function d1UpsertProspect(db: D1Database, prospect: any) {
+  await ensureTables(db);
+  const now = new Date().toISOString();
+  const id = prospect.id;
+  const name = prospect.name || '';
+  const normName = prospect.normalizedName || normalizeBusinessName(name);
+  const city = prospect.city || '';
+  const category = prospect.category || '';
+  const phone = prospect.phone || '';
+  const status = prospect.status || 'new';
+  const websiteStatus = prospect.websiteStatus || 'no_website';
+  const leadScore = Number(prospect.leadScore || 0);
+  const isContacted = prospect.isContacted || status === 'contacted' ? 1 : 0;
+  const isClicked = prospect.isClicked ? 1 : 0;
+  const isStarred = prospect.isStarred ? 1 : 0;
+  const contactedAt = prospect.contactedAt || null;
+  const notes = prospect.notes || null;
+  const updatedAt = prospect.updatedAt || now;
+  prospect.updatedAt = updatedAt;
+
+  const data = JSON.stringify(prospect);
+
+  await db
+    .prepare(`
+      INSERT INTO prospects (
+        id, name, normalized_name, city, category, phone, status, website_status,
+        lead_score, is_contacted, is_clicked, is_starred, contacted_at, notes, data, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        normalized_name = excluded.normalized_name,
+        city = excluded.city,
+        category = excluded.category,
+        phone = excluded.phone,
+        status = excluded.status,
+        website_status = excluded.website_status,
+        lead_score = excluded.lead_score,
+        is_contacted = excluded.is_contacted,
+        is_clicked = excluded.is_clicked,
+        is_starred = excluded.is_starred,
+        contacted_at = excluded.contacted_at,
+        notes = excluded.notes,
+        data = excluded.data,
+        updated_at = excluded.updated_at
+    `)
+    .bind(
+      id, name, normName, city, category, phone, status, websiteStatus,
+      leadScore, isContacted, isClicked, isStarred, contactedAt, notes, data, updatedAt
+    )
+    .run();
+
+  return prospect;
+}
+
+export async function d1UpsertBatch(db: D1Database, prospects: any[]) {
+  if (!prospects || prospects.length === 0) return { count: 0 };
+  await ensureTables(db);
+  const now = new Date().toISOString();
+
+  // D1 batches up to 100 statements
+  const chunkSize = 80;
+  let totalSaved = 0;
+
+  for (let i = 0; i < prospects.length; i += chunkSize) {
+    const chunk = prospects.slice(i, i + chunkSize);
+    const stmts = chunk.map((p) => {
+      const id = p.id;
+      const name = p.name || '';
+      const normName = p.normalizedName || normalizeBusinessName(name);
+      const city = p.city || '';
+      const category = p.category || '';
+      const phone = p.phone || '';
+      const status = p.status || 'new';
+      const websiteStatus = p.websiteStatus || 'no_website';
+      const leadScore = Number(p.leadScore || 0);
+      const isContacted = p.isContacted || status === 'contacted' ? 1 : 0;
+      const isClicked = p.isClicked ? 1 : 0;
+      const isStarred = p.isStarred ? 1 : 0;
+      const contactedAt = p.contactedAt || null;
+      const notes = p.notes || null;
+      const updatedAt = p.updatedAt || now;
+      p.updatedAt = updatedAt;
+      const data = JSON.stringify(p);
+
+      return db
+        .prepare(`
+          INSERT INTO prospects (
+            id, name, normalized_name, city, category, phone, status, website_status,
+            lead_score, is_contacted, is_clicked, is_starred, contacted_at, notes, data, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            normalized_name = excluded.normalized_name,
+            city = excluded.city,
+            category = excluded.category,
+            phone = excluded.phone,
+            status = excluded.status,
+            website_status = excluded.website_status,
+            lead_score = excluded.lead_score,
+            is_contacted = excluded.is_contacted,
+            is_clicked = excluded.is_clicked,
+            is_starred = excluded.is_starred,
+            contacted_at = excluded.contacted_at,
+            notes = excluded.notes,
+            data = excluded.data,
+            updated_at = excluded.updated_at
+        `)
+        .bind(
+          id, name, normName, city, category, phone, status, websiteStatus,
+          leadScore, isContacted, isClicked, isStarred, contactedAt, notes, data, updatedAt
+        );
+    });
+
+    await db.batch(stmts);
+    totalSaved += chunk.length;
+  }
+
+  return { count: totalSaved };
+}
+
+export async function d1DeleteProspect(db: D1Database, id: string) {
+  await ensureTables(db);
+  const target = await d1GetProspectById(db, id);
+  if (target) {
+    await d1AddExclusion(db, target.name, target.phone);
+  }
+  await db.prepare('DELETE FROM prospects WHERE id = ?').bind(id).run();
+  return { success: true, deletedId: id, target };
+}
+
+export async function d1ClearProspects(db: D1Database, options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { cleanAll: true }) {
+  await ensureTables(db);
+  if (options.cleanAll) {
+    const res = await db.prepare('DELETE FROM prospects').run();
+    return { success: true, remainingCount: 0, deletedCount: (res.meta as any)?.changes || 0 };
+  }
+
+  let deleteQuery = 'DELETE FROM prospects WHERE 1=1';
+  if (options.keepContacted) {
+    deleteQuery += " AND is_contacted = 0 AND status != 'contacted'";
+  }
+  if (options.keepStarred) {
+    deleteQuery += ' AND is_starred = 0';
+  }
+
+  const res = await db.prepare(deleteQuery).run();
+  const remaining = await db.prepare('SELECT COUNT(*) as count FROM prospects').first<{ count: number }>();
+  return { success: true, remainingCount: remaining?.count || 0, deletedCount: (res.meta as any)?.changes || 0 };
+}
+
+export async function d1AddExclusion(db: D1Database, name?: string, phone?: string) {
+  await ensureTables(db);
+  const now = new Date().toISOString();
+  const stmts: D1PreparedStatement[] = [];
+
+  if (name) {
+    const norm = normalizeBusinessName(name);
+    if (norm) {
+      const id = `ex_name_${norm.slice(0, 40).replace(/\s+/g, '_')}`;
+      stmts.push(
+        db.prepare('INSERT OR IGNORE INTO exclusions (id, type, value, created_at) VALUES (?, ?, ?, ?)').bind(id, 'name', norm, now)
+      );
+    }
+  }
+
+  if (phone) {
+    const clean = phone.replace(/\D/g, '');
+    if (clean.length >= 6) {
+      const id = `ex_phone_${clean}`;
+      stmts.push(
+        db.prepare('INSERT OR IGNORE INTO exclusions (id, type, value, created_at) VALUES (?, ?, ?, ?)').bind(id, 'phone', clean, now)
+      );
+    }
+  }
+
+  if (stmts.length > 0) {
+    await db.batch(stmts);
+  }
+}
+
+export async function d1GetExclusions(db: D1Database): Promise<{ names: string[]; phones: string[] }> {
+  await ensureTables(db);
+  const rows = await db.prepare('SELECT type, value FROM exclusions').all<{ type: string; value: string }>();
+  const names: string[] = [];
+  const phones: string[] = [];
+  for (const r of rows.results || []) {
+    if (r.type === 'name') names.push(r.value);
+    if (r.type === 'phone') phones.push(r.value);
+  }
+  return { names, phones };
+}
+
+export async function d1GetSettings(db: D1Database) {
+  await ensureTables(db);
+  const row = await db.prepare("SELECT data FROM settings WHERE key = 'default'").first<{ data: string }>();
+  if (!row) return null;
+  try {
+    return JSON.parse(row.data);
+  } catch {
+    return null;
+  }
+}
+
+export async function d1SaveSettings(db: D1Database, updated: any) {
+  await ensureTables(db);
+  const current = (await d1GetSettings(db)) || {};
+  const merged = { ...current, ...updated, updatedAt: new Date().toISOString() };
+  await db
+    .prepare("INSERT INTO settings (key, data, updated_at) VALUES ('default', ?, ?) ON CONFLICT(key) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at")
+    .bind(JSON.stringify(merged), merged.updatedAt)
+    .run();
+  return merged;
+}
+
+export async function d1ComputeStats(db: D1Database) {
+  await ensureTables(db);
+  const rows = await db.prepare('SELECT data FROM prospects').all<{ data: string }>();
+  const prospects = (rows.results || []).map((r) => {
+    try {
+      return JSON.parse(r.data);
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+
+  const totalLeads = prospects.length;
+  const noWebsiteCount = prospects.filter((p: any) => p.websiteStatus === 'no_website' || p.websiteStatus === 'possibly_no_website').length;
+  const highPriorityCount = prospects.filter((p: any) => p.status === 'high_priority' || (p.leadScore || 0) >= 80).length;
+  const readyToContactCount = prospects.filter((p: any) => p.status === 'ready_to_contact').length;
+  const clickedCount = prospects.filter((p: any) => p.isClicked).length;
+  const contactedCount = prospects.filter((p: any) => p.isContacted || p.status === 'contacted' || p.status === 'waiting' || p.status === 'client_signed').length;
+  const clientsWonCount = prospects.filter((p: any) => p.status === 'client_signed').length;
+  const avgScore = totalLeads > 0 ? Math.round((prospects.reduce((acc: number, p: any) => acc + (p.leadScore || 0), 0) / totalLeads) * 10) / 10 : 0;
+
+  return {
+    totalLeads,
+    noWebsiteCount,
+    highPriorityCount,
+    readyToContactCount,
+    clickedCount,
+    contactedCount,
+    clientsWonCount,
+    avgScore
+  };
+}

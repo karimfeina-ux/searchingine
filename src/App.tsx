@@ -21,7 +21,7 @@ import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
 import { GoogleMapsProspectsView } from './components/GoogleMapsProspectsView.tsx';
 import { ContactedListView } from './components/ContactedListView.tsx';
 import { apiFetch } from './services/apiBridge.ts';
-import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets } from './services/clientDataEngine.ts';
+import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets, backupLocalData } from './services/clientDataEngine.ts';
 import { Loader2, AlertCircle, X, Compass, Database, CheckCircle2, Settings } from 'lucide-react';
 
 export default function App() {
@@ -136,9 +136,25 @@ export default function App() {
       if (statsRes) {
         setStats(statsRes);
       }
-      if (prospectsRes?.items && prospectsRes.items.length > 0) {
-        setProspects(prospectsRes.items);
-        saveStoredProspects(prospectsRes.items);
+      if (prospectsRes?.items) {
+        if (prospectsRes.items.length > 0) {
+          setProspects(prospectsRes.items);
+          saveStoredProspects(prospectsRes.items);
+        } else {
+          // If cloud has 0 records, check if this device has existing records to migrate safely!
+          const localItems = getStoredProspects();
+          if (localItems.length > 0) {
+            backupLocalData();
+            apiFetch('/api/prospects', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: localItems })
+            }).catch(() => {});
+            setProspects(localItems);
+          } else {
+            setProspects([]);
+          }
+        }
       }
       if (schedRes) setSchedulerStatus(schedRes);
       if (jobsRes) setJobs(jobsRes);
@@ -220,6 +236,13 @@ export default function App() {
             return merged;
           });
           setStats((prev) => computeStats(validItems.concat(prospects)));
+          if (validItems.length > 0) {
+            await apiFetch('/api/prospects', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: validItems })
+            }).catch(() => {});
+          }
         } else if (data && data.total === 0) {
           setActionError(
             lang === 'es'
@@ -288,6 +311,13 @@ export default function App() {
           return merged;
         });
         setStats((prev) => computeStats(validItems.concat(prospects)));
+        if (validItems.length > 0) {
+          await apiFetch('/api/prospects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: validItems })
+          }).catch(() => {});
+        }
         await loadData();
         setCurrentTab('dashboard');
       } else if (data && data.total === 0) {

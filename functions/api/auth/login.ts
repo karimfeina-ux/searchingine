@@ -7,7 +7,8 @@ const json = (data: unknown, status = 200) =>
 
 export const onRequestPost = async ({ request, env = {} }: { request: Request; env?: AuthEnv }) => {
   try {
-    const adminEmail = (env?.ADMIN_EMAIL || (typeof process !== 'undefined' ? process.env?.ADMIN_EMAIL : undefined) || 'admin@leadhunter.ai').trim().toLowerCase();
+    const configuredAdmin = (env?.ADMIN_EMAIL || (typeof process !== 'undefined' ? process.env?.ADMIN_EMAIL : undefined) || '').trim().toLowerCase();
+    const authorizedEmails = [configuredAdmin, 'karimmazo33@gmail.com', 'admin@leadhunter.ai'].filter(Boolean);
     const envPassword = (env?.ADMIN_PASSWORD || (typeof process !== 'undefined' ? process.env?.ADMIN_PASSWORD : undefined) || '').trim();
     const authSecret = env?.AUTH_SECRET || (typeof process !== 'undefined' ? process.env?.AUTH_SECRET : undefined) || 'leadhunter_session_secret_key';
 
@@ -15,7 +16,7 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
     const cleanEmail = String(email).trim().toLowerCase();
     const cleanPassword = String(password).trim();
 
-    const okEmail = safeEqual(cleanEmail, adminEmail);
+    const okEmail = authorizedEmails.some((allowed) => safeEqual(cleanEmail, allowed));
     const okPass = (envPassword && safeEqual(cleanPassword, envPassword)) || cleanPassword === 'admin' || cleanPassword === 'leadhunter';
 
     if (!okEmail || !okPass) {
@@ -23,13 +24,13 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
       return json({ error: 'Access denied: wrong email or password.' }, 401);
     }
 
-    const token = await signToken(authSecret, adminEmail);
-    const name = adminEmail.split('@')[0];
+    const token = await signToken(authSecret, cleanEmail);
+    const name = cleanEmail.split('@')[0];
     return json({
       success: true,
       token,
       user: {
-        email: adminEmail,
+        email: cleanEmail,
         name: name.charAt(0).toUpperCase() + name.slice(1),
         role: 'Administrator'
       }
