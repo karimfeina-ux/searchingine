@@ -88,8 +88,42 @@ export default function App() {
 
   // UI state
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
-  const [searchLocation, setSearchLocation] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchLocation, setSearchLocationState] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem('leadhunter_search_location') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [searchQuery, setSearchQueryState] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem('leadhunter_search_query') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const setSearchLocation = useCallback((val: string) => {
+    setSearchLocationState(val);
+    try {
+      if (val) {
+        sessionStorage.setItem('leadhunter_search_location', val);
+      } else {
+        sessionStorage.removeItem('leadhunter_search_location');
+      }
+    } catch {}
+  }, []);
+
+  const setSearchQuery = useCallback((val: string) => {
+    setSearchQueryState(val);
+    try {
+      if (val) {
+        sessionStorage.setItem('leadhunter_search_query', val);
+      } else {
+        sessionStorage.removeItem('leadhunter_search_query');
+      }
+    } catch {}
+  }, []);
   const [lang, setLang] = useState<'en' | 'es'>('en');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
@@ -165,13 +199,32 @@ export default function App() {
               } else {
                 const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
                 const localTime = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+
+                const isLocalContacted = Boolean(
+                  p.isContacted ||
+                  (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested'].includes(p.status))
+                );
+                const isRemoteContacted = Boolean(
+                  remote.isContacted ||
+                  (remote.status && ['contacted', 'waiting', 'client_signed', 'not_interested'].includes(remote.status))
+                );
+
+                let mergedProspect = localTime > remoteTime ? { ...remote, ...p } : { ...p, ...remote };
+
+                // Contact state is permanent across devices and must NEVER be reverted to uncontacted
+                if (isLocalContacted || isRemoteContacted) {
+                  mergedProspect.isContacted = true;
+                  mergedProspect.status = (isRemoteContacted ? remote.status : p.status) || 'contacted';
+                  mergedProspect.notes = remote.notes || p.notes;
+                  mergedProspect.contactedAt = remote.contactedAt || p.contactedAt || new Date().toISOString();
+                  if (!isRemoteContacted && isLocalContacted) {
+                    unsynced.push(mergedProspect);
+                  }
+                }
+
+                map.set(p.id, mergedProspect);
                 if (localTime > remoteTime) {
-                  // Local client was edited more recently: keep local edit and queue to sync to server
-                  map.set(p.id, p);
-                  unsynced.push(p);
-                } else {
-                  // Remote is newer or equal: use remote data
-                  map.set(p.id, remote);
+                  unsynced.push(mergedProspect);
                 }
               }
             }
@@ -386,9 +439,11 @@ export default function App() {
             return true;
           });
 
+          const itemsToUse = validItems.length > 0 ? validItems : data.items;
+
           setProspects((prev) => {
             const map = new Map<string, Prospect>();
-            for (const item of validItems) {
+            for (const item of itemsToUse) {
               map.set(item.id, item);
             }
             for (const p of prev) {
@@ -400,12 +455,12 @@ export default function App() {
             saveStoredProspects(merged);
             return merged;
           });
-          setStats((prev) => computeStats(validItems.concat(prospects)));
-          if (validItems.length > 0) {
+          setStats((prev) => computeStats(itemsToUse.concat(prospects)));
+          if (itemsToUse.length > 0) {
             await apiFetch('/api/prospects', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: validItems })
+              body: JSON.stringify({ items: itemsToUse })
             }).catch(() => {});
           }
         } else if (data && data.total === 0) {
@@ -463,9 +518,11 @@ export default function App() {
           return true;
         });
 
+        const itemsToUse = validItems.length > 0 ? validItems : data.items;
+
         setProspects((prev) => {
           const map = new Map<string, Prospect>();
-          for (const item of validItems) {
+          for (const item of itemsToUse) {
             map.set(item.id, item);
           }
           for (const p of prev) {
@@ -477,12 +534,12 @@ export default function App() {
           saveStoredProspects(merged);
           return merged;
         });
-        setStats((prev) => computeStats(validItems.concat(prospects)));
-        if (validItems.length > 0) {
+        setStats((prev) => computeStats(itemsToUse.concat(prospects)));
+        if (itemsToUse.length > 0) {
           await apiFetch('/api/prospects', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: validItems })
+            body: JSON.stringify({ items: itemsToUse })
           }).catch(() => {});
         }
         await loadData();

@@ -26,13 +26,10 @@ export interface SyncMessage {
 
 type SyncListener = (msg: SyncMessage) => void;
 
-export const SYNC_REMOTE_ORIGIN = 'https://searchingine.pages.dev';
+export const SYNC_REMOTE_ORIGIN = '';
 
 export function getSyncApiUrl(): string {
-  if (typeof window !== 'undefined' && window.location.hostname.includes('searchingine.pages.dev')) {
-    return '/api/prospects';
-  }
-  return `${SYNC_REMOTE_ORIGIN}/api/prospects`;
+  return '/api/prospects';
 }
 
 class LiveSyncEngine {
@@ -140,11 +137,32 @@ class LiveSyncEngine {
               const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
               const localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
 
-              if (remoteTime > localTime) {
-                map.set(remote.id, remote);
+              const isLocalContacted = Boolean(
+                local.isContacted ||
+                (local.status && ['contacted', 'waiting', 'client_signed', 'not_interested'].includes(local.status))
+              );
+              const isRemoteContacted = Boolean(
+                remote.isContacted ||
+                (remote.status && ['contacted', 'waiting', 'client_signed', 'not_interested'].includes(remote.status))
+              );
+
+              let merged = remoteTime > localTime ? { ...local, ...remote } : { ...remote, ...local };
+
+              if (isLocalContacted || isRemoteContacted) {
+                merged.isContacted = true;
+                merged.status = (isRemoteContacted ? remote.status : local.status) || 'contacted';
+                merged.notes = remote.notes || local.notes;
+                merged.contactedAt = remote.contactedAt || local.contactedAt || new Date().toISOString();
+                if (!isRemoteContacted && isLocalContacted) {
+                  itemsToPushUp.push(merged);
+                }
+              }
+
+              map.set(remote.id, merged);
+              if (remoteTime > localTime || (isLocalContacted && !isRemoteContacted)) {
                 hasChanges = true;
               } else if (localTime > remoteTime) {
-                itemsToPushUp.push(local);
+                itemsToPushUp.push(merged);
               }
             }
           }

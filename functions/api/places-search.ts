@@ -4,7 +4,12 @@
 import { AuthEnv, verifyToken } from '../_lib/auth';
 
 const UA = 'searchingine-lead-finder/1.0 (contact: owner of this site)';
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter'
+];
 
 // keyword (Spanish/English) -> OSM tag filters
 const CATEGORIES: { words: string[]; tags: string[] }[] = [
@@ -54,7 +59,7 @@ async function overpass(ql: string): Promise<any> {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA },
         body: 'data=' + encodeURIComponent(ql),
-        signal: AbortSignal.timeout(3500)
+        signal: AbortSignal.timeout(9000)
       });
       if (res.ok) return await res.json();
       lastErr = `${url} -> ${res.status}`;

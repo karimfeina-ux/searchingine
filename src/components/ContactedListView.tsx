@@ -55,8 +55,7 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
 
   // Filter only prospects that have been contacted or progressed
   const contactedPool = prospects.filter((p) => {
-    if (!isQualifiedProspect(p)) return false;
-    return (
+    return Boolean(
       p.isContacted ||
       p.status === 'contacted' ||
       p.status === 'waiting' ||

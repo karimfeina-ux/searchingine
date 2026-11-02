@@ -178,45 +178,56 @@ router.post('/search/google-maps', async (req, res) => {
     const { query, location, onlyNoWebsite, minRating, minReviews, pageSize } = req.body || {};
     const { searchGoogleMapsBusinesses, getGoogleMapsApiKey } = await import('./googleMapsService.ts');
     
-    if (!getGoogleMapsApiKey()) {
-      return res.status(400).json({ error: 'Google Maps API key is not configured.' });
+    let results: any = null;
+    try {
+      results = await searchGoogleMapsBusinesses({
+        query: (query || 'barbershop').trim(),
+        location: (location || 'Madrid, Spain').trim(),
+        onlyNoWebsite: Boolean(onlyNoWebsite),
+        minRating: minRating ? Number(minRating) : undefined,
+        minReviews: minReviews ? Number(minReviews) : undefined,
+        pageSize: pageSize ? Number(pageSize) : 20
+      });
+    } catch (gmpErr: any) {
+      console.warn('Google Maps search notice, trying deep-prospect fallback:', gmpErr?.message);
     }
 
-    const results = await searchGoogleMapsBusinesses({
-      query: (query || 'barbershop').trim(),
-      location: (location || 'Madrid, Spain').trim(),
-      onlyNoWebsite: Boolean(onlyNoWebsite),
-      minRating: minRating ? Number(minRating) : undefined,
-      minReviews: minReviews ? Number(minReviews) : undefined,
-      pageSize: pageSize ? Number(pageSize) : 20
-    });
+    if (!results || !Array.isArray(results.items) || results.items.length === 0) {
+      const { deepSearchProspects } = await import('./researchEngine.ts');
+      results = await deepSearchProspects({
+        query: (query || '').trim(),
+        location: (location || '').trim()
+      });
+    }
 
     const settings = getSettings();
-    for (const prospect of results.items) {
-      try {
-        const brief = buildProgrammaticBrief(prospect, settings);
-        saveWebsiteBrief(brief);
-        prospect.brief = brief;
-      } catch {}
+    if (results && Array.isArray(results.items)) {
+      for (const prospect of results.items) {
+        try {
+          const brief = buildProgrammaticBrief(prospect, settings);
+          saveWebsiteBrief(brief);
+          prospect.brief = brief;
+        } catch {}
 
-      if (prospect.verifications && prospect.verifications.length > 0) {
-        for (const v of prospect.verifications) {
-          saveVerification(v);
+        if (prospect.verifications && prospect.verifications.length > 0) {
+          for (const v of prospect.verifications) {
+            saveVerification(v);
+          }
         }
+        saveProspect(prospect);
       }
-      saveProspect(prospect);
-    }
 
-    if (results?.items?.length) {
-      broadcastSync('prospects_batch', { count: results.items.length });
+      if (results.items.length) {
+        broadcastSync('prospects_batch', { count: results.items.length });
+      }
     }
 
     res.json({
-      ...results,
+      ...(results || { items: [], total: 0 }),
       gmpAttribution: 'Google Maps'
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Google Maps search failed.' });
+    res.status(500).json({ error: err.message || 'Business search failed.' });
   }
 });
 

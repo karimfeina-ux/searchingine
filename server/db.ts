@@ -132,6 +132,14 @@ export const updateSettings = (partial: Partial<AppSettings>): AppSettings => {
 
 export const isQualifiedProspect = (p: Prospect): boolean => {
   if (!p) return false;
+  // Contacted clients and leads with any contact state must NEVER be disqualified or discarded
+  const isContactedLead = Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested'].includes(p.status))
+  );
+  if (isContactedLead) {
+    return true;
+  }
   if ((p as any).hasWebsite) return false;
   if (p.websiteStatus && ['website_exists', 'website_broken', 'website_outdated'].includes(p.websiteStatus)) {
     return false;
@@ -148,10 +156,13 @@ export const isQualifiedProspect = (p: Prospect): boolean => {
       lower.includes('taplink.cc');
     if (!isSocialOnly) return false;
   }
-  const photoCount = typeof p.photoCount === 'number'
-    ? p.photoCount
-    : (Array.isArray(p.photos) ? p.photos.length : 0);
-  if (photoCount < 2) return false;
+  // For Google Maps places with photo tracking, require at least 2 pictures
+  if (p.id.startsWith('gmp_') && (typeof p.photoCount === 'number' || Array.isArray(p.photos))) {
+    const photoCount = typeof p.photoCount === 'number'
+      ? p.photoCount
+      : (Array.isArray(p.photos) ? p.photos.length : 0);
+    if (photoCount < 2) return false;
+  }
   return true;
 };
 

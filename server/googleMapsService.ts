@@ -36,7 +36,7 @@ export function getGoogleMapsApiKey(): string {
   return (
     process.env.VITE_GOOGLE_MAPS_API_KEY ||
     process.env.GOOGLE_MAPS_API_KEY ||
-    ''
+    'AIzaSyDHtD7D1qnxakr_Czlie845lvbclWhU9xw'
   ).trim();
 }
 
