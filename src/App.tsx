@@ -122,7 +122,7 @@ export default function App() {
       const [settingsRes, statsRes, prospectsRes, schedRes, jobsRes, provRes] = await Promise.all([
         fetchEndpoint('/api/settings'),
         fetchEndpoint('/api/stats'),
-        fetchEndpoint('/api/prospects?limit=100'),
+        fetchEndpoint('/api/prospects?limit=1000'),
         fetchEndpoint('/api/scheduler/status'),
         fetchEndpoint('/api/jobs'),
         fetchEndpoint('/api/providers/status')
@@ -138,10 +138,32 @@ export default function App() {
       }
       if (prospectsRes?.items) {
         if (prospectsRes.items.length > 0) {
-          setProspects(prospectsRes.items);
-          saveStoredProspects(prospectsRes.items);
+          // Merge server prospects with any local prospects that might not be on the server yet
+          setProspects((prev) => {
+            const map = new Map<string, Prospect>();
+            for (const p of prospectsRes.items) {
+              map.set(p.id, p);
+            }
+            const unsynced: Prospect[] = [];
+            for (const p of prev) {
+              if (!map.has(p.id)) {
+                map.set(p.id, p);
+                unsynced.push(p);
+              }
+            }
+            if (unsynced.length > 0) {
+              apiFetch('/api/prospects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: unsynced })
+              }).catch(() => {});
+            }
+            const merged = Array.from(map.values());
+            saveStoredProspects(merged);
+            return merged;
+          });
         } else {
-          // If cloud has 0 records, check if this device has existing records to migrate safely!
+          // If server has 0 records, check if this device has existing records to migrate safely!
           const localItems = getStoredProspects();
           if (localItems.length > 0) {
             backupLocalData();
@@ -167,12 +189,35 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (adminUser) {
-      loadData();
-    } else {
+    if (!adminUser) {
       setIsLoadingInitial(false);
+      return;
     }
-  }, [adminUser, loadData]);
+
+    loadData();
+
+    // Auto-sync when the user switches tabs or unlocks/opens the website on their mobile phone
+    const handleSyncOnVisible = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    };
+    window.addEventListener('visibilitychange', handleSyncOnVisible);
+    window.addEventListener('focus', handleSyncOnVisible);
+
+    // Active polling interval every 8 seconds to synchronize changes between PC and mobile seamlessly
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && !isResearchRunning) {
+        loadData();
+      }
+    }, 8000);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleSyncOnVisible);
+      window.removeEventListener('focus', handleSyncOnVisible);
+      clearInterval(interval);
+    };
+  }, [adminUser, isResearchRunning, loadData]);
 
   // Keyboard shortcut listener (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -394,7 +439,11 @@ export default function App() {
   const handleSelectProspectById = async (prospect: Prospect) => {
     try {
       // Mark as clicked in the background
-      apiFetch(`/api/prospects/${prospect.id}/click`, { method: 'POST' }).catch(() => {});
+      apiFetch(`/api/prospects/${prospect.id}/click`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prospect })
+      }).catch(() => {});
       setProspects((prev) =>
         prev.map((p) => (p.id === prospect.id ? { ...p, isClicked: true, clickedAt: new Date().toISOString() } : p))
       );
@@ -417,7 +466,11 @@ export default function App() {
       apiFetch(`/api/prospects/${id}/not-interested`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: 'Not interested (Deleted from research)' })
+        body: JSON.stringify({
+          reason: 'Not interested (Deleted from research)',
+          name: targetProspect?.name,
+          phone: targetProspect?.phone
+        })
       }).catch(() => {});
       deleteProspectClient(id);
       setProspects((prev) => {
@@ -448,7 +501,7 @@ export default function App() {
       const res = await apiFetch(`/api/prospects/${id}/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes, status })
+        body: JSON.stringify({ notes, status, prospect: targetProspect })
       });
       if (res.ok) {
         const updated = await res.json();
@@ -489,7 +542,7 @@ export default function App() {
       const res = await apiFetch(`/api/prospects/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, notes })
+        body: JSON.stringify({ status, notes, prospect: targetProspect })
       });
       if (res.ok) {
         const isContactedLead = ['contacted', 'waiting', 'client_signed'].includes(status);

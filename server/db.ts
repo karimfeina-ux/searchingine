@@ -347,6 +347,15 @@ export const getExcludedBusinessNamesAndPhones = (): { names: Set<string>; phone
   return { names, phones };
 };
 
+export const addBannedNameAndPhone = (name?: string, phone?: string): void => {
+  if (name) store.bannedNames.push(name.toLowerCase().trim());
+  if (phone) {
+    const clean = phone.replace(/\D/g, '');
+    if (clean.length >= 6) store.bannedPhones.push(clean);
+  }
+  persistStore();
+};
+
 export const toggleProspectStar = (id: string): boolean => {
   const p = store.prospects[id];
   if (!p) return false;

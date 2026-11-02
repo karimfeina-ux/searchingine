@@ -21,7 +21,9 @@ import {
   saveWebsiteBrief,
   toggleProspectStar,
   updateProspectStatus,
-  updateSettings
+  updateSettings,
+  getExcludedBusinessNamesAndPhones,
+  addBannedNameAndPhone
 } from './db.ts';
 import { getSchedulerStatus, setupCronSchedule, toggleScheduler, triggerRunNow } from './scheduler.ts';
 import { verifyBusinessWebsite } from './verificationEngine.ts';
@@ -187,7 +189,7 @@ router.get('/prospects', (req, res) => {
       isContacted,
       hideContacted,
       hideClicked,
-      limit = '100',
+      limit = '1000',
       offset = '0'
     } = req.query;
 
@@ -209,6 +211,75 @@ router.get('/prospects', (req, res) => {
   }
 });
 
+// Save or Batch Upsert Prospects (Cross-Device Cloud Sync)
+router.post('/prospects', (req, res) => {
+  try {
+    const body = req.body || {};
+    const items = Array.isArray(body)
+      ? body
+      : body.items && Array.isArray(body.items)
+      ? body.items
+      : body.id
+      ? [body]
+      : [];
+
+    let count = 0;
+    for (const item of items) {
+      if (item && item.id) {
+        saveProspect(item);
+        count++;
+      }
+    }
+    res.json({ success: true, count, total: Object.keys(getProspects({ limit: 10000 }).items).length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/prospects', (req, res) => {
+  try {
+    const body = req.body || {};
+    const items = Array.isArray(body)
+      ? body
+      : body.items && Array.isArray(body.items)
+      ? body.items
+      : body.id
+      ? [body]
+      : [];
+
+    let count = 0;
+    for (const item of items) {
+      if (item && item.id) {
+        saveProspect(item);
+        count++;
+      }
+    }
+    res.json({ success: true, count });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Exclusions Sync
+router.get('/exclusions', (_req, res) => {
+  try {
+    const { names, phones } = getExcludedBusinessNamesAndPhones();
+    res.json({ names: Array.from(names), phones: Array.from(phones) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/exclusions', (req, res) => {
+  try {
+    const { name, phone } = req.body || {};
+    addBannedNameAndPhone(name, phone);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/prospects/:id', (req, res) => {
   try {
     const prospect = getProspectById(req.params.id);
@@ -223,10 +294,17 @@ router.get('/prospects/:id', (req, res) => {
 
 router.put('/prospects/:id/status', (req, res) => {
   try {
-    const { status, notes } = req.body;
+    const { status, notes, prospect: prospectData } = req.body || {};
+    if (!getProspectById(req.params.id) && prospectData) {
+      saveProspect({ ...prospectData, id: req.params.id, status, notes });
+    }
     updateProspectStatus(req.params.id, status, notes);
-    const updated = getProspectById(req.params.id);
-    res.json(updated);
+    let updated = getProspectById(req.params.id);
+    if (!updated && prospectData) {
+      saveProspect({ ...prospectData, id: req.params.id, status, notes });
+      updated = getProspectById(req.params.id);
+    }
+    res.json(updated || { id: req.params.id, status, notes });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -243,11 +321,12 @@ router.post('/prospects/:id/star', (req, res) => {
 
 router.post('/prospects/:id/click', (req, res) => {
   try {
-    const updated = markProspectClicked(req.params.id);
-    if (!updated) {
-      return res.status(404).json({ error: 'Prospect not found' });
+    const { prospect: prospectData } = req.body || {};
+    if (!getProspectById(req.params.id) && prospectData) {
+      saveProspect(prospectData);
     }
-    res.json(updated);
+    const updated = markProspectClicked(req.params.id);
+    res.json(updated || { id: req.params.id, isClicked: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -255,12 +334,12 @@ router.post('/prospects/:id/click', (req, res) => {
 
 router.post('/prospects/:id/contact', (req, res) => {
   try {
-    const { notes } = req.body || {};
-    const updated = markProspectContacted(req.params.id, notes);
-    if (!updated) {
-      return res.status(404).json({ error: 'Prospect not found' });
+    const { notes, status, prospect: prospectData } = req.body || {};
+    if (!getProspectById(req.params.id) && prospectData) {
+      saveProspect({ ...prospectData, id: req.params.id, status: status || 'contacted', isContacted: true, notes });
     }
-    res.json(updated);
+    const updated = markProspectContacted(req.params.id, notes, status);
+    res.json(updated || { id: req.params.id, status: status || 'contacted', isContacted: true, notes });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
