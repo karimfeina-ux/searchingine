@@ -3,15 +3,11 @@ import { D1Env, d1AddExclusion, d1GetProspectById, d1UpsertProspect, handleOptio
 
 export const onRequestOptions = async () => handleOptions();
 
-export const onRequestPost = async ({ params, request, env }: { params: { id: string }; request: Request; env: D1Env }) => {
+export const onRequestPost = async ({ params, request, env = {} }: { params: { id: string }; request: Request; env?: D1Env }) => {
   try {
     const body: any = await request.json().catch(() => ({}));
     const now = new Date().toISOString();
-    let prospect: any = null;
-
-    if (env.DB) {
-      prospect = await d1GetProspectById(env.DB, params.id);
-    }
+    let prospect: any = await d1GetProspectById(env?.DB, params.id);
 
     if (!prospect && body.prospect) {
       prospect = { ...body.prospect, id: params.id };
@@ -40,13 +36,9 @@ export const onRequestPost = async ({ params, request, env }: { params: { id: st
     }
     prospect.updatedAt = now;
 
-    if (env.DB) {
-      await d1AddExclusion(env.DB, prospect.name, prospect.phone);
-      const saved = await d1UpsertProspect(env.DB, prospect);
-      return json(saved);
-    }
-
-    return json({ ...prospect, d1Configured: false });
+    await d1AddExclusion(env?.DB, prospect.name, prospect.phone);
+    const saved = await d1UpsertProspect(env?.DB, prospect);
+    return json(saved);
   } catch (err: any) {
     return json({ error: err?.message || 'Error marking prospect as contacted' }, 500);
   }

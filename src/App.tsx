@@ -23,6 +23,7 @@ import { GoogleMapsProspectsView } from './components/GoogleMapsProspectsView.ts
 import { ContactedListView } from './components/ContactedListView.tsx';
 import { apiFetch } from './services/apiBridge.ts';
 import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets, backupLocalData } from './services/clientDataEngine.ts';
+import { liveSync, type SyncMessage } from './services/liveSync.ts';
 import { Loader2, AlertCircle, X, Compass, Database, CheckCircle2, Settings } from 'lucide-react';
 
 export default function App() {
@@ -98,6 +99,9 @@ export default function App() {
   const [isResearchRunning, setIsResearchRunning] = useState<boolean>(false);
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'connected' | 'reconnecting' | 'offline'>('connected');
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date());
+  const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
   const [contactToast, setContactToast] = useState<{
     businessName: string;
     status: LeadStatus;
@@ -106,7 +110,7 @@ export default function App() {
     showCta: boolean;
   } | null>(null);
 
-  // Resilient data loading: individual safe fetches ensure no single error stops the site from loading
+  // Resilient data loading with timestamp-aware merge logic across devices
   const loadData = useCallback(async () => {
     const fetchEndpoint = async (url: string) => {
       try {
@@ -140,7 +144,7 @@ export default function App() {
       }
       if (prospectsRes?.items) {
         if (prospectsRes.items.length > 0) {
-          // Merge server prospects with any local prospects that might not be on the server yet
+          // Merge server prospects with local prospects using updatedAt timestamp
           setProspects((prev) => {
             const map = new Map<string, Prospect>();
             for (const p of prospectsRes.items) {
@@ -155,13 +159,15 @@ export default function App() {
                   unsynced.push(p);
                 }
               } else {
-                // If local lead was contacted/waiting/signed and remote isn't yet, preserve contacted status
-                const isLocalContacted = Boolean(p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status));
-                const isRemoteContacted = Boolean(remote.isContacted || ['contacted', 'waiting', 'client_signed'].includes(remote.status));
-                if (isLocalContacted && !isRemoteContacted) {
-                  const merged: Prospect = { ...remote, ...p, isContacted: true };
-                  map.set(p.id, merged);
-                  unsynced.push(merged);
+                const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
+                const localTime = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+                if (localTime > remoteTime) {
+                  // Local client was edited more recently: keep local edit and queue to sync to server
+                  map.set(p.id, p);
+                  unsynced.push(p);
+                } else {
+                  // Remote is newer or equal: use remote data
+                  map.set(p.id, remote);
                 }
               }
             }
@@ -177,7 +183,7 @@ export default function App() {
             return mergedList;
           });
         } else {
-          // If server has 0 records, check if this device has existing records to migrate safely!
+          // If server has 0 records, check if this device has existing records to migrate safely
           const localItems = getStoredProspects();
           if (localItems.length > 0) {
             backupLocalData();
@@ -188,7 +194,6 @@ export default function App() {
             }).catch(() => {});
             setProspects(localItems);
           } else {
-            // Keep any contacted leads in current state
             setProspects((prev) => prev.filter((p) => p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status)));
           }
         }
@@ -196,6 +201,7 @@ export default function App() {
       if (schedRes) setSchedulerStatus(schedRes);
       if (jobsRes) setJobs(jobsRes);
       if (provRes) setProvidersData(provRes);
+      setLastSyncedAt(new Date());
     } catch (err) {
       console.warn('Background sync notice:', err);
     } finally {
@@ -210,6 +216,70 @@ export default function App() {
     }
 
     loadData();
+
+    // Subscribe to live SSE events and cross-tab BroadcastChannel
+    const unsubscribe = liveSync.subscribe((msg: SyncMessage) => {
+      setLastSyncedAt(new Date());
+      setSyncStatus(liveSync.status);
+
+      if (msg.type === 'prospect_updated' && msg.data) {
+        const updated = msg.data as Prospect;
+        setProspects((prev) => {
+          const exists = prev.some((p) => p.id === updated.id);
+          const next = exists
+            ? prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+            : [updated, ...prev];
+          saveStoredProspects(next);
+          setStats(computeStats(next));
+          return next;
+        });
+        setSelectedProspect((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+      } else if (msg.type === 'prospect_starred' && msg.data) {
+        const { id, isStarred } = msg.data;
+        setProspects((prev) => {
+          const next = prev.map((p) => (p.id === id ? { ...p, isStarred } : p));
+          saveStoredProspects(next);
+          return next;
+        });
+        setSelectedProspect((prev) => (prev && prev.id === id ? { ...prev, isStarred } : prev));
+      } else if (msg.type === 'prospect_deleted' && msg.data) {
+        const { id } = msg.data;
+        deleteProspectClient(id);
+        setProspects((prev) => {
+          const next = prev.filter((p) => p.id !== id);
+          saveStoredProspects(next);
+          setStats(computeStats(next));
+          return next;
+        });
+        setSelectedProspect((prev) => (prev && prev.id === id ? null : prev));
+      } else if (msg.type === 'prospect_excluded' && msg.data) {
+        const { id } = msg.data;
+        deleteProspectClient(id);
+        setProspects((prev) => {
+          const next = prev.filter((p) => p.id !== id);
+          saveStoredProspects(next);
+          setStats(computeStats(next));
+          return next;
+        });
+        setSelectedProspect((prev) => (prev?.id === id ? null : prev));
+      } else if (msg.type === 'settings_updated' && msg.data) {
+        setSettings(msg.data);
+        if (msg.data.uiLanguage) setLang(msg.data.uiLanguage);
+        if (msg.data.uiTheme) setTheme(msg.data.uiTheme);
+      } else if (
+        msg.type === 'prospects_batch' ||
+        msg.type === 'prospects_cleared' ||
+        msg.type === 'manual_sync'
+      ) {
+        loadData();
+      }
+    });
+
+    const handleSyncStatus = (e: any) => {
+      if (e.detail?.status) setSyncStatus(e.detail.status);
+      if (e.detail?.lastSyncedAt) setLastSyncedAt(new Date(e.detail.lastSyncedAt));
+    };
+    window.addEventListener('leadhunter-sync-status', handleSyncStatus);
 
     // Instant direct sync via QR Code / Sync Link (#sync=...)
     if (typeof window !== 'undefined' && window.location.hash.includes('#sync=')) {
@@ -230,11 +300,16 @@ export default function App() {
               setStats(computeStats(merged));
               return merged;
             });
+            apiFetch('/api/prospects', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items })
+            }).catch(() => {});
             setContactToast({
               businessName: 'Sync Complete',
               status: 'contacted',
               title: lang === 'es' ? '📱 ¡Móvil Sincronizado!' : '📱 Mobile Phone Synced!',
-              message: lang === 'es' ? `¡${items.length} clientes contactados guardados en tu móvil para siempre!` : `Successfully synced ${items.length} contacted clients to your phone!`,
+              message: lang === 'es' ? `¡${items.length} clientes contactados sincronizados en tu móvil!` : `Successfully synced ${items.length} contacted clients to your phone!`,
               showCta: true
             });
             setTimeout(() => setContactToast(null), 5000);
@@ -246,23 +321,39 @@ export default function App() {
       }
     }
 
-    // Auto-sync when the user switches tabs or unlocks/opens the website on their mobile phone
+    // Auto-sync when user switches tabs or unlocks/opens the website on mobile phone
     const handleSyncOnVisible = () => {
       if (document.visibilityState === 'visible') {
+        liveSync.reconnect();
         loadData();
       }
     };
     window.addEventListener('visibilitychange', handleSyncOnVisible);
     window.addEventListener('focus', handleSyncOnVisible);
 
-    // Active polling interval every 8 seconds to synchronize changes between PC and mobile seamlessly
-    const interval = setInterval(() => {
+    // Fast version check every 4 seconds (fallback for mobile browser background throttles)
+    let lastKnownRevision = 0;
+    const interval = setInterval(async () => {
       if (document.visibilityState === 'visible' && !isResearchRunning) {
-        loadData();
+        try {
+          const res = await apiFetch('/api/sync/version');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.revision && data.revision !== lastKnownRevision) {
+              if (lastKnownRevision !== 0) {
+                loadData();
+              }
+              lastKnownRevision = data.revision;
+              setLastSyncedAt(new Date());
+            }
+          }
+        } catch {}
       }
-    }, 8000);
+    }, 4000);
 
     return () => {
+      unsubscribe();
+      window.removeEventListener('leadhunter-sync-status', handleSyncStatus);
       window.removeEventListener('visibilitychange', handleSyncOnVisible);
       window.removeEventListener('focus', handleSyncOnVisible);
       clearInterval(interval);
@@ -812,6 +903,68 @@ export default function App() {
     document.body.removeChild(link);
   };
 
+  const handleUpdateProspect = async (id: string, updates: Partial<Prospect>) => {
+    try {
+      const target = prospects.find((p) => p.id === id) || (selectedProspect?.id === id ? selectedProspect : null);
+      const isExplicitNew = updates.status === 'new' && (updates.isContacted === false || updates.isContacted === undefined);
+      const isContactedLead = updates.status && ['contacted', 'waiting', 'client_signed'].includes(updates.status);
+
+      const optimistic: Prospect = {
+        ...(target || {}),
+        ...updates,
+        id,
+        isContacted: isExplicitNew ? false : (isContactedLead ? true : (updates.isContacted ?? target?.isContacted ?? false)),
+        updatedAt: new Date().toISOString()
+      } as Prospect;
+
+      // Optimistic instant state update
+      setProspects((prev) => {
+        const next = prev.map((p) => (p.id === id ? optimistic : p));
+        saveStoredProspects(next);
+        setStats(computeStats(next));
+        return next;
+      });
+      if (selectedProspect?.id === id) {
+        setSelectedProspect(optimistic);
+      }
+
+      // Broadcast immediately across open tabs and mobile devices
+      liveSync.broadcastLocal('prospect_updated', optimistic);
+
+      // Persist to backend
+      const res = await apiFetch(`/api/prospects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setProspects((prev) => {
+          const next = prev.map((p) => (p.id === id ? { ...p, ...saved } : p));
+          saveStoredProspects(next);
+          setStats(computeStats(next));
+          return next;
+        });
+        if (selectedProspect?.id === id) {
+          setSelectedProspect((prev) => (prev ? { ...prev, ...saved } : null));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update prospect:', err);
+    }
+  };
+
+  const handleTriggerManualSync = async () => {
+    setIsManualSyncing(true);
+    try {
+      liveSync.reconnect();
+      await loadData();
+      setLastSyncedAt(new Date());
+    } finally {
+      setIsManualSyncing(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('leadhunter_admin_token');
     localStorage.removeItem('leadhunter_admin_user');
@@ -842,7 +995,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#070b14] text-slate-100' : 'bg-slate-100 text-slate-900'} antialiased flex flex-col font-sans transition-colors duration-200`}>
-      {/* Top Navigation Header with Centered Search Bar */}
+      {/* Top Navigation Header with Centered Search Bar & Live Sync Status */}
       <Header
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
@@ -858,6 +1011,10 @@ export default function App() {
         contactedCount={stats.contactedCount}
         onOpenDeployModal={() => setIsDeployModalOpen(true)}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
+        syncStatus={syncStatus}
+        lastSyncedAt={lastSyncedAt}
+        onTriggerSync={handleTriggerManualSync}
+        isSyncing={isManualSyncing}
       />
 
       {/* Quota Banner */}
@@ -1001,6 +1158,7 @@ export default function App() {
           lang={lang}
           onClose={() => setSelectedProspect(null)}
           onUpdateStatus={handleUpdateProspectStatus}
+          onUpdateProspect={handleUpdateProspect}
           onDeleteNotInterested={handleMarkNotInterested}
           onToggleStar={handleToggleStar}
           onReverify={handleReverify}

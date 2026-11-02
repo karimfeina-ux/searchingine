@@ -1,5 +1,6 @@
 // Cloudflare D1 Database Helper for LeadHunter AI
 // Serverless SQLite database client running at the Cloudflare edge
+// With automatic edge-memory fallback if D1 database binding is absent or unconfigured.
 
 export interface D1PreparedStatement {
   bind(...values: any[]): D1PreparedStatement;
@@ -41,10 +42,39 @@ export const corsHeaders = {
 
 export const handleOptions = () => new Response(null, { headers: corsHeaders });
 
+// Global edge-memory storage in case D1 is not bound to Cloudflare Pages
+const edgeMemoryProspects = new Map<string, any>();
+const edgeMemorySettings = new Map<string, any>();
+const edgeMemoryExclusions = {
+  names: new Set<string>(),
+  phones: new Set<string>()
+};
+
+export function isQualifiedProspect(p: any): boolean {
+  if (!p) return false;
+  // Strictly NEVER show businesses with websites
+  if (p.websiteStatus === 'website_exists' || p.hasWebsite) return false;
+  if (p.websiteCandidate) {
+    const lower = String(p.websiteCandidate).toLowerCase();
+    const isSocialOnly =
+      lower.includes('instagram.com') ||
+      lower.includes('facebook.com') ||
+      lower.includes('linktr.ee') ||
+      lower.includes('wa.me') ||
+      lower.includes('tiktok.com') ||
+      lower.includes('bio.link') ||
+      lower.includes('taplink.cc');
+    if (!isSocialOnly) return false;
+  }
+  // Strictly NEVER show businesses with less than 2 pictures in their Google Maps profile
+  if (typeof p.photoCount === 'number' && p.photoCount < 2) return false;
+  return true;
+}
+
 let tablesInitialized = false;
 
 export async function ensureTables(db?: D1Database): Promise<boolean> {
-  if (!db) return false;
+  if (!db || typeof db.prepare !== 'function') return false;
   if (tablesInitialized) return true;
 
   try {
@@ -108,7 +138,7 @@ export function normalizeBusinessName(name: string): string {
 }
 
 export async function d1GetProspects(
-  db: D1Database,
+  db?: D1Database,
   filters: {
     status?: string | null;
     websiteStatus?: string | null;
@@ -116,22 +146,30 @@ export async function d1GetProspects(
     hideContacted?: boolean;
     isContacted?: boolean;
     limit?: number;
-  }
+  } = {}
 ) {
-  await ensureTables(db);
-  // Prioritize contacted leads first so they are never omitted by limits
-  const rows = await db
-    .prepare('SELECT data FROM prospects ORDER BY is_contacted DESC, updated_at DESC LIMIT ?')
-    .bind(filters.limit || 1000)
-    .all<{ data: string }>();
+  let items: any[] = [];
 
-  let items = (rows.results || []).map((r) => {
-    try {
-      return JSON.parse(r.data);
-    } catch {
-      return null;
-    }
-  }).filter(Boolean);
+  if (db && typeof db.prepare === 'function') {
+    await ensureTables(db);
+    const rows = await db
+      .prepare('SELECT data FROM prospects ORDER BY is_contacted DESC, updated_at DESC LIMIT ?')
+      .bind(filters.limit || 1000)
+      .all<{ data: string }>();
+
+    items = (rows.results || []).map((r) => {
+      try {
+        return JSON.parse(r.data);
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
+  } else {
+    items = Array.from(edgeMemoryProspects.values());
+  }
+
+  // Filter out businesses with websites or with less than 2 pics
+  items = items.filter(isQualifiedProspect);
 
   if (filters.hideContacted) {
     items = items.filter((p: any) => !p.isContacted && p.status !== 'contacted' && p.status !== 'waiting' && p.status !== 'client_signed');
@@ -158,7 +196,12 @@ export async function d1GetProspects(
   return { items, total: items.length };
 }
 
-export async function d1GetProspectById(db: D1Database, id: string) {
+export async function d1GetProspectById(db?: D1Database, id?: string) {
+  if (!id) return null;
+  if (!db || typeof db.prepare !== 'function') {
+    return edgeMemoryProspects.get(id) || null;
+  }
+
   await ensureTables(db);
   const row = await db
     .prepare('SELECT data FROM prospects WHERE id = ?')
@@ -173,8 +216,8 @@ export async function d1GetProspectById(db: D1Database, id: string) {
   }
 }
 
-export async function d1UpsertProspect(db: D1Database, prospect: any) {
-  await ensureTables(db);
+export async function d1UpsertProspect(db: D1Database | undefined, prospect: any) {
+  if (!prospect || !prospect.id) return prospect;
   const now = new Date().toISOString();
   const id = prospect.id;
   const name = prospect.name || '';
@@ -199,6 +242,12 @@ export async function d1UpsertProspect(db: D1Database, prospect: any) {
   }
   prospect.updatedAt = updatedAt;
 
+  if (!db || typeof db.prepare !== 'function') {
+    edgeMemoryProspects.set(id, prospect);
+    return prospect;
+  }
+
+  await ensureTables(db);
   const data = JSON.stringify(prospect);
 
   await db
@@ -233,12 +282,20 @@ export async function d1UpsertProspect(db: D1Database, prospect: any) {
   return prospect;
 }
 
-export async function d1UpsertBatch(db: D1Database, prospects: any[]) {
+export async function d1UpsertBatch(db: D1Database | undefined, prospects: any[]) {
   if (!prospects || prospects.length === 0) return { count: 0 };
+
+  if (!db || typeof db.prepare !== 'function') {
+    for (const p of prospects) {
+      if (p && p.id) {
+        edgeMemoryProspects.set(p.id, { ...p, updatedAt: p.updatedAt || new Date().toISOString() });
+      }
+    }
+    return { count: prospects.length };
+  }
+
   await ensureTables(db);
   const now = new Date().toISOString();
-
-  // D1 batches up to 100 statements
   const chunkSize = 80;
   let totalSaved = 0;
 
@@ -305,7 +362,16 @@ export async function d1UpsertBatch(db: D1Database, prospects: any[]) {
   return { count: totalSaved };
 }
 
-export async function d1DeleteProspect(db: D1Database, id: string) {
+export async function d1DeleteProspect(db: D1Database | undefined, id: string) {
+  if (!db || typeof db.prepare !== 'function') {
+    const target = edgeMemoryProspects.get(id);
+    edgeMemoryProspects.delete(id);
+    if (target) {
+      await d1AddExclusion(db, target.name, target.phone);
+    }
+    return { success: true, deletedId: id, target };
+  }
+
   await ensureTables(db);
   const target = await d1GetProspectById(db, id);
   if (target) {
@@ -315,9 +381,20 @@ export async function d1DeleteProspect(db: D1Database, id: string) {
   return { success: true, deletedId: id, target };
 }
 
-export async function d1ClearProspects(db: D1Database, options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true }) {
+export async function d1ClearProspects(db: D1Database | undefined, options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true }) {
+  if (!db || typeof db.prepare !== 'function') {
+    let deleted = 0;
+    for (const [id, p] of Array.from(edgeMemoryProspects.entries())) {
+      const isContactedLead = p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status);
+      if (isContactedLead) continue;
+      if (options.keepStarred && p.isStarred) continue;
+      edgeMemoryProspects.delete(id);
+      deleted++;
+    }
+    return { success: true, remainingCount: edgeMemoryProspects.size, deletedCount: deleted };
+  }
+
   await ensureTables(db);
-  // CRITICAL RULE: Contacted clients are permanent records and must NEVER be wiped when cleaning search lists!
   let deleteQuery = "DELETE FROM prospects WHERE is_contacted = 0 AND status NOT IN ('contacted', 'waiting', 'client_signed')";
   if (options.keepStarred) {
     deleteQuery += ' AND is_starred = 0';
@@ -328,9 +405,20 @@ export async function d1ClearProspects(db: D1Database, options: { keepContacted?
   return { success: true, remainingCount: remaining?.count || 0, deletedCount: (res.meta as any)?.changes || 0 };
 }
 
-export async function d1AddExclusion(db: D1Database, name?: string, phone?: string) {
-  await ensureTables(db);
+export async function d1AddExclusion(db: D1Database | undefined, name?: string, phone?: string) {
   const now = new Date().toISOString();
+  if (name) {
+    const norm = normalizeBusinessName(name);
+    if (norm) edgeMemoryExclusions.names.add(norm);
+  }
+  if (phone) {
+    const clean = phone.replace(/\D/g, '');
+    if (clean.length >= 6) edgeMemoryExclusions.phones.add(clean);
+  }
+
+  if (!db || typeof db.prepare !== 'function') return;
+
+  await ensureTables(db);
   const stmts: D1PreparedStatement[] = [];
 
   if (name) {
@@ -358,7 +446,14 @@ export async function d1AddExclusion(db: D1Database, name?: string, phone?: stri
   }
 }
 
-export async function d1GetExclusions(db: D1Database): Promise<{ names: string[]; phones: string[] }> {
+export async function d1GetExclusions(db: D1Database | undefined): Promise<{ names: string[]; phones: string[] }> {
+  if (!db || typeof db.prepare !== 'function') {
+    return {
+      names: Array.from(edgeMemoryExclusions.names),
+      phones: Array.from(edgeMemoryExclusions.phones)
+    };
+  }
+
   await ensureTables(db);
   const rows = await db.prepare('SELECT type, value FROM exclusions').all<{ type: string; value: string }>();
   const names: string[] = [];
@@ -370,7 +465,11 @@ export async function d1GetExclusions(db: D1Database): Promise<{ names: string[]
   return { names, phones };
 }
 
-export async function d1GetSettings(db: D1Database) {
+export async function d1GetSettings(db: D1Database | undefined) {
+  if (!db || typeof db.prepare !== 'function') {
+    return edgeMemorySettings.get('default') || null;
+  }
+
   await ensureTables(db);
   const row = await db.prepare("SELECT data FROM settings WHERE key = 'default'").first<{ data: string }>();
   if (!row) return null;
@@ -381,10 +480,16 @@ export async function d1GetSettings(db: D1Database) {
   }
 }
 
-export async function d1SaveSettings(db: D1Database, updated: any) {
-  await ensureTables(db);
+export async function d1SaveSettings(db: D1Database | undefined, updated: any) {
   const current = (await d1GetSettings(db)) || {};
   const merged = { ...current, ...updated, updatedAt: new Date().toISOString() };
+
+  if (!db || typeof db.prepare !== 'function') {
+    edgeMemorySettings.set('default', merged);
+    return merged;
+  }
+
+  await ensureTables(db);
   await db
     .prepare("INSERT INTO settings (key, data, updated_at) VALUES ('default', ?, ?) ON CONFLICT(key) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at")
     .bind(JSON.stringify(merged), merged.updatedAt)
@@ -392,16 +497,21 @@ export async function d1SaveSettings(db: D1Database, updated: any) {
   return merged;
 }
 
-export async function d1ComputeStats(db: D1Database) {
-  await ensureTables(db);
-  const rows = await db.prepare('SELECT data FROM prospects').all<{ data: string }>();
-  const prospects = (rows.results || []).map((r) => {
-    try {
-      return JSON.parse(r.data);
-    } catch {
-      return null;
-    }
-  }).filter(Boolean);
+export async function d1ComputeStats(db: D1Database | undefined) {
+  let prospects: any[] = [];
+  if (!db || typeof db.prepare !== 'function') {
+    prospects = Array.from(edgeMemoryProspects.values());
+  } else {
+    await ensureTables(db);
+    const rows = await db.prepare('SELECT data FROM prospects').all<{ data: string }>();
+    prospects = (rows.results || []).map((r) => {
+      try {
+        return JSON.parse(r.data);
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
+  }
 
   const totalLeads = prospects.length;
   const noWebsiteCount = prospects.filter((p: any) => p.websiteStatus === 'no_website' || p.websiteStatus === 'possibly_no_website').length;

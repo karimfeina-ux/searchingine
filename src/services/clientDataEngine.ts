@@ -64,18 +64,41 @@ export function saveClientSettings(updated: Partial<AppSettings>): AppSettings {
   return merged;
 }
 
+export function isQualifiedProspect(p: Prospect): boolean {
+  if (!p) return false;
+  // Strictly NEVER show businesses with websites
+  if (p.websiteStatus === 'website_exists' || (p as any).hasWebsite) return false;
+  if (p.websiteCandidate) {
+    const lower = p.websiteCandidate.toLowerCase();
+    const isSocialOnly =
+      lower.includes('instagram.com') ||
+      lower.includes('facebook.com') ||
+      lower.includes('linktr.ee') ||
+      lower.includes('wa.me') ||
+      lower.includes('tiktok.com') ||
+      lower.includes('bio.link') ||
+      lower.includes('taplink.cc');
+    if (!isSocialOnly) return false;
+  }
+  // Strictly NEVER show businesses with less than 2 pictures in their Google Maps profile
+  if (typeof p.photoCount === 'number' && p.photoCount < 2) return false;
+  return true;
+}
+
 export function getStoredProspects(): Prospect[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PROSPECTS);
     if (raw) {
       let parsed = JSON.parse(raw);
-      // One-time cleanup: remove the invented demo leads created by earlier versions.
+      // One-time cleanup: remove any demo leads created by earlier versions.
       if (Array.isArray(parsed) && !localStorage.getItem('leadhunter_purged_fake_v1')) {
-        parsed = parsed.filter((p: Prospect) => typeof p.id === 'string' && p.id.startsWith('gp_'));
+        parsed = parsed.filter((p: Prospect) => typeof p.id === 'string' && (p.id.startsWith('gp_') || p.id.startsWith('gmp_')));
         localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(parsed));
         localStorage.setItem('leadhunter_purged_fake_v1', '1');
       }
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter(isQualifiedProspect);
+      }
     }
   } catch {}
   return [];
@@ -109,7 +132,8 @@ export function backupLocalData(): string | null {
 
 export function saveStoredProspects(prospects: Prospect[]) {
   try {
-    localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(prospects));
+    const qualified = prospects.filter(isQualifiedProspect);
+    localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(qualified));
   } catch {}
 }
 

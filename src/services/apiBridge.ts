@@ -274,6 +274,19 @@ async function handleClientApiRoute(urlString: string, init?: RequestInit): Prom
       return jsonResponse(prospect.brief);
     }
 
+    // Update single prospect (PUT or PATCH)
+    if (!action && (method === 'PUT' || method === 'PATCH')) {
+      const isExplicitNew = body.status === 'new' && (body.isContacted === false || body.isContacted === undefined);
+      Object.assign(prospect, body, {
+        id,
+        isContacted: isExplicitNew ? false : (body.isContacted ?? prospect.isContacted),
+        contactedAt: isExplicitNew ? undefined : (body.contactedAt ?? prospect.contactedAt),
+        updatedAt: new Date().toISOString()
+      });
+      saveStoredProspects(prospects);
+      return jsonResponse(prospect);
+    }
+
     // Get single prospect
     if (!action && method === 'GET') {
       return jsonResponse(prospect);

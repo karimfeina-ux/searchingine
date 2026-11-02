@@ -66,6 +66,7 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
       'places.businessStatus',
       'places.primaryTypeDisplayName',
       'places.types',
+      'places.photos',
       'places.regularOpeningHours',
       'places.editorialSummary',
       'nextPageToken'
@@ -146,7 +147,12 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
         }
       }
 
-      if (onlyNoWebsite && hasWebsite) continue;
+      // STRICT USER REQUIREMENT: Never show businesses that have websites
+      if (hasWebsite) continue;
+
+      // STRICT USER REQUIREMENT: Never show businesses with less than 2 pictures in their Google Maps profile
+      const photoCount = Array.isArray(place.photos) ? place.photos.length : 0;
+      if (photoCount < 2) continue;
 
       const rating = place.rating || 0;
       const reviewCount = place.userRatingCount || 0;
@@ -189,6 +195,8 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
         websiteStatus,
         status: websiteStatus === 'no_website' && leadScore >= 75 ? 'ready_to_contact' : 'new',
         leadScore,
+        photoCount,
+        photos: place.photos || [],
         subscores: {
           websiteOpportunity: websiteStatus === 'no_website' ? 30 : 10,
           reputation: Math.min(Math.round(rating * 4), 20),

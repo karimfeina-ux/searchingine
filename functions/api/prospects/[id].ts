@@ -3,13 +3,9 @@ import { D1Env, d1DeleteProspect, d1GetProspectById, d1UpsertProspect, handleOpt
 
 export const onRequestOptions = async () => handleOptions();
 
-export const onRequestGet = async ({ params, env }: { params: { id: string }; env: D1Env }) => {
-  if (!env.DB) {
-    return json({ error: 'Cloudflare D1 database binding DB is not configured' }, 503);
-  }
-
+export const onRequestGet = async ({ params, env = {} }: { params: { id: string }; env?: D1Env }) => {
   try {
-    const prospect = await d1GetProspectById(env.DB, params.id);
+    const prospect = await d1GetProspectById(env?.DB, params.id);
     if (!prospect) {
       return json({ error: 'Prospect not found' }, 404);
     }
@@ -19,34 +15,26 @@ export const onRequestGet = async ({ params, env }: { params: { id: string }; en
   }
 };
 
-export const onRequestPut = async ({ params, request, env }: { params: { id: string }; request: Request; env: D1Env }) => {
+export const onRequestPut = async ({ params, request, env = {} }: { params: { id: string }; request: Request; env?: D1Env }) => {
   try {
     const updates = await request.json().catch(() => ({}));
     const now = new Date().toISOString();
     let merged = { ...updates, id: params.id, updatedAt: now };
 
-    if (env.DB) {
-      const existing = await d1GetProspectById(env.DB, params.id);
-      if (existing) {
-        merged = { ...existing, ...updates, id: params.id, updatedAt: now };
-      }
-      const saved = await d1UpsertProspect(env.DB, merged);
-      return json(saved);
+    const existing = await d1GetProspectById(env?.DB, params.id);
+    if (existing) {
+      merged = { ...existing, ...updates, id: params.id, updatedAt: now };
     }
-
-    return json({ ...merged, d1Configured: false });
+    const saved = await d1UpsertProspect(env?.DB, merged);
+    return json(saved);
   } catch (err: any) {
     return json({ error: err?.message || 'Error updating prospect' }, 500);
   }
 };
 
-export const onRequestDelete = async ({ params, env }: { params: { id: string }; env: D1Env }) => {
-  if (!env.DB) {
-    return json({ error: 'Cloudflare D1 database binding DB is not configured' }, 503);
-  }
-
+export const onRequestDelete = async ({ params, env = {} }: { params: { id: string }; env?: D1Env }) => {
   try {
-    const result = await d1DeleteProspect(env.DB, params.id);
+    const result = await d1DeleteProspect(env?.DB, params.id);
     return json(result);
   } catch (err: any) {
     return json({ error: err?.message || 'Error deleting prospect' }, 500);

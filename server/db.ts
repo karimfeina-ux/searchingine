@@ -100,7 +100,15 @@ try {
   console.warn('Could not read existing store, initialized fresh in-memory data store:', err);
 }
 
+let storeRevision = Date.now();
+export const getStoreRevision = () => storeRevision;
+export const bumpStoreRevision = () => {
+  storeRevision = Date.now();
+  return storeRevision;
+};
+
 function persistStore() {
+  bumpStoreRevision();
   try {
     fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), 'utf-8');
   } catch (err) {
@@ -217,6 +225,7 @@ export const findExistingProspect = (normalizedName: string, city: string, phone
 
 export const saveProspect = (p: Prospect): void => {
   const existing = store.prospects[p.id];
+  const isExplicitResetToNew = p.status === 'new' && (p.isContacted === false || p.isContacted === undefined);
   const wasContacted = Boolean(
     existing?.isContacted ||
     (existing?.status && ['contacted', 'waiting', 'client_signed'].includes(existing.status))
@@ -225,19 +234,59 @@ export const saveProspect = (p: Prospect): void => {
     p.isContacted ||
     (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))
   );
-  const isContacted = wasContacted || isNowContacted;
+  const isContacted = isExplicitResetToNew ? false : (wasContacted || isNowContacted);
 
   store.prospects[p.id] = {
     ...existing,
     ...p,
-    status: (wasContacted && p.status === 'new' && existing?.status) ? existing.status : p.status,
+    status: isExplicitResetToNew ? 'new' : ((wasContacted && p.status === 'new' && existing?.status) ? existing.status : p.status),
     isClicked: p.isClicked ?? existing?.isClicked ?? false,
     clickedAt: p.clickedAt ?? existing?.clickedAt,
     isContacted,
-    contactedAt: existing?.contactedAt || p.contactedAt || (isContacted ? new Date().toISOString() : undefined),
-    updatedAt: new Date().toISOString()
+    contactedAt: isExplicitResetToNew ? undefined : (existing?.contactedAt || p.contactedAt || (isContacted ? new Date().toISOString() : undefined)),
+    updatedAt: p.updatedAt || new Date().toISOString()
   };
   persistStore();
+};
+
+export const updateProspect = (id: string, partial: Partial<Prospect>): Prospect | null => {
+  const existing = store.prospects[id];
+  if (!existing) return null;
+
+  const isExplicitResetToNew = partial.status === 'new' && (partial.isContacted === false || partial.isContacted === undefined);
+  const wasContacted = Boolean(
+    existing.isContacted ||
+    (existing.status && ['contacted', 'waiting', 'client_signed'].includes(existing.status))
+  );
+  const isNowContacted = isExplicitResetToNew ? false : (
+    partial.isContacted !== undefined
+      ? Boolean(partial.isContacted)
+      : (partial.status ? ['contacted', 'waiting', 'client_signed'].includes(partial.status) : wasContacted)
+  );
+
+  const updated: Prospect = {
+    ...existing,
+    ...partial,
+    id,
+    isContacted: isNowContacted,
+    contactedAt: isExplicitResetToNew
+      ? undefined
+      : (partial.contactedAt || existing.contactedAt || (isNowContacted ? (existing.contactedAt || new Date().toISOString()) : undefined)),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (partial.notes !== undefined) updated.notes = partial.notes;
+  if (partial.name) updated.name = partial.name;
+  if (partial.phone !== undefined) updated.phone = partial.phone;
+  if (partial.category) updated.category = partial.category;
+  if (partial.address) updated.address = partial.address;
+  if (partial.city) updated.city = partial.city;
+  if (partial.websiteStatus) updated.websiteStatus = partial.websiteStatus;
+  if (partial.websiteCandidate !== undefined) updated.websiteCandidate = partial.websiteCandidate;
+
+  store.prospects[id] = updated;
+  persistStore();
+  return getProspectById(id);
 };
 
 export const updateProspectStatus = (id: string, status: string, notes?: string): Prospect | null => {

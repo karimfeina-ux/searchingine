@@ -25,30 +25,16 @@ app.use('/api', apiRouter);
 // Initialize Autonomous Scheduler
 initScheduler();
 
-let viteInstance: any = null;
-let viteMiddleware: any = null;
-
 if (!isProduction) {
-  // Delegate front-end requests to Vite middleware
-  app.use((req, res, next) => {
-    if (req.originalUrl.startsWith('/api')) {
-      return next();
-    }
-    if (viteMiddleware) {
-      return viteMiddleware(req, res, next);
-    }
-    const start = Date.now();
-    const interval = setInterval(() => {
-      if (viteMiddleware) {
-        clearInterval(interval);
-        return viteMiddleware(req, res, next);
-      }
-      if (Date.now() - start > 10000) {
-        clearInterval(interval);
-        return res.status(503).send('Development server is starting, please reload in a moment...');
-      }
-    }, 50);
+  const { createServer: createViteServer } = await import('vite');
+  const vite = await createViteServer({
+    server: {
+      middlewareMode: true,
+      hmr: false,
+    },
+    appType: 'spa',
   });
+  app.use(vite.middlewares);
 
   // SPA fallback in development: transforms index.html with Vite
   app.use('*', async (req, res, next) => {
@@ -57,11 +43,8 @@ if (!isProduction) {
     }
     try {
       const template = fs.readFileSync(path.resolve('index.html'), 'utf-8');
-      if (viteInstance) {
-        const html = await viteInstance.transformIndexHtml(req.originalUrl, template);
-        return res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
-      }
-      res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      const html = await vite.transformIndexHtml(req.originalUrl, template);
+      return res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
     } catch (e) {
       next(e);
     }
@@ -76,26 +59,6 @@ if (!isProduction) {
 
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`LeadHunter AI running on http://0.0.0.0:${PORT}`);
-
-  if (!isProduction) {
-    (async () => {
-      try {
-        const { createServer: createViteServer } = await import('vite');
-        const vite = await createViteServer({
-          server: {
-            middlewareMode: true,
-            hmr: false,
-          },
-          appType: 'spa',
-        });
-        viteInstance = vite;
-        viteMiddleware = vite.middlewares;
-        console.log('Vite middleware mounted successfully.');
-      } catch (err) {
-        console.error('Failed to create Vite server:', err);
-      }
-    })();
-  }
 });
 
 server.on('error', (err: any) => {

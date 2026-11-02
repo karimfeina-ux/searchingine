@@ -22,11 +22,14 @@ import {
   Info,
   Calendar,
   Send,
-  Loader2
+  Loader2,
+  Edit3,
+  Save
 } from 'lucide-react';
 
 import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
 import { getLeadStatusTheme } from '../utils/statusTheme.ts';
+import type { WebsiteStatus } from '../types/index.ts';
 
 interface ProspectModalProps {
   prospect: Prospect;
@@ -34,6 +37,7 @@ interface ProspectModalProps {
   lang: 'en' | 'es';
   onClose: () => void;
   onUpdateStatus: (id: string, status: LeadStatus, notes?: string) => void;
+  onUpdateProspect?: (id: string, updates: Partial<Prospect>) => Promise<void>;
   onDeleteNotInterested?: (id: string) => void;
   onToggleStar: (id: string) => void;
   onReverify: (id: string) => Promise<void>;
@@ -47,6 +51,7 @@ export const ProspectModal: React.FC<ProspectModalProps> = ({
   lang,
   onClose,
   onUpdateStatus,
+  onUpdateProspect,
   onDeleteNotInterested,
   onToggleStar,
   onReverify,
@@ -62,6 +67,59 @@ export const ProspectModal: React.FC<ProspectModalProps> = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
   const [isGeneratingOutreach, setIsGeneratingOutreach] = useState(false);
+
+  // In-Place Edit / Modification State (Live PC & Mobile Sync)
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [editName, setEditName] = useState(prospect.name);
+  const [editPhone, setEditPhone] = useState(prospect.phone || '');
+  const [editCategory, setEditCategory] = useState(prospect.category);
+  const [editAddress, setEditAddress] = useState(prospect.address || '');
+  const [editCity, setEditCity] = useState(prospect.city || '');
+  const [editWebsiteStatus, setEditWebsiteStatus] = useState<WebsiteStatus>(prospect.websiteStatus);
+  const [editWebsiteCandidate, setEditWebsiteCandidate] = useState(prospect.websiteCandidate || '');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
+
+  // Sync state if prospect is updated from live SSE (e.g. edited on mobile while modal is open on PC!)
+  React.useEffect(() => {
+    setNotes(prospect.notes || '');
+    if (!isEditingDetails) {
+      setEditName(prospect.name);
+      setEditPhone(prospect.phone || '');
+      setEditCategory(prospect.category);
+      setEditAddress(prospect.address || '');
+      setEditCity(prospect.city || '');
+      setEditWebsiteStatus(prospect.websiteStatus);
+      setEditWebsiteCandidate(prospect.websiteCandidate || '');
+    }
+  }, [prospect, isEditingDetails]);
+
+  const handleSaveAllModifications = async () => {
+    setIsSavingEdit(true);
+    try {
+      const updates: Partial<Prospect> = {
+        name: editName.trim() || prospect.name,
+        phone: editPhone.trim() || undefined,
+        category: editCategory.trim() || prospect.category,
+        address: editAddress.trim() || prospect.address,
+        city: editCity.trim() || prospect.city,
+        websiteStatus: editWebsiteStatus,
+        websiteCandidate: editWebsiteCandidate.trim() || undefined,
+        notes: notes.trim(),
+        updatedAt: new Date().toISOString()
+      };
+      if (onUpdateProspect) {
+        await onUpdateProspect(prospect.id, updates);
+      } else {
+        onUpdateStatus(prospect.id, prospect.status, notes);
+      }
+      setIsEditingDetails(false);
+      setSaveSuccessMsg(true);
+      setTimeout(() => setSaveSuccessMsg(false), 3500);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   // Outreach state
   const [outreachChannel, setOutreachChannel] = useState<OutreachDraft['channel']>('email');
@@ -186,7 +244,22 @@ Base Web Price: €${settings.baseWebsitePrice} | Hosting: €${settings.monthly
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 self-end sm:self-auto flex-wrap sm:flex-nowrap">
+            {/* Edit Details Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsEditingDetails(!isEditingDetails)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                isEditingDetails
+                  ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400 shadow-sm shadow-cyan-500/20'
+                  : 'bg-slate-850 hover:bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+              }`}
+              title={lang === 'es' ? 'Modificar datos del negocio' : 'Edit business information'}
+            >
+              <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{isEditingDetails ? (lang === 'es' ? 'Cerrar Edición' : 'Cancel Edit') : (lang === 'es' ? 'Editar Datos' : 'Edit Details')}</span>
+            </button>
+
             {/* Lead Score Pill */}
             <div
               className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 font-extrabold text-sm border shadow-lg ${
@@ -221,6 +294,135 @@ Base Web Price: €${settings.baseWebsitePrice} | Hosting: €${settings.monthly
             </button>
           </div>
         </div>
+
+        {/* In-Place Live Edit Panel (Synced across PC & Mobile) */}
+        {isEditingDetails && (
+          <div className="border-b border-cyan-500/30 bg-[#0c1326] px-6 py-4 space-y-3 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                <Edit3 className="w-4 h-4" />
+                <span>{lang === 'es' ? 'Modificar Información del Negocio (Sincronizado en Vivo PC & Móvil)' : 'Edit Business Information (Live Synced on PC & Mobile)'}</span>
+              </h3>
+              <span className="text-[11px] text-slate-400">
+                {lang === 'es' ? 'Los cambios se registran automáticamente en todos los dispositivos' : 'Edits register live across all connected devices'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">{lang === 'es' ? 'Nombre del Negocio' : 'Business Name'}</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-white focus:border-cyan-400 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">{lang === 'es' ? 'Teléfono' : 'Phone'}</label>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+34 600 000 000"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-white focus:border-cyan-400 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">{lang === 'es' ? 'Categoría' : 'Category'}</label>
+                <input
+                  type="text"
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-white focus:border-cyan-400 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">{lang === 'es' ? 'Dirección' : 'Address'}</label>
+                <input
+                  type="text"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-white focus:border-cyan-400 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">{lang === 'es' ? 'Ciudad / Región' : 'City / Region'}</label>
+                <input
+                  type="text"
+                  value={editCity}
+                  onChange={(e) => setEditCity(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-white focus:border-cyan-400 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">{lang === 'es' ? 'Estado Web' : 'Website Status'}</label>
+                <select
+                  value={editWebsiteStatus}
+                  onChange={(e) => setEditWebsiteStatus(e.target.value as WebsiteStatus)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-white focus:border-cyan-400 outline-none"
+                >
+                  <option value="no_website">No Website (Sin Web)</option>
+                  <option value="possibly_no_website">Possibly No Website</option>
+                  <option value="website_broken">Website Broken (Web Rota / Caída)</option>
+                  <option value="website_outdated">Website Outdated (Anticuada)</option>
+                  <option value="website_exists">Website Exists (Ya tiene web)</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="block text-slate-400 mb-1 font-medium">{lang === 'es' ? 'URL Web (si tiene o sospecha)' : 'Website URL (if applicable)'}</label>
+                <input
+                  type="text"
+                  value={editWebsiteCandidate}
+                  onChange={(e) => setEditWebsiteCandidate(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-white focus:border-cyan-400 outline-none font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <div className="text-xs">
+                {saveSuccessMsg && (
+                  <span className="text-emerald-400 font-bold flex items-center gap-1.5 animate-bounce">
+                    <Check className="w-4 h-4" />
+                    <span>{lang === 'es' ? '¡Cambios registrados y sincronizados con móvil y PC!' : 'Edits registered & synced across PC and mobile!'}</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingDetails(false)}
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition"
+                >
+                  {lang === 'es' ? 'Cancelar' : 'Cancel'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveAllModifications}
+                  disabled={isSavingEdit}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-cyan-500/20 disabled:opacity-50 transition cursor-pointer"
+                >
+                  {isSavingEdit ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  <span>{lang === 'es' ? 'Guardar y Sincronizar' : 'Save & Sync across Devices'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal Navigation Tabs */}
         <div className="flex overflow-x-auto border-b border-slate-800 bg-slate-900/60 px-6 gap-2 shrink-0">
@@ -421,8 +623,17 @@ Base Web Price: €${settings.baseWebsitePrice} | Hosting: €${settings.monthly
                   </select>
 
                   <button
-                    onClick={() => onUpdateStatus(prospect.id, prospect.status, notes)}
-                    className="rounded-xl bg-cyan-500 px-4 py-1.5 text-xs font-bold text-white hover:bg-cyan-400 transition"
+                    type="button"
+                    onClick={() => {
+                      if (onUpdateProspect) {
+                        onUpdateProspect(prospect.id, { notes });
+                      } else {
+                        onUpdateStatus(prospect.id, prospect.status, notes);
+                      }
+                      setSaveSuccessMsg(true);
+                      setTimeout(() => setSaveSuccessMsg(false), 3000);
+                    }}
+                    className="rounded-xl bg-cyan-500 px-4 py-1.5 text-xs font-bold text-white hover:bg-cyan-400 transition cursor-pointer"
                   >
                     {lang === 'es' ? 'Guardar Notas' : 'Save Notes'}
                   </button>

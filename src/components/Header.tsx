@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Cloud,
   Smartphone,
-  QrCode
+  QrCode,
+  RefreshCw
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton.tsx';
 
@@ -34,7 +35,10 @@ interface HeaderProps {
   totalLeadsCount?: number;
   contactedCount?: number;
   onOpenDeployModal?: () => void;
-  onOpenSyncModal?: () => void;
+  syncStatus?: 'connected' | 'reconnecting' | 'offline';
+  lastSyncedAt?: Date;
+  onTriggerSync?: () => void;
+  isSyncing?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -51,7 +55,10 @@ export const Header: React.FC<HeaderProps> = ({
   totalLeadsCount = 0,
   contactedCount = 0,
   onOpenDeployModal,
-  onOpenSyncModal
+  syncStatus = 'connected',
+  lastSyncedAt,
+  onTriggerSync,
+  isSyncing = false
 }) => {
   const [locationInput, setLocationInput] = useState(() => 'Madrid');
   const [keywordInput, setKeywordInput] = useState(() => 'peluquería');
@@ -187,17 +194,47 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Sync Phone & PC Button */}
-            {onOpenSyncModal && (
-              <button
-                onClick={onOpenSyncModal}
-                className="flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/60 to-cyan-950/60 hover:from-emerald-900/60 hover:to-cyan-900/60 text-emerald-300 text-xs font-semibold shadow-sm shadow-emerald-500/20 active:scale-95 transition cursor-pointer"
-                title="Sync Contacted Clients to Mobile Phone"
-              >
-                <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">{lang === 'es' ? 'Sincronizar Móvil' : 'Sync Phone'}</span>
-              </button>
-            )}
+            {/* Live Sync Status & Trigger (PC <-> Mobile) */}
+            <div
+              className={`flex items-center gap-1.5 h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl border text-xs transition select-none ${
+                syncStatus === 'connected'
+                  ? 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300'
+                  : syncStatus === 'reconnecting'
+                  ? 'border-amber-500/30 bg-amber-950/40 text-amber-300'
+                  : 'border-slate-800 bg-slate-900/60 text-slate-400'
+              }`}
+              title={
+                syncStatus === 'connected'
+                  ? (lang === 'es' ? 'Sincronizado automáticamente con searchingine.pages.dev' : 'Auto-synced with searchingine.pages.dev')
+                  : (lang === 'es' ? 'Reconectando sincronización...' : 'Reconnecting sync...')
+              }
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  syncStatus === 'connected'
+                    ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse'
+                    : syncStatus === 'reconnecting'
+                    ? 'bg-amber-400 animate-ping'
+                    : 'bg-slate-500'
+                }`}
+              />
+              <span className="hidden sm:inline text-[11px] font-semibold">
+                {syncStatus === 'connected'
+                  ? (lang === 'es' ? 'Sync Auto (PC & Móvil)' : 'Auto Sync (PC & Mobile)')
+                  : (lang === 'es' ? 'Reconectando' : 'Connecting')}
+              </span>
+              {onTriggerSync && (
+                <button
+                  type="button"
+                  onClick={onTriggerSync}
+                  disabled={isSyncing}
+                  className="p-0.5 text-slate-400 hover:text-white transition disabled:opacity-50 cursor-pointer"
+                  title={lang === 'es' ? 'Sincronizar ahora con searchingine.pages.dev' : 'Sync now with searchingine.pages.dev'}
+                >
+                  <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin text-cyan-400' : ''}`} />
+                </button>
+              )}
+            </div>
 
             {/* Admin User Chip */}
             <div className="hidden lg:flex items-center gap-2 pl-2 pr-3 py-1 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">

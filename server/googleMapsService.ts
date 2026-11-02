@@ -29,6 +29,7 @@ export interface GooglePlaceResult {
     weekdayDescriptions?: string[];
   };
   editorialSummary?: { text: string };
+  photos?: Array<{ name?: string; authorAttributions?: any[]; widthPx?: number; heightPx?: number }>;
 }
 
 export function getGoogleMapsApiKey(): string {
@@ -92,6 +93,7 @@ export async function searchGoogleMapsBusinesses(params: {
     'places.businessStatus',
     'places.primaryTypeDisplayName',
     'places.types',
+    'places.photos',
     'places.regularOpeningHours',
     'places.editorialSummary',
     'nextPageToken'
@@ -194,10 +196,14 @@ export async function searchGoogleMapsBusinesses(params: {
       }
     } else {
       websiteStatus = 'no_website';
+    // STRICT REQUIREMENT: Never show businesses that have websites
+    if (hasWebsite) {
+      continue;
     }
 
-    // If caller specifically requested only businesses without website
-    if (params.onlyNoWebsite && hasWebsite) {
+    // STRICT REQUIREMENT: Never show businesses with less than 2 pictures in Google Maps
+    const photoCount = Array.isArray(place.photos) ? place.photos.length : 0;
+    if (photoCount < 2) {
       continue;
     }
 
@@ -344,6 +350,8 @@ export async function searchGoogleMapsBusinesses(params: {
       websiteStatus,
       status: websiteStatus === 'no_website' && leadScore >= 75 ? 'ready_to_contact' : 'new',
       leadScore,
+      photoCount,
+      photos: place.photos || [],
       subscores: {
         websiteOpportunity: websiteOpportunityScore,
         reputation: reputationScore,

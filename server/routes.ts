@@ -20,10 +20,12 @@ import {
   saveVerification,
   saveWebsiteBrief,
   toggleProspectStar,
+  updateProspect,
   updateProspectStatus,
   updateSettings,
   getExcludedBusinessNamesAndPhones,
-  addBannedNameAndPhone
+  addBannedNameAndPhone,
+  getStoreRevision
 } from './db.ts';
 import { getSchedulerStatus, setupCronSchedule, toggleScheduler, triggerRunNow } from './scheduler.ts';
 import { verifyBusinessWebsite } from './verificationEngine.ts';
@@ -31,8 +33,72 @@ import { calculateLeadScore } from './leadScoring.ts';
 import { generatePersonalizedBrief, buildProgrammaticBrief } from './websiteConceptGenerator.ts';
 import { generateOutreachDraft } from './outreachGenerator.ts';
 import { deepSearchProspects } from './researchEngine.ts';
+import type { Response } from 'express';
 
 const router = Router();
+
+// Active SSE client connections for real-time mobile and PC sync
+const sseClients = new Set<Response>();
+
+export const broadcastSync = (type: string, data: any) => {
+  const payload = `event: message\ndata: ${JSON.stringify({
+    type,
+    data,
+    revision: getStoreRevision(),
+    timestamp: new Date().toISOString()
+  })}\n\n`;
+
+  for (const client of sseClients) {
+    try {
+      client.write(payload);
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+};
+
+// Real-time Server-Sent Events (SSE) Stream endpoint
+router.get('/sync/events', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+    'Access-Control-Allow-Origin': '*'
+  });
+
+  res.write(`event: message\ndata: ${JSON.stringify({
+    type: 'connected',
+    revision: getStoreRevision(),
+    timestamp: new Date().toISOString()
+  })}\n\n`);
+
+  sseClients.add(res);
+
+  // Send periodic keep-alive every 15s to keep mobile browser socket open
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(': keep-alive\n\n');
+    } catch {
+      clearInterval(keepAlive);
+      sseClients.delete(res);
+    }
+  }, 15000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    sseClients.delete(res);
+  });
+});
+
+// Lightweight sync checkpoint endpoint
+router.get('/sync/version', (_req, res) => {
+  res.json({
+    revision: getStoreRevision(),
+    stats: getStats(),
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Admin Authentication Gateway (Rule 6: Remove hardcoded login password and accept-any logic)
 router.post('/auth/login', (req, res) => {
@@ -97,6 +163,9 @@ router.post('/search/deep-prospect', async (req, res) => {
       location: (location || region || '').trim(),
       category: (category || businessType || '').trim()
     });
+    if (results?.items?.length) {
+      broadcastSync('prospects_batch', { count: results.items.length });
+    }
     res.json(results);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Deep search failed.' });
@@ -138,6 +207,10 @@ router.post('/search/google-maps', async (req, res) => {
       saveProspect(prospect);
     }
 
+    if (results?.items?.length) {
+      broadcastSync('prospects_batch', { count: results.items.length });
+    }
+
     res.json({
       ...results,
       gmpAttribution: 'Google Maps'
@@ -161,6 +234,7 @@ router.put('/settings', (req, res) => {
   try {
     const updated = updateSettings(req.body);
     setupCronSchedule(updated.dailyScheduleTime, updated.timezone, updated.cronEnabled);
+    broadcastSync('settings_updated', updated);
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -230,6 +304,7 @@ router.post('/prospects', (req, res) => {
         count++;
       }
     }
+    broadcastSync('prospects_batch', { count });
     res.json({ success: true, count, total: Object.keys(getProspects({ limit: 10000 }).items).length });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -254,6 +329,7 @@ router.put('/prospects', (req, res) => {
         count++;
       }
     }
+    broadcastSync('prospects_batch', { count });
     res.json({ success: true, count });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -292,6 +368,37 @@ router.get('/prospects/:id', (req, res) => {
   }
 });
 
+// Full prospect edit / modification endpoint (PC & Mobile live sync)
+router.put('/prospects/:id', (req, res) => {
+  try {
+    let updated = updateProspect(req.params.id, req.body || {});
+    if (!updated && req.body) {
+      saveProspect({ ...req.body, id: req.params.id });
+      updated = getProspectById(req.params.id);
+    }
+    if (!updated) {
+      return res.status(404).json({ error: 'Prospect not found' });
+    }
+    broadcastSync('prospect_updated', updated);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/prospects/:id', (req, res) => {
+  try {
+    const updated = updateProspect(req.params.id, req.body || {});
+    if (!updated) {
+      return res.status(404).json({ error: 'Prospect not found' });
+    }
+    broadcastSync('prospect_updated', updated);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.put('/prospects/:id/status', (req, res) => {
   try {
     const { status, notes, prospect: prospectData } = req.body || {};
@@ -304,7 +411,9 @@ router.put('/prospects/:id/status', (req, res) => {
       saveProspect({ ...prospectData, id: req.params.id, status, notes });
       updated = getProspectById(req.params.id);
     }
-    res.json(updated || { id: req.params.id, status, notes });
+    const result = updated || { id: req.params.id, status, notes };
+    broadcastSync('prospect_updated', result);
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -313,6 +422,7 @@ router.put('/prospects/:id/status', (req, res) => {
 router.post('/prospects/:id/star', (req, res) => {
   try {
     const isStarred = toggleProspectStar(req.params.id);
+    broadcastSync('prospect_starred', { id: req.params.id, isStarred });
     res.json({ isStarred });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -326,7 +436,9 @@ router.post('/prospects/:id/click', (req, res) => {
       saveProspect(prospectData);
     }
     const updated = markProspectClicked(req.params.id);
-    res.json(updated || { id: req.params.id, isClicked: true });
+    const result = updated || { id: req.params.id, isClicked: true };
+    broadcastSync('prospect_updated', result);
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -339,7 +451,9 @@ router.post('/prospects/:id/contact', (req, res) => {
       saveProspect({ ...prospectData, id: req.params.id, status: status || 'contacted', isContacted: true, notes });
     }
     const updated = markProspectContacted(req.params.id, notes, status);
-    res.json(updated || { id: req.params.id, status: status || 'contacted', isContacted: true, notes });
+    const result = updated || { id: req.params.id, status: status || 'contacted', isContacted: true, notes };
+    broadcastSync('prospect_updated', result);
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -351,6 +465,8 @@ router.post('/prospects/:id/ban-website', (req, res) => {
     if (!result.success) {
       return res.status(404).json({ error: 'Prospect not found' });
     }
+    const updated = getProspectById(req.params.id);
+    if (updated) broadcastSync('prospect_updated', updated);
     res.json({ success: true, banned: true, name: result.name });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -364,6 +480,7 @@ router.post('/prospects/:id/not-interested', (req, res) => {
     if (!result.success) {
       return res.status(404).json({ error: 'Prospect not found' });
     }
+    broadcastSync('prospect_excluded', { id: req.params.id, name: result.name });
     res.json({ success: true, excluded: true, name: result.name });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -374,6 +491,7 @@ router.post('/prospects/clear', (req, res) => {
   try {
     const { keepContacted = false, keepStarred = false, cleanAll = true } = req.body || {};
     const result = clearProspects({ keepContacted: Boolean(keepContacted), keepStarred: Boolean(keepStarred), cleanAll: Boolean(cleanAll) });
+    broadcastSync('prospects_cleared', result);
     res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -383,6 +501,7 @@ router.post('/prospects/clear', (req, res) => {
 router.delete('/prospects/:id', (req, res) => {
   try {
     deleteProspect(req.params.id);
+    broadcastSync('prospect_deleted', { id: req.params.id });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

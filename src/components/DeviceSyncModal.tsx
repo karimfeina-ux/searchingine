@@ -183,6 +183,21 @@ export const DeviceSyncModal: React.FC<DeviceSyncModalProps> = ({
         {/* TAB 1: Instant QR Code & Link Sync */}
         {activeTab === 'qr' && (
           <div className="space-y-4">
+            {/* Live Cloud Sync Banner */}
+            <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <div className="flex-1">
+                <span className="font-bold">
+                  {lang === 'es' ? 'Sincronización en Vivo PC & Móvil Activa: ' : 'Live Cloud Sync Active: '}
+                </span>
+                <span className="text-slate-300 text-[11px]">
+                  {lang === 'es'
+                    ? 'Cualquier modificación o edición realizada en PC o en tu teléfono se actualiza en tiempo real en todos tus dispositivos conectados.'
+                    : 'Any edits or modifications made on your PC or phone register in real-time across all your devices.'}
+                </span>
+              </div>
+            </div>
+
             <div className="flex flex-col sm:flex-row items-center gap-6 bg-slate-950/60 rounded-2xl p-4 sm:p-5 border border-slate-800">
               {/* QR Code Container */}
               <div className="shrink-0 flex flex-col items-center justify-center p-3 rounded-2xl bg-[#090d18] border border-cyan-500/30 shadow-lg shadow-cyan-950/50">
@@ -202,7 +217,7 @@ export const DeviceSyncModal: React.FC<DeviceSyncModalProps> = ({
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-cyan-400" />
-                    <span>{lang === 'es' ? 'Sincronización Inmediata a tu Teléfono' : 'Instant Sync to Mobile Phone'}</span>
+                    <span>{lang === 'es' ? 'Abre LeadHunter en tu Teléfono Móvil' : 'Open LeadHunter on your Mobile Phone'}</span>
                   </h3>
                   <p className="text-slate-300 leading-relaxed text-[11px]">
                     {lang === 'es'
