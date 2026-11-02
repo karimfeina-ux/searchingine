@@ -125,10 +125,13 @@ LeadHunter AI automatically executes `CREATE TABLE IF NOT EXISTS` on the first r
 
 ### Step 3: Bind D1 Database to Your Cloudflare Pages Project
 1. In Cloudflare Dashboard, go to **Compute (Workers & Pages)** → click your Pages project (`leadhunter-ai` or `searchingine`).
-2. Go to **Settings** → **Functions** → scroll down to **D1 database bindings**.
-3. Click **Add binding**:
+2. Go to **Settings**:
+   - In modern Cloudflare: click **Bindings** (or **Variables and Secrets** → **Bindings**) on the left menu.
+   - (In older Cloudflare layouts: click **Functions** → scroll down to **D1 database bindings**).
+3. Click **Add** (or **Add binding**) → choose **D1 database**:
    - **Variable name**: `DB` (must be capital letters `DB`)
    - **D1 database**: Select `leadhunter_db` from the dropdown list.
+   *(Note: If the `+ Add` button is greyed out/disabled, it is because Cloudflare detected a `wrangler.toml` file in the GitHub repo, which locks dashboard editing. Simply delete `wrangler.toml` from your GitHub repository so Cloudflare unlocks the dashboard interface).*
 4. Click **Save**.
 5. Trigger a new deployment (or push a commit to Git) so Cloudflare Pages activates the `DB` binding.
 

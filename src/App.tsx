@@ -18,6 +18,7 @@ import { QuickSearchModal } from './components/QuickSearchModal.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { AdminLogin } from './components/AdminLogin.tsx';
 import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
+import { DeviceSyncModal } from './components/DeviceSyncModal.tsx';
 import { GoogleMapsProspectsView } from './components/GoogleMapsProspectsView.tsx';
 import { ContactedListView } from './components/ContactedListView.tsx';
 import { apiFetch } from './services/apiBridge.ts';
@@ -93,6 +94,7 @@ export default function App() {
   const [showWizard, setShowWizard] = useState<boolean>(false);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState<boolean>(false);
   const [isDeployModalOpen, setIsDeployModalOpen] = useState<boolean>(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
   const [isResearchRunning, setIsResearchRunning] = useState<boolean>(false);
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -208,6 +210,41 @@ export default function App() {
     }
 
     loadData();
+
+    // Instant direct sync via QR Code / Sync Link (#sync=...)
+    if (typeof window !== 'undefined' && window.location.hash.includes('#sync=')) {
+      try {
+        const rawHash = window.location.hash.split('#sync=')[1];
+        if (rawHash) {
+          const decoded = decodeURIComponent(escape(atob(rawHash)));
+          const items = JSON.parse(decoded);
+          if (Array.isArray(items) && items.length > 0) {
+            setProspects((prev) => {
+              const map = new Map<string, Prospect>();
+              for (const p of prev) map.set(p.id, p);
+              for (const item of items) {
+                map.set(item.id, { ...(map.get(item.id) || {}), ...item, isContacted: true });
+              }
+              const merged = Array.from(map.values());
+              saveStoredProspects(merged);
+              setStats(computeStats(merged));
+              return merged;
+            });
+            setContactToast({
+              businessName: 'Sync Complete',
+              status: 'contacted',
+              title: lang === 'es' ? '📱 ¡Móvil Sincronizado!' : '📱 Mobile Phone Synced!',
+              message: lang === 'es' ? `¡${items.length} clientes contactados guardados en tu móvil para siempre!` : `Successfully synced ${items.length} contacted clients to your phone!`,
+              showCta: true
+            });
+            setTimeout(() => setContactToast(null), 5000);
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }
+      } catch (err) {
+        console.warn('Sync hash processing notice:', err);
+      }
+    }
 
     // Auto-sync when the user switches tabs or unlocks/opens the website on their mobile phone
     const handleSyncOnVisible = () => {
@@ -820,6 +857,7 @@ export default function App() {
         totalLeadsCount={stats.totalLeads}
         contactedCount={stats.contactedCount}
         onOpenDeployModal={() => setIsDeployModalOpen(true)}
+        onOpenSyncModal={() => setIsSyncModalOpen(true)}
       />
 
       {/* Quota Banner */}
@@ -1031,6 +1069,17 @@ export default function App() {
         isOpen={isDeployModalOpen}
         onClose={() => setIsDeployModalOpen(false)}
         lang={lang}
+      />
+
+      {/* Device Sync Modal (QR & Link Direct Sync) */}
+      <DeviceSyncModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        prospects={prospects}
+        lang={lang}
+        onSyncImported={() => {
+          loadData();
+        }}
       />
 
       {/* Mobile Sticky Bottom Navigation Bar for Home Screen / PWA */}

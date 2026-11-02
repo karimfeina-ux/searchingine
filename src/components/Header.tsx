@@ -14,7 +14,9 @@ import {
   LogOut,
   SlidersHorizontal,
   ChevronRight,
-  Cloud
+  Cloud,
+  Smartphone,
+  QrCode
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton.tsx';
 
@@ -32,6 +34,7 @@ interface HeaderProps {
   totalLeadsCount?: number;
   contactedCount?: number;
   onOpenDeployModal?: () => void;
+  onOpenSyncModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -47,7 +50,8 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   totalLeadsCount = 0,
   contactedCount = 0,
-  onOpenDeployModal
+  onOpenDeployModal,
+  onOpenSyncModal
 }) => {
   const [locationInput, setLocationInput] = useState(() => 'Madrid');
   const [keywordInput, setKeywordInput] = useState(() => 'peluquería');
@@ -180,6 +184,18 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Cloud className="h-3.5 w-3.5 text-cyan-400" />
                 <span className="hidden sm:inline">{lang === 'es' ? 'Desplegar Cloudflare' : 'Deploy Cloudflare'}</span>
+              </button>
+            )}
+
+            {/* Sync Phone & PC Button */}
+            {onOpenSyncModal && (
+              <button
+                onClick={onOpenSyncModal}
+                className="flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/60 to-cyan-950/60 hover:from-emerald-900/60 hover:to-cyan-900/60 text-emerald-300 text-xs font-semibold shadow-sm shadow-emerald-500/20 active:scale-95 transition cursor-pointer"
+                title="Sync Contacted Clients to Mobile Phone"
+              >
+                <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">{lang === 'es' ? 'Sincronizar Móvil' : 'Sync Phone'}</span>
               </button>
             )}
 

@@ -158,10 +158,6 @@ export const CloudflareDeployModal: React.FC<CloudflareDeployModalProps> = ({
       {
         path: 'public/_headers',
         content: '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n'
-      },
-      {
-        path: 'wrangler.toml',
-        content: 'name = "searchingine"\ncompatibility_date = "2024-09-23"\ncompatibility_flags = ["nodejs_compat"]\npages_build_output_dir = "dist"\n'
       }
     ];
 
@@ -551,8 +547,8 @@ export const CloudflareDeployModal: React.FC<CloudflareDeployModalProps> = ({
                   </p>
                   <p className="text-slate-400 text-[11px]">
                     {lang === 'es'
-                      ? 'En tu proyecto Pages → Settings → Functions → D1 database bindings → Add binding: Nombre: "DB", Base de datos: "leadhunter_db". Guarda y listo.'
-                      : 'In your Pages project → Settings → Functions → D1 database bindings → Add binding: Name: "DB", Database: "leadhunter_db". Save and you are done.'}
+                      ? 'En tu proyecto Pages → Settings → Bindings (o Variables & Secrets → Bindings) → Add → D1 Database: Nombre de variable: "DB", Base de datos: "leadhunter_db". Guarda y listo.'
+                      : 'In your Pages project → Settings → Bindings (or Variables & Secrets → Bindings) → Add → D1 Database: Variable name: "DB", Database: "leadhunter_db". Save and you are done.'}
                   </p>
                 </div>
               </div>
