@@ -45,8 +45,7 @@ Provide the response in JSON format:
         model: 'gemini-3.8-flash',
         contents: prompt,
         config: {
-          responseMimeType: 'application/json',
-          temperature: 0.7
+          responseMimeType: 'application/json'
         }
       });
 

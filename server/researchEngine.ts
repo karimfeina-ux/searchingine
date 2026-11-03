@@ -387,15 +387,14 @@ Return ONLY a valid JSON array of objects with the following keys:
 `;
 
       const aiCallPromise = ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
         contents: prompt,
         config: {
-          responseMimeType: 'application/json',
-          temperature: 0.3
+          responseMimeType: 'application/json'
         }
       });
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Gemini search timeout')), 3500)
+        setTimeout(() => reject(new Error('Gemini search timeout')), 12000)
       );
       const response = await Promise.race([aiCallPromise, timeoutPromise]);
 

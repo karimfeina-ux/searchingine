@@ -131,7 +131,6 @@ Return ONLY valid JSON.
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
-          temperature: 0.7,
         },
       });
 
