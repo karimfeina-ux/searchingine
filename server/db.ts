@@ -404,6 +404,14 @@ export const markProspectContacted = (id: string, notes?: string, status?: strin
 export const deleteProspect = (id: string): { success: boolean; deleted?: Prospect } => {
   const p = store.prospects[id];
   if (!p) return { success: false };
+  const isActionedLead = Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+  );
+  // USER REQUIREMENT: Contacted leads NEVER get deleted!
+  if (isActionedLead) {
+    return { success: false };
+  }
   delete store.prospects[id];
   delete store.briefs[id];
   delete store.verifications[id];
@@ -499,11 +507,8 @@ export const clearProspects = (options: { keepContacted?: boolean; keepStarred?:
       p.isContacted ||
       (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
     );
-    // CRITICAL: Contacted and actioned leads are permanent records and must NEVER be deleted when clearing search results!
+    // CRITICAL USER REQUIREMENT: Contacted and actioned leads are NEVER deleted when cleaning search results!
     if (isActionedLead) {
-      continue;
-    }
-    if (options.keepStarred && p.isStarred) {
       continue;
     }
     delete store.prospects[id];

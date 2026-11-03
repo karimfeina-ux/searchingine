@@ -142,7 +142,7 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
 
   const handleExecuteClear = () => {
     if (onClearResearch) {
-      onClearResearch({ keepContacted: true, keepStarred: true, cleanAll: false });
+      onClearResearch({ keepContacted: true, keepStarred: false, cleanAll: false });
       setShowClearConfirmModal(false);
       setFeedbackToast(tr.cleanedSuccess);
       setTimeout(() => setFeedbackToast(null), 3000);
@@ -154,7 +154,7 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
     (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
   );
   const uncontactedCount = prospects.filter((p) => !isDoneOrContacted(p)).length;
-  const contactedCount = prospects.filter((p) => p.isContacted || (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))).length;
+  const contactedCount = prospects.filter((p) => isDoneOrContacted(p)).length;
   const waitingCount = prospects.filter((p) => p.status === 'waiting').length;
   const signedCount = prospects.filter((p) => p.status === 'client_signed').length;
   const notInterestedCount = prospects.filter((p) => p.status === 'not_interested' || p.status === 'excluded').length;

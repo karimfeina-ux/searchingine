@@ -21,7 +21,7 @@ import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
 import { GoogleMapsProspectsView } from './components/GoogleMapsProspectsView.tsx';
 import { ContactedListView } from './components/ContactedListView.tsx';
 import { apiFetch } from './services/apiBridge.ts';
-import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets, addExclusion, backupLocalData, isQualifiedProspect } from './services/clientDataEngine.ts';
+import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets, addExclusion, backupLocalData, isQualifiedProspect, getPermanentContactedProspects, savePermanentContactedProspect } from './services/clientDataEngine.ts';
 import { liveSync, type SyncMessage } from './services/liveSync.ts';
 import { Loader2, AlertCircle, X, Compass, Database, CheckCircle2, Settings } from 'lucide-react';
 
@@ -189,21 +189,38 @@ export default function App() {
               map.set(p.id, p);
             }
             const unsynced: Prospect[] = [];
+            
+            // Always ensure all permanent contacted leads exist in the map
+            for (const p of getPermanentContactedProspects()) {
+              const existing = map.get(p.id);
+              if (!existing) {
+                map.set(p.id, p);
+                unsynced.push(p);
+              } else if (!existing.isContacted) {
+                map.set(p.id, { ...existing, ...p, isContacted: true });
+                unsynced.push({ ...existing, ...p, isContacted: true });
+              }
+            }
+
             for (const p of prev.filter(isQualifiedProspect)) {
               const remote = map.get(p.id);
+              const isActioned = Boolean(
+                p.isContacted ||
+                (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+              );
+
               if (!remote) {
-                map.set(p.id, p);
-                if (p.isContacted || ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status)) {
+                // If it is an actioned/contacted lead, preserve it FOREVER!
+                if (isActioned) {
+                  map.set(p.id, p);
                   unsynced.push(p);
                 }
+                // Uncontacted search list leads cleared by Clean are NOT re-added
               } else {
                 const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
                 const localTime = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
 
-                const isLocalContacted = Boolean(
-                  p.isContacted ||
-                  (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
-                );
+                const isLocalContacted = isActioned;
                 const isRemoteContacted = Boolean(
                   remote.isContacted ||
                   (remote.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(remote.status))
@@ -240,18 +257,17 @@ export default function App() {
             return mergedList;
           });
         } else {
-          // If server has 0 records, check if this device has existing records to migrate safely
-          const localItems = getStoredProspects().filter(isQualifiedProspect);
-          if (localItems.length > 0) {
-            backupLocalData();
+          // If server has 0 records, preserve any contacted records permanently
+          const localContacted = getPermanentContactedProspects();
+          if (localContacted.length > 0) {
             apiFetch('/api/prospects', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: localItems })
+              body: JSON.stringify({ items: localContacted })
             }).catch(() => {});
-            setProspects(localItems);
+            setProspects(localContacted);
           } else {
-            setProspects((prev) => prev.filter((p) => isQualifiedProspect(p) && (p.isContacted || ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))));
+            setProspects((prev) => prev.filter((p) => Boolean(p.isContacted || (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status)))));
           }
         }
       }
@@ -923,9 +939,9 @@ export default function App() {
     }
   };
 
-  const handleClearResearch = async (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true, keepStarred: true }) => {
+  const handleClearResearch = async (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true }) => {
     // CRITICAL USER REQUIREMENT:
-    // When clicking clean, it ONLY cleans the uncontacted search results.
+    // Clean button cleans the search list ONLY.
     // Contacted, waiting, signed, and not-interested leads are registered FOREVER and never deleted!
     setProspects((prev) => {
       const next = prev.filter((p) => {
@@ -933,11 +949,16 @@ export default function App() {
           p.isContacted ||
           (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
         );
-        return isActionedLead || (options.keepStarred && p.isStarred);
+        return isActionedLead;
       });
-      saveStoredProspects(next);
-      setStats(computeStats(next));
-      return next;
+      const permanent = getPermanentContactedProspects();
+      const map = new Map<string, Prospect>();
+      for (const p of permanent) map.set(p.id, p);
+      for (const p of next) map.set(p.id, p);
+      const cleaned = Array.from(map.values());
+      saveStoredProspects(cleaned);
+      setStats(computeStats(cleaned));
+      return cleaned;
     });
 
     // Notify backend with strict keepContacted: true
@@ -945,7 +966,7 @@ export default function App() {
       await apiFetch('/api/prospects/clear', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keepContacted: true, keepStarred: Boolean(options.keepStarred), cleanAll: false })
+        body: JSON.stringify({ keepContacted: true, keepStarred: false, cleanAll: false })
       });
     } catch (err) {
       console.warn('Backend clear notice:', err);

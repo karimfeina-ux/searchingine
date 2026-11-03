@@ -34,6 +34,7 @@ import { generatePersonalizedBrief, buildProgrammaticBrief } from './websiteConc
 import { generateOutreachDraft } from './outreachGenerator.ts';
 import { deepSearchProspects } from './researchEngine.ts';
 import type { Response } from 'express';
+import type { Prospect } from '../src/types/index.ts';
 
 const router = Router();
 
@@ -172,58 +173,95 @@ router.post('/search/deep-prospect', async (req, res) => {
   }
 });
 
-// Google Maps Platform Live Business Research (Places API New)
+// Google Maps Platform Live Business Research (Places API New) & Deep AI Search
 router.post('/search/google-maps', async (req, res) => {
   try {
     const { query, location, onlyNoWebsite, minRating, minReviews, pageSize } = req.body || {};
-    const { searchGoogleMapsBusinesses, getGoogleMapsApiKey } = await import('./googleMapsService.ts');
+    const { searchGoogleMapsBusinesses } = await import('./googleMapsService.ts');
     
-    let results: any = null;
+    let gmpResults: any = null;
     try {
-      results = await searchGoogleMapsBusinesses({
+      gmpResults = await searchGoogleMapsBusinesses({
         query: (query || 'barbershop').trim(),
         location: (location || 'Madrid, Spain').trim(),
         onlyNoWebsite: Boolean(onlyNoWebsite),
         minRating: minRating ? Number(minRating) : undefined,
         minReviews: minReviews ? Number(minReviews) : undefined,
-        pageSize: pageSize ? Number(pageSize) : 20
+        pageSize: pageSize ? Number(pageSize) : 60
       });
     } catch (gmpErr: any) {
-      console.warn('Google Maps search notice, trying deep-prospect fallback:', gmpErr?.message);
+      console.warn('Google Maps search notice:', gmpErr?.message);
     }
 
-    if (!results || !Array.isArray(results.items) || results.items.length === 0) {
+    // Also run deepSearchProspects to uncover all additional businesses in the area
+    let deepResults: any = null;
+    try {
       const { deepSearchProspects } = await import('./researchEngine.ts');
-      results = await deepSearchProspects({
+      deepResults = await deepSearchProspects({
         query: (query || '').trim(),
         location: (location || '').trim()
       });
+    } catch (deepErr: any) {
+      console.warn('Deep discovery engine notice:', deepErr?.message);
     }
 
-    const settings = getSettings();
-    if (results && Array.isArray(results.items)) {
-      for (const prospect of results.items) {
-        try {
-          const brief = buildProgrammaticBrief(prospect, settings);
-          saveWebsiteBrief(brief);
-          prospect.brief = brief;
-        } catch {}
-
-        if (prospect.verifications && prospect.verifications.length > 0) {
-          for (const v of prospect.verifications) {
-            saveVerification(v);
-          }
+    // Combine both result lists to maximize every possible lead discovered
+    const combinedMap = new Map<string, Prospect>();
+    if (gmpResults && Array.isArray(gmpResults.items)) {
+      for (const p of gmpResults.items) {
+        combinedMap.set(p.id, p);
+      }
+    }
+    if (deepResults && Array.isArray(deepResults.items)) {
+      for (const p of deepResults.items) {
+        const cleanPhone = (p.phone || '').replace(/\D/g, '');
+        const norm = (p.normalizedName || p.name || '').toLowerCase().trim();
+        const alreadyExists = Array.from(combinedMap.values()).some((existing) => {
+          if (existing.id === p.id) return true;
+          if (cleanPhone.length >= 6 && (existing.phone || '').replace(/\D/g, '') === cleanPhone) return true;
+          if (norm && (existing.normalizedName || existing.name || '').toLowerCase().trim() === norm) return true;
+          return false;
+        });
+        if (!alreadyExists) {
+          combinedMap.set(p.id, p);
         }
-        saveProspect(prospect);
       }
+    }
 
-      if (results.items.length) {
-        broadcastSync('prospects_batch', { count: results.items.length });
+    const allItems = Array.from(combinedMap.values());
+    allItems.sort((a, b) => {
+      if (a.websiteStatus === 'no_website' && b.websiteStatus !== 'no_website') return -1;
+      if (b.websiteStatus === 'no_website' && a.websiteStatus !== 'no_website') return 1;
+      return b.leadScore - a.leadScore;
+    });
+
+    const settings = getSettings();
+    for (const prospect of allItems) {
+      try {
+        const brief = buildProgrammaticBrief(prospect, settings);
+        saveWebsiteBrief(brief);
+        prospect.brief = brief;
+      } catch {}
+
+      if (prospect.verifications && prospect.verifications.length > 0) {
+        for (const v of prospect.verifications) {
+          saveVerification(v);
+        }
       }
+      saveProspect(prospect);
+    }
+
+    if (allItems.length) {
+      broadcastSync('prospects_batch', { count: allItems.length });
     }
 
     res.json({
-      ...(results || { items: [], total: 0 }),
+      items: allItems,
+      total: allItems.length,
+      location: (location || 'Madrid, Spain').trim(),
+      query: (query || 'barbershop').trim(),
+      rawCount: allItems.length,
+      source: 'all_possible_sources',
       gmpAttribution: 'Google Maps'
     });
   } catch (err: any) {
@@ -503,8 +541,8 @@ router.post('/prospects/:id/not-interested', (req, res) => {
 
 router.post('/prospects/clear', (req, res) => {
   try {
-    const { keepContacted = false, keepStarred = false, cleanAll = true } = req.body || {};
-    const result = clearProspects({ keepContacted: Boolean(keepContacted), keepStarred: Boolean(keepStarred), cleanAll: Boolean(cleanAll) });
+    // USER REQUIREMENT: Clean button cleans the search list ONLY. Contacted leads NEVER get deleted.
+    const result = clearProspects({ keepContacted: true, keepStarred: false, cleanAll: false });
     broadcastSync('prospects_cleared', result);
     res.json({ success: true, ...result });
   } catch (err: any) {

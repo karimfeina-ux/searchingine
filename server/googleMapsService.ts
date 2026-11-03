@@ -102,7 +102,7 @@ export async function searchGoogleMapsBusinesses(params: {
   let places: GooglePlaceResult[] = [];
   let nextPageToken: string | undefined = undefined;
   let pageCount = 0;
-  const maxPages = 4;
+  const maxPages = 5;
 
   do {
     const requestBody: Record<string, any> = {
@@ -112,7 +112,7 @@ export async function searchGoogleMapsBusinesses(params: {
     if (nextPageToken) {
       requestBody.pageToken = nextPageToken;
       // Brief pause to allow next page token propagation
-      await new Promise((r) => setTimeout(r, 350));
+      await new Promise((r) => setTimeout(r, 400));
     }
     if (params.minRating && params.minRating > 0 && !nextPageToken) {
       requestBody.minRating = Math.min(Math.max(params.minRating, 1.0), 5.0);
@@ -147,7 +147,7 @@ export async function searchGoogleMapsBusinesses(params: {
     }
     nextPageToken = data.nextPageToken;
     pageCount++;
-  } while (nextPageToken && pageCount < maxPages && places.length < 80);
+  } while (nextPageToken && pageCount < maxPages && places.length < 100);
 
   const { names: excludedNames, phones: excludedPhones } = getExcludedBusinessNamesAndPhones();
   const settings = getSettings();
@@ -163,7 +163,7 @@ export async function searchGoogleMapsBusinesses(params: {
     const rawPhone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
     const cleanPhone = rawPhone.replace(/\D/g, '');
 
-    // USER RULE: If they don't have a phone number, don't list them or show them
+    // Must have a phone number for outreach contactability
     if (!rawPhone || cleanPhone.length < 6) {
       continue;
     }
@@ -180,7 +180,7 @@ export async function searchGoogleMapsBusinesses(params: {
     let isSocialOnly = false;
     let websiteStatus: Prospect['websiteStatus'] = 'no_website';
 
-    // USER RULE: Has no website listed on Google Maps or any platform
+    // Check if business has dedicated custom website vs no website / social only
     if (rawWebsite) {
       const lowerWeb = rawWebsite.toLowerCase();
       const isSocialContactOnly =
@@ -192,7 +192,6 @@ export async function searchGoogleMapsBusinesses(params: {
         lowerWeb.includes('bio.link') ||
         lowerWeb.includes('taplink.cc');
 
-      // If it has ANY website listed on Google Maps, reject immediately
       if (!isSocialContactOnly) {
         continue;
       }
@@ -200,16 +199,12 @@ export async function searchGoogleMapsBusinesses(params: {
       websiteStatus = 'possibly_no_website';
     }
 
-    // STRICT REQUIREMENT: Never show businesses with less than 2 pictures in Google Maps
     const photoCount = Array.isArray(place.photos) ? place.photos.length : 0;
-    if (photoCount < 2) {
-      continue;
-    }
 
-    // Ratings & Reviews filter
+    // Ratings & Reviews filter (optional)
     const rating = place.rating || 0;
     const reviewCount = place.userRatingCount || 0;
-    if (params.minReviews && reviewCount < params.minReviews) {
+    if (params.minReviews && params.minReviews > 0 && reviewCount < params.minReviews) {
       continue;
     }
 

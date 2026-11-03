@@ -308,14 +308,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  onClearResearch({ keepContacted: true, keepStarred: true, cleanAll: false });
+                  onClearResearch({ keepContacted: true, keepStarred: false, cleanAll: false });
                 }}
-                disabled={topProspects.length === 0 && stats.totalLeads === 0}
+                disabled={uncontactedCount === 0}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-300 bg-rose-950/50 hover:bg-rose-900/70 border border-rose-800/60 shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                title={lang === 'es' ? 'Limpiar oportunidades no contactadas (mantiene Contactados y No Interesados para siempre)' : 'Clean uncontacted opportunities (keeps Contacted & Not Interested forever)'}
+                title={lang === 'es' ? 'Limpiar lista de búsqueda (mantiene Contactados y No Interesados para siempre)' : 'Clean search list (keeps Contacted & Not Interested forever)'}
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>{lang === 'es' ? 'Limpiar Oportunidades' : 'Clean'}</span>
+                <span>{lang === 'es' ? 'Limpiar Búsquedas' : 'Clean Search List'}</span>
               </button>
             )}
 

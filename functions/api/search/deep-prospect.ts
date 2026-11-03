@@ -68,7 +68,7 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
         let places: any[] = [];
         let nextPageToken: string | undefined = undefined;
         let pageCount = 0;
-        const maxPages = 3;
+        const maxPages = 5;
 
         do {
           const reqPayload: Record<string, any> = {
@@ -77,6 +77,7 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
           };
           if (nextPageToken) {
             reqPayload.pageToken = nextPageToken;
+            await new Promise((r) => setTimeout(r, 400));
           }
 
           const gmpRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
@@ -98,7 +99,7 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
           }
           nextPageToken = gmpData.nextPageToken;
           pageCount++;
-        } while (nextPageToken && pageCount < maxPages && places.length < 60);
+        } while (nextPageToken && pageCount < maxPages && places.length < 100);
 
         if (places.length > 0) {
             const now = new Date().toISOString();

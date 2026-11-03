@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Prospect, LeadStatus } from '../types/index.ts';
 import { getGoogleMapsUrl } from '../utils/maps.ts';
 import { getLeadStatusTheme } from '../utils/statusTheme.ts';
 import { ContactOutcomeMenu } from './ContactOutcomeMenu.tsx';
-import { isQualifiedProspect } from '../services/clientDataEngine.ts';
+import { isQualifiedProspect, getPermanentContactedProspects } from '../services/clientDataEngine.ts';
 import {
   CheckCircle2,
   Clock,
@@ -53,17 +53,27 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Show all the things user did before: contacted, waiting, signed, not interested
-  const contactedPool = prospects.filter((p) => {
-    return Boolean(
-      p.isContacted ||
-      p.status === 'contacted' ||
-      p.status === 'waiting' ||
-      p.status === 'client_signed' ||
-      p.status === 'not_interested' ||
-      p.status === 'excluded'
-    );
-  });
+  // USER REQUIREMENT: Contacted page never gets deleted and lists everyone marked contacted
+  const contactedPool = useMemo(() => {
+    const map = new Map<string, Prospect>();
+    for (const p of getPermanentContactedProspects()) {
+      map.set(p.id, p);
+    }
+    for (const p of prospects) {
+      const isActioned = Boolean(
+        p.isContacted ||
+        p.status === 'contacted' ||
+        p.status === 'waiting' ||
+        p.status === 'client_signed' ||
+        p.status === 'not_interested' ||
+        p.status === 'excluded'
+      );
+      if (isActioned) {
+        map.set(p.id, p);
+      }
+    }
+    return Array.from(map.values());
+  }, [prospects]);
 
   // Calculate status metric breakdown
   const waitingLeads = contactedPool.filter((p) => p.status === 'waiting');

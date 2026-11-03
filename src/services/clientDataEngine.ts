@@ -170,24 +170,63 @@ export async function loadFromIndexedDB(): Promise<Prospect[]> {
   });
 }
 
+export const STORAGE_KEY_PERMANENT_CONTACTED = 'leadhunter_contacted_pipeline_permanent';
+
+export function getPermanentContactedProspects(): Prospect[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PERMANENT_CONTACTED);
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) return list.filter(isQualifiedProspect);
+    }
+  } catch {}
+  return [];
+}
+
+export function savePermanentContactedProspect(p: Prospect) {
+  try {
+    const isActioned = Boolean(
+      p.isContacted ||
+      (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+    );
+    if (!isActioned) return;
+    const existing = getPermanentContactedProspects();
+    const map = new Map<string, Prospect>();
+    for (const item of existing) map.set(item.id, item);
+    map.set(p.id, { ...p, isContacted: true });
+    localStorage.setItem(STORAGE_KEY_PERMANENT_CONTACTED, JSON.stringify(Array.from(map.values())));
+  } catch {}
+}
+
 export function getStoredProspects(): Prospect[] {
   try {
+    const map = new Map<string, Prospect>();
+    // First, load all permanent contacted prospects so they are NEVER lost or missing
+    const permanentContacted = getPermanentContactedProspects();
+    for (const p of permanentContacted) {
+      map.set(p.id, p);
+    }
+
     let raw = localStorage.getItem(STORAGE_KEY_PROSPECTS);
     if (!raw || raw === '[]') {
       raw = localStorage.getItem('leadhunter_backup_permanent');
     }
     if (raw) {
       let parsed = JSON.parse(raw);
-      // One-time cleanup: remove any demo leads created by earlier versions.
-      if (Array.isArray(parsed) && !localStorage.getItem('leadhunter_purged_fake_v1')) {
-        parsed = parsed.filter((p: Prospect) => typeof p.id === 'string' && (p.id.startsWith('gp_') || p.id.startsWith('gmp_')));
-        localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(parsed));
-        localStorage.setItem('leadhunter_purged_fake_v1', '1');
-      }
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter(isQualifiedProspect);
+        for (const p of parsed) {
+          if (isQualifiedProspect(p)) {
+            const existing = map.get(p.id);
+            if (existing) {
+              map.set(p.id, { ...p, ...existing, isContacted: true });
+            } else {
+              map.set(p.id, p);
+            }
+          }
+        }
       }
     }
+    return Array.from(map.values());
   } catch {}
   return [];
 }
@@ -223,8 +262,11 @@ export function saveStoredProspects(prospects: Prospect[]) {
     const qualified = prospects.filter(isQualifiedProspect);
     const serialized = JSON.stringify(qualified);
     localStorage.setItem(STORAGE_KEY_PROSPECTS, serialized);
-    if (qualified.length > 0) {
-      localStorage.setItem('leadhunter_backup_permanent', serialized);
+    // Automatically save any contacted prospect to the permanent contacted pipeline
+    for (const p of qualified) {
+      if (p.isContacted || (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))) {
+        savePermanentContactedProspect(p);
+      }
     }
     persistToIndexedDB(qualified).catch(() => {});
   } catch {}
@@ -306,6 +348,14 @@ export function deleteProspectClient(prospectId: string): { remaining: Prospect[
   const current = getStoredProspects();
   const target = current.find((p) => p.id === prospectId);
   if (target) {
+    const isContactedLead = Boolean(
+      target.isContacted ||
+      (target.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(target.status))
+    );
+    // USER REQUIREMENT: Contacted leads NEVER get deleted!
+    if (isContactedLead) {
+      return { remaining: current, deleted: undefined };
+    }
     addExclusion(target.name, target.phone);
   }
   const remaining = current.filter((p) => p.id !== prospectId);
@@ -314,18 +364,29 @@ export function deleteProspectClient(prospectId: string): { remaining: Prospect[
 }
 
 export function clearStoredProspects(options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true }): Prospect[] {
+  // CRITICAL USER REQUIREMENT:
+  // Clean button cleans the search list ONLY.
+  // Contacted, waiting, signed, and not interested leads are NEVER deleted.
+  const permanent = getPermanentContactedProspects();
   const current = getStoredProspects();
-  const kept = current.filter((p) => {
+  const map = new Map<string, Prospect>();
+  
+  for (const p of permanent) {
+    map.set(p.id, p);
+  }
+  for (const p of current) {
     const isActionedLead = Boolean(
       p.isContacted ||
       (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
     );
-    // Contacted and actioned leads are permanent and never deleted when clearing search results
-    if (isActionedLead) return true;
-    if (options.keepStarred && p.isStarred) return true;
-    return false;
-  });
-  saveStoredProspects(kept);
+    if (isActionedLead) {
+      map.set(p.id, p);
+    }
+  }
+
+  const kept = Array.from(map.values());
+  localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(kept));
+  persistToIndexedDB(kept).catch(() => {});
   return kept;
 }
 
