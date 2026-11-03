@@ -81,7 +81,6 @@ interface GmpCacheEntry {
   };
 }
 const gmpSearchCache = new Map<string, GmpCacheEntry>();
-const inFlightGmpSearches = new Map<string, Promise<any>>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 export async function searchGoogleMapsBusinesses(params: {
@@ -115,25 +114,11 @@ export async function searchGoogleMapsBusinesses(params: {
     return cached.data;
   }
 
-  // 2. Coalesce in-flight queries
-  if (inFlightGmpSearches.has(cacheKey)) {
-    return inFlightGmpSearches.get(cacheKey)!;
+  const result = await executeGoogleMapsSearch(params, apiKey, locationStr, queryStr, cacheKey);
+  if (result.items && result.items.length > 0) {
+    gmpSearchCache.set(cacheKey, { timestamp: Date.now(), data: result });
   }
-
-  const executionPromise = (async () => {
-    return await executeGoogleMapsSearch(params, apiKey, locationStr, queryStr, cacheKey);
-  })();
-
-  inFlightGmpSearches.set(cacheKey, executionPromise);
-  try {
-    const result = await executionPromise;
-    if (result.items.length > 0) {
-      gmpSearchCache.set(cacheKey, { timestamp: Date.now(), data: result });
-    }
-    return result;
-  } finally {
-    inFlightGmpSearches.delete(cacheKey);
-  }
+  return result;
 }
 
 async function executeGoogleMapsSearch(
@@ -219,39 +204,22 @@ async function executeGoogleMapsSearch(
             'X-Goog-FieldMask': fieldMask,
           },
           body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(4000),
         });
       } catch (networkErr: any) {
         console.warn('[GoogleMapsService] Network error during Places API search:', networkErr?.message);
         break;
       }
 
-      // Handle 429 quota / rate limit with single retry
+      // Handle 429 quota / rate limit immediately
       if (response.status === 429) {
         quotaExceeded = true;
-        console.warn(`[GoogleMapsService] Places API 429 (Rate Limit/Quota). Backing off...`);
-        await new Promise((r) => setTimeout(r, 1000));
-        try {
-          const retryRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Goog-Api-Key': apiKey,
-              'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
-              'X-Goog-FieldMask': fieldMask,
-            },
-            body: JSON.stringify(requestBody),
-          });
-          if (retryRes.ok) {
-            response = retryRes;
-            quotaExceeded = false;
-          }
-        } catch {}
+        console.warn(`[GoogleMapsService] Places API 429 (Daily Quota Reached). Switching to Deep AI Prospecting Engine...`);
+        break;
       }
 
       if (!response.ok) {
-        if (response.status === 429) {
-          quotaExceeded = true;
-        }
+        quotaExceeded = true;
         break;
       }
 
@@ -275,6 +243,30 @@ async function executeGoogleMapsSearch(
   }
 
   const places = Array.from(placeMap.values());
+
+  if (places.length === 0) {
+    try {
+      const { deepSearchProspects } = await import('./researchEngine.ts');
+      const fallback = await deepSearchProspects({
+        query: queryStr,
+        location: locationStr,
+        skipGmp: true,
+      });
+      if (fallback.items && fallback.items.length > 0) {
+        return {
+          items: fallback.items,
+          total: fallback.total,
+          location: locationStr,
+          query: queryStr,
+          rawCount: fallback.total,
+          source: 'google_maps_places_new',
+          quotaExceeded: true,
+        };
+      }
+    } catch (fallbackErr) {
+      console.warn('Deep AI fallback notice in googleMapsService:', fallbackErr);
+    }
+  }
 
   const { names: excludedNames, phones: excludedPhones } = getExcludedBusinessNamesAndPhones();
   const settings = getSettings();

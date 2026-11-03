@@ -193,17 +193,19 @@ router.post('/search/google-maps', async (req, res) => {
       console.warn('Google Maps search notice:', gmpErr?.message);
     }
 
-    // Also run deepSearchProspects via OpenStreetMap to discover all additional businesses
+    // Run deepSearchProspects if GMP returned fewer than 10 leads
     let deepResults: any = null;
-    try {
-      const { deepSearchProspects } = await import('./researchEngine.ts');
-      deepResults = await deepSearchProspects({
-        query: (query || '').trim(),
-        location: (location || '').trim(),
-        skipGmp: true // Skip duplicate Google Maps calls since already queried above
-      });
-    } catch (deepErr: any) {
-      console.warn('Deep discovery engine notice:', deepErr?.message);
+    if (!gmpResults || !Array.isArray(gmpResults.items) || gmpResults.items.length < 10) {
+      try {
+        const { deepSearchProspects } = await import('./researchEngine.ts');
+        deepResults = await deepSearchProspects({
+          query: (query || '').trim(),
+          location: (location || '').trim(),
+          skipGmp: true // Skip duplicate Google Maps calls since already queried above
+        });
+      } catch (deepErr: any) {
+        console.warn('Deep discovery engine notice:', deepErr?.message);
+      }
     }
 
     // Combine both result lists to maximize every possible lead discovered

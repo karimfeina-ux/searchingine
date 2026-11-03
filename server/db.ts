@@ -114,8 +114,9 @@ export const bumpStoreRevision = () => {
   return storeRevision;
 };
 
-function persistStore() {
-  bumpStoreRevision();
+let persistTimeout: NodeJS.Timeout | null = null;
+
+function doWriteStore() {
   try {
     const serialized = JSON.stringify(store, null, 2);
     fs.writeFileSync(STORE_PATH, serialized, 'utf-8');
@@ -123,6 +124,24 @@ function persistStore() {
     fs.writeFileSync(BACKUP_PATH, serialized, 'utf-8');
   } catch (err) {
     console.warn('Could not persist data store to disk:', err);
+  }
+}
+
+function persistStore(immediate = false) {
+  bumpStoreRevision();
+  if (immediate) {
+    if (persistTimeout) {
+      clearTimeout(persistTimeout);
+      persistTimeout = null;
+    }
+    doWriteStore();
+    return;
+  }
+  if (!persistTimeout) {
+    persistTimeout = setTimeout(() => {
+      persistTimeout = null;
+      doWriteStore();
+    }, 150);
   }
 }
 
