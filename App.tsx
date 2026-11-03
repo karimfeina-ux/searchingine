@@ -513,15 +513,16 @@ export default function App() {
           }
         } else if (data && data.total === 0) {
           setActionError(
-            lang === 'es'
-              ? 'No se encontraron negocios con esos filtros en Google Maps.'
-              : 'No businesses found matching those filters on Google Maps.'
+            (data.googleWarning ? data.googleWarning + ' ' : '') +
+            (lang === 'es'
+              ? 'No se encontraron negocios sin web con teléfono. Prueba otra categoría o ciudad (ej: "peluquería" en "Valencia").'
+              : 'No businesses without a website and with a phone number were found. Try another category or city (e.g. "hairdresser" in "Valencia").')
           );
         }
         await loadData();
       } else {
-        const data = await res.json();
-        setActionError(data.error || 'Failed to search Google Maps');
+        const data = await res.json().catch(() => ({}));
+        setActionError(data?.error || 'Failed to search Google Maps');
       }
     } catch (err: any) {
       console.error('Error during Google Maps search:', err);
@@ -630,9 +631,10 @@ export default function App() {
         setCurrentTab('dashboard');
       } else if (data && data.total === 0) {
         setActionError(
-          lang === 'es'
+          (data.googleWarning ? data.googleWarning + ' ' : '') +
+          (lang === 'es'
             ? 'No se encontraron nuevos prospectos sin web en esta búsqueda. Prueba con otra categoría o ciudad.'
-            : 'No new uncontacted businesses without a website were found for this search. Try a different city or category.'
+            : 'No new uncontacted businesses without a website were found for this search. Try a different city or category.')
         );
       } else {
         setActionError(data?.error || 'Failed to complete search');

@@ -7,6 +7,8 @@ interface Env {
   AUTH_SECRET?: string;
 }
 
+import { onRequestPost as deepSearch } from './deep-prospect';
+
 const GMP_SOLUTION_ID = 'gmp_mcp_codeassist_v1_aistudio';
 
 const json = (data: unknown, status = 200) =>
@@ -18,6 +20,20 @@ const json = (data: unknown, status = 200) =>
       'Access-Control-Allow-Origin': '*'
     }
   });
+
+async function osmFallback(env: Env, location: string, query: string, warning: string) {
+  const req = new Request('https://internal.local/api/search/deep-prospect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ location, query, skipGoogle: true })
+  });
+  const res = await deepSearch({ request: req, env });
+  const data: any = await res.json().catch(() => ({}));
+  if (!res.ok || data?.error) {
+    return json({ error: data?.error || 'Search failed', googleWarning: warning }, 502);
+  }
+  return json({ ...data, source: 'openstreetmap', googleWarning: warning });
+}
 
 export const onRequestOptions = async () => {
   return new Response(null, {
@@ -38,13 +54,14 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
       ''
     ).trim();
 
-    if (!apiKey) {
-      return json({ error: 'Google Maps API key not configured in Cloudflare environment variables.' }, 400);
-    }
-
     const body: any = await request.json().catch(() => ({}));
     const location = (body.location || 'Madrid, Spain').trim();
     const query = (body.query || 'barbershop').trim();
+
+    if (!apiKey) {
+      return await osmFallback(env, location, query, 'Google Maps API key is not set in Cloudflare, so free OpenStreetMap data was used.');
+    }
+    let googleWarning = '';
     const onlyNoWebsite = Boolean(body.onlyNoWebsite);
     const minRating = body.minRating ? Number(body.minRating) : 0;
     const minReviews = body.minReviews ? Number(body.minReviews) : 0;
@@ -146,6 +163,12 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
         if (!gmpRes.ok) {
           if (gmpRes.status === 429) {
             quotaExceeded = true;
+          }
+          try {
+            const errBody: any = await gmpRes.clone().json();
+            googleWarning = `Google Maps error ${gmpRes.status}: ${errBody?.error?.message || 'request failed'}`;
+          } catch {
+            googleWarning = `Google Maps error ${gmpRes.status}`;
           }
           break;
         }
@@ -291,6 +314,13 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
       });
     }
 
+    if (items.length === 0) {
+      const why = googleWarning || (quotaExceeded
+        ? 'Google Maps quota exceeded.'
+        : 'Google Maps found no businesses without a website and with a phone number.');
+      return await osmFallback(env, location, query, why + ' Free OpenStreetMap data was used instead.');
+    }
+
     items.sort((a, b) => {
       if (a.websiteStatus === 'no_website' && b.websiteStatus !== 'no_website') return -1;
       if (b.websiteStatus === 'no_website' && a.websiteStatus !== 'no_website') return 1;
@@ -303,7 +333,8 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
       location,
       query,
       gmpAttribution: 'Google Maps',
-      quotaExceeded
+      quotaExceeded,
+      googleWarning
     });
   } catch (err: any) {
     return json({ error: err?.message || 'Internal Edge Worker Error' }, 500);

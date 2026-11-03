@@ -45,7 +45,7 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
     ).trim();
 
     // 1. Try Google Maps Platform first if key is present
-    if (apiKey) {
+    if (apiKey && !body.skipGoogle) {
       try {
         const fullTextQuery = `${query} in ${location}`;
         const fieldMask = [

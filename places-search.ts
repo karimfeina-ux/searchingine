@@ -38,6 +38,7 @@ const CATEGORIES: { words: string[]; tags: string[] }[] = [
   { words: ['joyer', 'jewel'], tags: ['shop=jewelry'] },
   { words: ['óptic', 'optic'], tags: ['shop=optician'] },
   { words: ['masaj', ' spa ', 'massage'], tags: ['shop=massage', 'leisure=spa', 'amenity=spa'] },
+  { words: ['estétic', 'estetic', 'beauty', 'uñas', 'nail', 'manicur'], tags: ['shop=beauty', 'shop=nails'] },
   { words: ['tatu', 'tattoo'], tags: ['shop=tattoo'] },
   { words: ['hotel', 'hostal', 'alojamiento'], tags: ['tourism=hotel', 'tourism=guest_house', 'tourism=hostel'] },
   { words: ['academia', 'escuela', 'school', 'autoescuela'], tags: ['amenity=driving_school', 'amenity=language_school', 'amenity=music_school'] }
@@ -52,22 +53,46 @@ const json = (data: unknown, status = 200) =>
 const esc = (s: string) => s.replace(/[\\"]/g, '\\$&');
 
 async function overpass(ql: string): Promise<any> {
-  let lastErr = '';
-  for (const url of OVERPASS) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA },
-        body: 'data=' + encodeURIComponent(ql),
-        signal: AbortSignal.timeout(9000)
-      });
-      if (res.ok) return await res.json();
-      lastErr = `${url} -> ${res.status}`;
-    } catch (e: any) {
-      lastErr = `${url} -> ${e?.message || 'network error'}`;
-    }
+  // Ask all mirrors at once and use whichever answers first (much faster and more reliable)
+  const attempts = OVERPASS.map(async (url) => {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA },
+      body: 'data=' + encodeURIComponent(ql),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+    return await res.json();
+  });
+  try {
+    return await Promise.any(attempts);
+  } catch (e: any) {
+    const msgs = (e?.errors || []).map((x: any) => x?.message).join('; ');
+    throw new Error('Overpass busy or timed out. ' + msgs);
   }
-  throw new Error('Overpass busy or timed out. ' + lastErr);
+}
+
+function mapOverpass(elements: any[], location: string, query: string) {
+  return elements
+    .filter((e: any) => e.tags?.name && !e.tags['disused:shop'] && !e.tags['disused:amenity'])
+    .map((e: any) => {
+      const t = e.tags;
+      const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
+      return {
+        id: `${e.type}/${e.id}`,
+        name: t.name,
+        phone: t.phone || t['contact:phone'] || t.mobile || t['contact:mobile'] || '',
+        street,
+        postcode: t['addr:postcode'] || '',
+        city: t['addr:city'] || location,
+        facebook: t['contact:facebook'] || t.facebook || '',
+        instagram: t['contact:instagram'] || t.instagram || '',
+        email: t.email || t['contact:email'] || '',
+        category: t.shop || t.amenity || t.craft || t.office || t.healthcare || t.leisure || t.tourism || query,
+        lat: e.lat ?? e.center?.lat,
+        lon: e.lon ?? e.center?.lon
+      };
+    });
 }
 
 export const onRequestPost = async ({ request, env = {} }: { request: Request; env?: AuthEnv }) => {
@@ -223,7 +248,32 @@ export async function handlePlacesSearch(request: Request): Promise<Response> {
   const seenIds = new Set<string>();
   const verifiedPlaces: any[] = [];
 
+  // 2a) PRIMARY: Overpass with real filters (has phone, has NO website). Best quality results.
+  let overpassError = '';
+  if (bbox && tagSets.length > 0) {
+    try {
+      const noSiteQ = '[!"website"][!"contact:website"][!"url"]';
+      const cl: string[] = [];
+      for (const t of new Set(tagSets)) {
+        const [k, v] = t.split('=');
+        cl.push(`nwr["${k}"="${v}"][~"^(phone|contact:phone|mobile|contact:mobile)$"~"."]${noSiteQ}["name"](${bbox});`);
+      }
+      const data = await overpass(`[out:json][timeout:25];(${cl.join('')});out center tags 120;`);
+      if (data && Array.isArray(data.elements)) {
+        for (const pl of mapOverpass(data.elements, location, query)) {
+          if (pl.phone && pl.phone.replace(/\D/g, '').length >= 6 && !seenIds.has(pl.id)) {
+            seenIds.add(pl.id);
+            verifiedPlaces.push(pl);
+          }
+        }
+      }
+    } catch (e: any) {
+      overpassError = e?.message || 'Overpass failed';
+    }
+  }
+
   for (const url of nominatimUrls) {
+    if (verifiedPlaces.length >= 25) break;
     try {
       const res = await fetch(url, {
         headers: { 'User-Agent': UA, 'Accept-Language': 'es' },
@@ -254,53 +304,27 @@ export async function handlePlacesSearch(request: Request): Promise<Response> {
     return json({ places: verifiedPlaces, categoryMatched: matched.length > 0 });
   }
 
-  // 3) SECONDARY FALLBACK: Overpass lookup with nwr and phone regex
-  if (bbox) {
+  // 3) FALLBACK: Overpass by name when nothing was found yet
+  if (verifiedPlaces.length === 0 && bbox) {
     try {
       const noSite = '[!"website"][!"contact:website"][!"url"]';
-      const clauses: string[] = [];
-
-      if (tagSets.length) {
-        for (const t of new Set(tagSets)) {
-          const [k, v] = t.split('=');
-          clauses.push(`nwr["${k}"="${v}"][~"^(phone|contact:phone|mobile|contact:mobile)$"~"."]${noSite}["name"](${bbox});`);
-        }
-      } else {
-        clauses.push(`nwr["name"~"${esc(query)}",i][~"^(phone|contact:phone|mobile|contact:mobile)$"~"."]${noSite}(${bbox});`);
-      }
-
-      if (clauses.length > 0) {
-        const overpassData = await overpass(`[out:json][timeout:10];(${clauses.join('')});out center tags 50;`);
-        if (overpassData && Array.isArray(overpassData.elements) && overpassData.elements.length > 0) {
-          const overpassPlaces = overpassData.elements
-            .filter((e: any) => e.tags?.name && !e.tags['disused:shop'] && !e.tags['disused:amenity'])
-            .map((e: any) => {
-              const t = e.tags;
-              const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
-              return {
-                id: `${e.type}/${e.id}`,
-                name: t.name,
-                phone: t.phone || t['contact:phone'] || t.mobile || t['contact:mobile'] || '',
-                street,
-                postcode: t['addr:postcode'] || '',
-                city: t['addr:city'] || location,
-                facebook: t['contact:facebook'] || t.facebook || '',
-                instagram: t['contact:instagram'] || t.instagram || '',
-                email: t.email || t['contact:email'] || '',
-                category: t.shop || t.amenity || t.craft || t.office || t.healthcare || t.leisure || t.tourism || query,
-                lat: e.lat ?? e.center?.lat,
-                lon: e.lon ?? e.center?.lon
-              };
-            });
-
-          return json({ places: overpassPlaces, categoryMatched: matched.length > 0 });
+      const clause = tagSets.length === 0
+        ? `nwr["name"~"${esc(query)}",i][~"^(phone|contact:phone|mobile|contact:mobile)$"~"."]${noSite}(${bbox});`
+        : '';
+      if (clause) {
+        const data = await overpass(`[out:json][timeout:25];(${clause});out center tags 80;`);
+        if (data && Array.isArray(data.elements)) {
+          const list = mapOverpass(data.elements, location, query);
+          return json({ places: list, categoryMatched: matched.length > 0 });
         }
       }
-    } catch {
-      // Overpass unavailable or timed out; fall through gracefully
+    } catch (e: any) {
+      overpassError = overpassError || e?.message || '';
     }
   }
 
-  // Return whatever results were collected (or empty list)
+  if (verifiedPlaces.length === 0 && overpassError) {
+    return json({ places: [], categoryMatched: matched.length > 0, warning: overpassError });
+  }
   return json({ places: verifiedPlaces, categoryMatched: matched.length > 0 });
 }
