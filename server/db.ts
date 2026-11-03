@@ -143,8 +143,17 @@ export const updateSettings = (partial: Partial<AppSettings>): AppSettings => {
 export const isQualifiedProspect = (p: Prospect): boolean => {
   if (!p || !p.name || p.name.trim().length === 0) return false;
 
+  // RULE: ANY CONTACTED, WAITING, SIGNED, NOT INTERESTED OR EXCLUDED LEAD IS PERMANENT & ALWAYS QUALIFIED
+  const isActionedDeal = Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+  );
+  if (isActionedDeal) {
+    return true;
+  }
+
   // RULE 1: STRICTLY NO WEBSITE ON GOOGLE MAPS OR ANY PLATFORM
-  // If it has any website, DO NOT SHOW IT AT ALL in the website.
+  // If it has any website, DO NOT SHOW IT AT ALL in the discovery search results.
   if ((p as any).hasWebsite) return false;
   if (p.websiteStatus && ['website_exists', 'website_broken', 'website_outdated'].includes(p.websiteStatus)) {
     return false;
@@ -168,11 +177,7 @@ export const isQualifiedProspect = (p: Prospect): boolean => {
   // STRICT RULE: MUST HAVE A PHONE NUMBER (DO NOT LIST OR SHOW WITHOUT PHONE)
   const cleanPhone = (p.phone || '').replace(/\D/g, '');
   const hasPhone = cleanPhone.length >= 6 || Boolean(p.phone && p.phone.trim().length >= 6);
-  const isActionedDeal = Boolean(
-    p.isContacted ||
-    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
-  );
-  if (!hasPhone && !isActionedDeal) {
+  if (!hasPhone) {
     return false;
   }
 
@@ -183,7 +188,7 @@ export const isQualifiedProspect = (p: Prospect): boolean => {
     (Array.isArray(p.contactChannels) && p.contactChannels.some((c) => c.type === 'google_maps')) ||
     (Array.isArray(p.sources) && p.sources.some((s) => s.url && (s.url.includes('google.com/maps') || s.url.includes('maps.google.com'))))
   );
-  if (!hasGoogleMapsListing && !isActionedDeal) {
+  if (!hasGoogleMapsListing) {
     return false;
   }
 
@@ -288,11 +293,11 @@ export const saveProspect = (p: Prospect): void => {
   const isExplicitResetToNew = p.status === 'new' && (p.isContacted === false || p.isContacted === undefined);
   const wasContacted = Boolean(
     existing?.isContacted ||
-    (existing?.status && ['contacted', 'waiting', 'client_signed'].includes(existing.status))
+    (existing?.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(existing.status))
   );
   const isNowContacted = Boolean(
     p.isContacted ||
-    (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
   );
   const isContacted = isExplicitResetToNew ? false : (wasContacted || isNowContacted);
 
@@ -303,7 +308,8 @@ export const saveProspect = (p: Prospect): void => {
     isClicked: p.isClicked ?? existing?.isClicked ?? false,
     clickedAt: p.clickedAt ?? existing?.clickedAt,
     isContacted,
-    contactedAt: isExplicitResetToNew ? undefined : (existing?.contactedAt || p.contactedAt || (isContacted ? new Date().toISOString() : undefined)),
+    contactedAt: isExplicitResetToNew ? undefined : (existing?.contactedAt || p.contactedAt || (isContacted ? (existing?.contactedAt || new Date().toISOString()) : undefined)),
+    notes: (wasContacted && existing?.notes) ? (p.notes ? `${existing.notes}\n${p.notes}` : existing.notes) : (p.notes ?? existing?.notes),
     updatedAt: p.updatedAt || new Date().toISOString()
   };
   persistStore();
@@ -316,12 +322,12 @@ export const updateProspect = (id: string, partial: Partial<Prospect>): Prospect
   const isExplicitResetToNew = partial.status === 'new' && (partial.isContacted === false || partial.isContacted === undefined);
   const wasContacted = Boolean(
     existing.isContacted ||
-    (existing.status && ['contacted', 'waiting', 'client_signed'].includes(existing.status))
+    (existing.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(existing.status))
   );
   const isNowContacted = isExplicitResetToNew ? false : (
     partial.isContacted !== undefined
       ? Boolean(partial.isContacted)
-      : (partial.status ? ['contacted', 'waiting', 'client_signed'].includes(partial.status) : wasContacted)
+      : (partial.status ? ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(partial.status) : wasContacted)
   );
 
   const updated: Prospect = {
@@ -568,7 +574,7 @@ export const getStats = () => {
   const highPriority = fresh.filter((p) => p.status === 'high_priority' || p.leadScore >= 80).length;
   const readyToContact = fresh.filter((p) => p.status === 'ready_to_contact').length;
   const clicked = fresh.filter((p) => p.isClicked).length;
-  const contacted = list.filter((p) => p.isContacted || (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))).length;
+  const contacted = list.filter((p) => p.isContacted || (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))).length;
   const notInterested = list.filter((p) => p.status === 'not_interested' || p.status === 'excluded').length;
   const clientsWon = list.filter((p) => p.status === 'client_signed').length;
   const avg = total > 0 ? fresh.reduce((acc, p) => acc + p.leadScore, 0) / total : 0;

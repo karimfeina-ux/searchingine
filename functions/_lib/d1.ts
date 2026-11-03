@@ -234,7 +234,7 @@ export async function d1UpsertProspect(db: D1Database | undefined, prospect: any
   const status = prospect.status || 'new';
   const websiteStatus = prospect.websiteStatus || 'no_website';
   const leadScore = Number(prospect.leadScore || 0);
-  const isContactedLead = Boolean(prospect.isContacted || ['contacted', 'waiting', 'client_signed'].includes(status));
+  const isContactedLead = Boolean(prospect.isContacted || ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(status));
   const isContacted = isContactedLead ? 1 : 0;
   const isClicked = prospect.isClicked ? 1 : 0;
   const isStarred = prospect.isStarred ? 1 : 0;
@@ -249,6 +249,14 @@ export async function d1UpsertProspect(db: D1Database | undefined, prospect: any
   prospect.updatedAt = updatedAt;
 
   if (!db || typeof db.prepare !== 'function') {
+    const existing = edgeMemoryProspects.get(id);
+    const wasActioned = existing && (existing.isContacted || ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(existing.status));
+    if (wasActioned && prospect.status === 'new') {
+      prospect.status = existing.status;
+      prospect.isContacted = existing.isContacted;
+      prospect.contactedAt = existing.contactedAt;
+      prospect.notes = existing.notes || prospect.notes;
+    }
     edgeMemoryProspects.set(id, prospect);
     return prospect;
   }
@@ -268,10 +276,10 @@ export async function d1UpsertProspect(db: D1Database | undefined, prospect: any
         city = excluded.city,
         category = excluded.category,
         phone = excluded.phone,
-        status = CASE WHEN prospects.is_contacted = 1 AND excluded.status = 'new' THEN prospects.status ELSE excluded.status END,
+        status = CASE WHEN (prospects.is_contacted = 1 OR prospects.status IN ('contacted', 'waiting', 'client_signed', 'not_interested', 'excluded')) AND excluded.status = 'new' THEN prospects.status ELSE excluded.status END,
         website_status = excluded.website_status,
         lead_score = excluded.lead_score,
-        is_contacted = CASE WHEN prospects.is_contacted = 1 THEN 1 ELSE excluded.is_contacted END,
+        is_contacted = CASE WHEN (prospects.is_contacted = 1 OR prospects.status IN ('contacted', 'waiting', 'client_signed', 'not_interested', 'excluded')) THEN 1 ELSE excluded.is_contacted END,
         is_clicked = CASE WHEN prospects.is_clicked = 1 THEN 1 ELSE excluded.is_clicked END,
         is_starred = excluded.is_starred,
         contacted_at = COALESCE(prospects.contacted_at, excluded.contacted_at),
@@ -294,6 +302,14 @@ export async function d1UpsertBatch(db: D1Database | undefined, prospects: any[]
   if (!db || typeof db.prepare !== 'function') {
     for (const p of prospects) {
       if (p && p.id) {
+        const existing = edgeMemoryProspects.get(p.id);
+        const wasActioned = existing && (existing.isContacted || ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(existing.status));
+        if (wasActioned && p.status === 'new') {
+          p.status = existing.status;
+          p.isContacted = existing.isContacted;
+          p.contactedAt = existing.contactedAt;
+          p.notes = existing.notes || p.notes;
+        }
         edgeMemoryProspects.set(p.id, { ...p, updatedAt: p.updatedAt || new Date().toISOString() });
       }
     }
@@ -317,7 +333,7 @@ export async function d1UpsertBatch(db: D1Database | undefined, prospects: any[]
       const status = p.status || 'new';
       const websiteStatus = p.websiteStatus || 'no_website';
       const leadScore = Number(p.leadScore || 0);
-      const isContactedLead = Boolean(p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(status));
+      const isContactedLead = Boolean(p.isContacted || ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(status));
       const isContacted = isContactedLead ? 1 : 0;
       const isClicked = p.isClicked ? 1 : 0;
       const isStarred = p.isStarred ? 1 : 0;
@@ -344,10 +360,10 @@ export async function d1UpsertBatch(db: D1Database | undefined, prospects: any[]
             city = excluded.city,
             category = excluded.category,
             phone = excluded.phone,
-            status = CASE WHEN prospects.is_contacted = 1 AND excluded.status = 'new' THEN prospects.status ELSE excluded.status END,
+            status = CASE WHEN (prospects.is_contacted = 1 OR prospects.status IN ('contacted', 'waiting', 'client_signed', 'not_interested', 'excluded')) AND excluded.status = 'new' THEN prospects.status ELSE excluded.status END,
             website_status = excluded.website_status,
             lead_score = excluded.lead_score,
-            is_contacted = CASE WHEN prospects.is_contacted = 1 THEN 1 ELSE excluded.is_contacted END,
+            is_contacted = CASE WHEN (prospects.is_contacted = 1 OR prospects.status IN ('contacted', 'waiting', 'client_signed', 'not_interested', 'excluded')) THEN 1 ELSE excluded.is_contacted END,
             is_clicked = CASE WHEN prospects.is_clicked = 1 THEN 1 ELSE excluded.is_clicked END,
             is_starred = excluded.is_starred,
             contacted_at = COALESCE(prospects.contacted_at, excluded.contacted_at),
@@ -391,7 +407,7 @@ export async function d1ClearProspects(db: D1Database | undefined, options: { ke
   if (!db || typeof db.prepare !== 'function') {
     let deleted = 0;
     for (const [id, p] of Array.from(edgeMemoryProspects.entries())) {
-      const isContactedLead = p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status);
+      const isContactedLead = p.isContacted || ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status);
       if (isContactedLead) continue;
       if (options.keepStarred && p.isStarred) continue;
       edgeMemoryProspects.delete(id);
@@ -401,7 +417,7 @@ export async function d1ClearProspects(db: D1Database | undefined, options: { ke
   }
 
   await ensureTables(db);
-  let deleteQuery = "DELETE FROM prospects WHERE is_contacted = 0 AND status NOT IN ('contacted', 'waiting', 'client_signed')";
+  let deleteQuery = "DELETE FROM prospects WHERE is_contacted = 0 AND status NOT IN ('contacted', 'waiting', 'client_signed', 'not_interested', 'excluded')";
   if (options.keepStarred) {
     deleteQuery += ' AND is_starred = 0';
   }

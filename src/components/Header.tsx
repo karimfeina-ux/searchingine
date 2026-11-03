@@ -302,22 +302,29 @@ export const Header: React.FC<HeaderProps> = ({
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = currentTab === tab.id;
+              const isContactedTab = tab.id === 'contacted';
               return (
                 <button
                   key={tab.id}
                   onClick={() => onSelectTab(tab.id)}
                   className={`flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl px-3 py-1.5 text-xs font-medium transition cursor-pointer select-none ${
                     isActive
-                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm shadow-cyan-950'
+                      ? isContactedTab
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-950/60 ring-1 ring-emerald-500/20'
+                        : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm shadow-cyan-950'
+                      : isContactedTab
+                      ? 'text-emerald-300/90 hover:text-emerald-200 hover:bg-emerald-950/30 border border-emerald-500/20 bg-emerald-950/10'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className={`h-3.5 w-3.5 ${isContactedTab ? 'text-emerald-400' : ''}`} />
                   <span>{tab.label}</span>
                   {typeof tab.badge === 'number' && tab.badge > 0 && (
                     <span
                       className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                        isActive
+                        isContactedTab
+                          ? 'bg-emerald-400 text-slate-950 font-bold shadow-[0_0_8px_rgba(52,211,153,0.5)]'
+                          : isActive
                           ? 'bg-cyan-400 text-slate-950 font-bold'
                           : 'bg-slate-800 text-slate-400'
                       }`}

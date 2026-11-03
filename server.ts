@@ -11,11 +11,33 @@ dotenv.config();
 const app = express();
 app.set('trust proxy', true);
 
-const PORT = Number(process.env.PORT || process.env.APP_PORT || process.env.DEFAULT_APP_PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Ensure HMR is disabled in AI Studio container environment
 process.env.DISABLE_HMR = 'true';
+
+function resolvePort(): number {
+  const portArgIndex = process.argv.indexOf('--port');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    const val = parseInt(process.argv[portArgIndex + 1], 10);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  if (process.env.APP_PORT) {
+    const val = parseInt(process.env.APP_PORT, 10);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  if (process.env.DEFAULT_APP_PORT) {
+    const val = parseInt(process.env.DEFAULT_APP_PORT, 10);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  if (isProduction && process.env.PORT) {
+    const val = parseInt(process.env.PORT, 10);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  return 3000;
+}
+
+const PORT = resolvePort();
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -24,7 +46,11 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/api', apiRouter);
 
 // Initialize Autonomous Scheduler
-initScheduler();
+try {
+  initScheduler();
+} catch (e) {
+  console.warn('Scheduler initialization warning:', e);
+}
 
 if (!isProduction) {
   const { createServer: createViteServer } = await import('vite');
@@ -32,6 +58,8 @@ if (!isProduction) {
     server: {
       middlewareMode: true,
       hmr: false,
+      ws: false,
+      watch: null,
     },
     appType: 'spa',
   });
@@ -85,3 +113,11 @@ const handleShutdown = (signal: string) => {
 
 process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 process.on('SIGINT', () => handleShutdown('SIGINT'));
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception in server process:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection in server process:', reason);
+});

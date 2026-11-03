@@ -1,0 +1,512 @@
+{
+  "settings": {
+    "id": 1,
+    "isConfigured": true,
+    "cities": [
+      "Miami",
+      "Barcelona",
+      "Madrid",
+      "Valencia",
+      "London",
+      "New York",
+      "Austin"
+    ],
+    "region": "Global",
+    "country": "Worldwide",
+    "searchRadiusKm": 25,
+    "categories": [
+      "Restaurants & Cafés",
+      "Barbers & Hair Salons",
+      "Beauty & Spa",
+      "Independent Gyms & Fitness Studios",
+      "Plumbers, Electricians & Trades",
+      "Auto Repair Shops",
+      "Local Hotels & Guesthouses",
+      "Local Professional Practices & Clinics",
+      "Photographers & Creative Studios",
+      "Event Venues & Caterers"
+    ],
+    "excludedCategories": [
+      "Franchise Fast Food",
+      "Government Offices",
+      "Public Schools"
+    ],
+    "languages": [
+      "English",
+      "Spanish",
+      "Catalan"
+    ],
+    "minRating": 4,
+    "minReviews": 5,
+    "maxLeadsPerRun": 15,
+    "dailyScheduleTime": "08:00",
+    "timezone": "Europe/Madrid",
+    "weightWebsiteOpp": 30,
+    "weightReputation": 20,
+    "weightActivity": 15,
+    "weightCategoryValue": 15,
+    "weightContactability": 10,
+    "weightEvidenceQuality": 10,
+    "baseWebsitePrice": 500,
+    "monthlyHostingPrice": 40,
+    "dailyBudgetEur": 10,
+    "cronEnabled": true,
+    "providerKeys": {},
+    "uiLanguage": "en",
+    "uiTheme": "dark",
+    "updatedAt": "2026-11-03T09:53:21.911Z"
+  },
+  "prospects": {
+    "gmp_ChIJdzBU538pQg0RdZcglV3B7Xc": {
+      "id": "gmp_ChIJdzBU538pQg0RdZcglV3B7Xc",
+      "name": "Sole Mio | Specialty Coffee",
+      "normalizedName": "sole mio specialty coffee",
+      "category": "Coffee Shop",
+      "address": "C. de la Beneficencia, 13, Centro, 28004 Madrid, Spain",
+      "city": "Madrid",
+      "region": "",
+      "country": "",
+      "postalCode": "",
+      "latitude": 40.4267143,
+      "longitude": -3.6982600999999993,
+      "phone": "+34 910 52 38 71",
+      "email": "",
+      "websiteCandidate": "",
+      "websiteStatus": "no_website",
+      "status": "contacted",
+      "leadScore": 99,
+      "photoCount": 10,
+      "photos": [
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLeJKeLLznHB-fjoKd7c_-NW_AAw7-QsYRUlCBBROfHMvmxlYV6AlExCQc0lYLZH3DimE7V5qXLKv-VDMoeRb26ALj7XcFdI7w4osZ8m9FyppY-J_fEqggYDZ-DbJmIiVmcNyczMAu3iyWNUaoKUctlN6GcloQlHApQfODRY4u3Gq6hh7rWWVMPqkQVtzVrGq-tBbsNaZVdeaCUUwIDkiMz8p8Wd2p2OxS3jr6RuqZpxzFIEWLnlkYe7PmBqoRbm8RF-pzKjw4qSkK81P8pZsfXdEWyk8KLDDhzlGqedAJU_UIeyzYmaEuJEJJZwGgejT4ADA4eAjxQewWI8ih8wn-Az-JcKd9sLpHpeEH4S4XfT639ZRtqGc4t83D1lsgDJf3Uefv1rKRriP9fHAOHn1gY7cryWN-A",
+          "widthPx": 4800,
+          "heightPx": 3600,
+          "authorAttributions": [
+            {
+              "displayName": "Sole Mio | Specialty Coffee",
+              "uri": "https://maps.google.com/maps/contrib/115376530866050197107",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVS-aXf2WlHhNJEOyFNhtG_AetrRcjnz2jnTxmmEytCMuEw1Z-X=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIHM0ogKEICAgICR_fCd4AE&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgICR_fCd4AE!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        },
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLcNTirULI_CDt8vYPuzCxoJkKWVkrtlJ8PRN99XaQj-RiU0YcEEnrKc3us98O9bDaqB6tPoObKg1aBfdRjGPeAIScyjrd1YtN3GKAhF7AHufFohJh_oGVrJm5XLE69bbLdzdb4fRiwI12h2iyMmMRd1qOvoNG67QvDbs7TIaXrGzkd_e8ucrjNfAPLIVfl_sR6BzSBRnsHMhLvjAYLNlNrcYUrS81uPGCnlui1LRObKmY61QzBggpVovbnQtZhqV_-BcZZBKZr2AsCKhbwIIksge_renae4SmCYO-g9LG9rJDDWpI6GMkjRoPo65TsWve7klCHHQTrKHOTaGrTWg2Asjw_YTG8TnYeFEaKPtqyKAkmxPbnWaQ3ZlaqJtTOxTM9-f2Nf2j0M9KCCsbXGWEb3cSHLLR07gU0pGnp3zTWJYw",
+          "widthPx": 3859,
+          "heightPx": 4800,
+          "authorAttributions": [
+            {
+              "displayName": "BC",
+              "uri": "https://maps.google.com/maps/contrib/104946696437777899484",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjULIFLdwScMDBQJ3qWVuPWoUsCUIV3ERJTo-fFM1UGoztOm_qNa=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhD6zdBqY8WxEQme7Wfn1obr&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhD6zdBqY8WxEQme7Wfn1obr!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        },
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLf-iICYDIMn-rRj-1kKay4B8TD1p1X53YYN2AapxUdt_FOmuWLJn9RyobG8T6OMpB1iN4_1ZXr4NF7-332oY1XM5ciC6gps7LCc4MDYEc7T8iAJPBgWMK54QIlpdaEDeRQ1zduijLpDw5wZbxX7Go_VhRA0uRpGgvWQ7XbI4H6Bcp98VgsjhmDssE7kQCTT_FjyKyDtgi0w2L-dKPUDLgsOADTwoAJ1gPAWl1WK4aptkUghGYA2sZizouL_I5PPXbX-YQca5TgE0cKMD7Lo5q6-sA9QXQdpKJj_riV2AiPg3S88xR5QmT14s3ZRsAeGsxgy7u32dPOiJaf3TOjS-CxPvbdtEF7p3m1WoCX-bmLxqHXNZsmZGzCif7c4kQfYJLQ0vFTz5CMM8az1HTv7o-xEbSNHQVlET2NHUlL_XWLp",
+          "widthPx": 2560,
+          "heightPx": 1920,
+          "authorAttributions": [
+            {
+              "displayName": "Sole Mio | Specialty Coffee",
+              "uri": "https://maps.google.com/maps/contrib/115376530866050197107",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVS-aXf2WlHhNJEOyFNhtG_AetrRcjnz2jnTxmmEytCMuEw1Z-X=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhAb7Jk53DA3tHEX2O4u1ZKs&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhAb7Jk53DA3tHEX2O4u1ZKs!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        },
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLcgmz0GTqaqyZ7hgCXnyKkLKB3ApTjA1KU3MXz6IoRZdMYvkQCQwfSU2gk5AFbkDw_VBceLCRXbEbRSHsGbLF3UDgYo2HAbUsV_BjbjCbvVswJpGz6d2S7V1GZd2DeXTN55Hh_6o5-pwrA4CTVWHLHJnzOwdeF2L3sZhYIpba4xRatg2BugARjxo9F0PhLqG1IkZ0ALZIzHhepv6yCzHl9rsApqdv9Wj4iHlRHV2HTl2AESCcS54UQXyXCOLWLiUuKc3NmomXQtIFxwr6c4NocQ8h46GCSU3F9uJFub7FUkSjBFXKHZ4weYpTsHDa4-RjEyVfg6KTI6Rp9LopoPSdnJSt1m0E-SE0EhFwbXSLpIswpIftlcxkojOkEUSeYJ0ml2L0vCRCjUFoZ_dNavnZY_lL2gvRTrkL60s11jNCVe",
+          "widthPx": 3024,
+          "heightPx": 4032,
+          "authorAttributions": [
+            {
+              "displayName": "Alessio Ursida",
+              "uri": "https://maps.google.com/maps/contrib/116435813105272289795",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjWFZoFSA-OlnD4WFlvNQPuj5GZD9A7bT6GRQI_gfunDuhENu9J0=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhB7FfxlVx6KLwvIBR8yDKyK&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhB7FfxlVx6KLwvIBR8yDKyK!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        },
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLf4FBBqh5660Kq7FXCsPdSE7NVc5ORWEIm2x3faE6S-cAdZslVlZbaNYA7u_IwwbMdokcit3NP9GNHTuYJWpQoo-IZtVhtjT4DGJFMAGW4PuUeMbPjQNdWuPhbYcyTu58o9VvLPDSQKL92Z6Ousozx9s1DAX-zhDrORRoBpvxqgZUKtJ-NdEQC1aJBKJqDF8BhUKGOKSLOSnVxIdBEl28J31fttiRHkMslgrXng2q2RmHoJG-VsNMJezjfHxha01S9gk8cSOfR_785rKdt5K4cBUlxGgKqfM127pNqyg_xtLWejRzzVrNha2ejppYg0cbVxsbyCelpXrXug2ymZycKb2jewdwOH-iHckbxuXLEYYpMU8FnorDy6_APAeoSGJHWs3E2c-8Fok0QUH5nfkcWaa9a8dRz9wnBX8u38m3-jDg",
+          "widthPx": 2559,
+          "heightPx": 1919,
+          "authorAttributions": [
+            {
+              "displayName": "Sole Mio | Specialty Coffee",
+              "uri": "https://maps.google.com/maps/contrib/115376530866050197107",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVS-aXf2WlHhNJEOyFNhtG_AetrRcjnz2jnTxmmEytCMuEw1Z-X=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhB2Kc4W-Xsru0VhmV6gZLz-&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhB2Kc4W-Xsru0VhmV6gZLz-!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        },
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLeekExtglpsBYkqfjv251YFZFOT5F6BuUDWe1HfRXNoh9f1ZS_gkCi7KT13fIS-x6HjFDG4kK6XyCD4357a4-jWECQXA4D96yRFt6DoO-w7CXGqvsF_H4eWk5lbENcDEAPBJRlCxYZny5J44rrgkJ0pRgZPcU6vOdPcebJo5IJLVHLqa491Bo7iHovLOPRG5D8L3YoUmbzSE_2G9VN8OK9wihMqce22w-SmzSq14Bj-YLSAumcTmbTP8zFptIaVCeP1WISazOADQk_SmihV063I_rnFOCA9H1dccHDO3sh2qefgJa_WHbq4J_Bh_6_Q2wM-y-KdRmWxKX1s3JDm92XSBS9dscdYSnI4-PGdPYW90jn5b7nLqkMEsWmxjX3YN8PLoxnFebWRm22NhcNttHlPTxSKjLZRRjFo3Wx3esi2SA",
+          "widthPx": 3600,
+          "heightPx": 4800,
+          "authorAttributions": [
+            {
+              "displayName": "ARIANNEL Evies",
+              "uri": "https://maps.google.com/maps/contrib/111949065620624363213",
+              "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocII5fuv7MgUgVSlpow33o7s3SDYyzTdzl9lTqefwjpZbixpiw=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhBb_9-kE5X9Ts7p3WLhV6ge&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhBb_9-kE5X9Ts7p3WLhV6ge!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        },
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLeUfifbJyhaliuZAUBc7I7emHt0cBpaty7rturwxyCXV_0Zy0ksqCOtEFCDvCon3SvNK8CnxLBs8Vx1KMIM2Jm3wMf6y24-YCmXHNjFonDR4NE70Uatk0Y5benwn_ZzHOVvG8IDEsGQXYgmRkn1vFH_8AJKU_npUSxGYAwNfIZooLEMf830ZJ51xGGjc_rthQs62Sg8BSUgrkVH1T6fBHpDxbG05aogm1gkjWPuuvOku54kkmmGQN8fzfDSNZDEGL1YlIJlb9P-N1QX3FsSb19STSszkZil-7QfdtjtV2YnHTcyNsObrVyt1CtJdEfT074PyknXNTC4RiIDh5K1xvVAq0oXeeNVlmaY0rJVhdsysK9enAseq-2U9ytLcJIKq_8TEekVUXsjJzGsW9r35ZL7TWDnj5emJwlHvScY4oXi2A",
+          "widthPx": 960,
+          "heightPx": 1280,
+          "authorAttributions": [
+            {
+              "displayName": "В'ячеслав Крісманов",
+              "uri": "https://maps.google.com/maps/contrib/107918100229934960598",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjWVAZRZmraiT1tN-ww5D5USdYzzw7B2H_yOMQ_AYF4App1ogSjs0Q=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhD_qj8g9z26U0YhlcquPB8i&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhD_qj8g9z26U0YhlcquPB8i!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        },
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLc6HTpLUpzqkcL-gC_5h75STLyCkPZ6Wq9EwrAgoYWurJPtRanuT-kVE3A0cKqCjLs-7M6vkYcbjTSSsRMM7d0b1U2mfO6MmfVGv7kNvCvk7wfFUHaGDZw3r1TYk4wUe3NLajht47at3YJA_oZsO5WHYhDPaPrtFh0obh3hFBWqMmeRH4RCZ9YP-a1boGJktFIhTYGWsyddIbWTgNwQJFuqJCbPQwXmI7bNv0THhVoCNrltgn_DfOgRYtQetTrvqfpJfHtswFh23gcvqVj-OIrs1KB1se7vY9btVUGg9vwU9T9mIOB5fh0MNBGKT-gk5pIMwfI_AmTOhVJU2hy0-1P0dQ39dz3Vqy3TuWodVa_W4eMkaB71MmvK1-hrqQqDMr-Bak6NoMT855AXhy6NVvRAJskjdFtEkqB1mVfFNRzrzA",
+          "widthPx": 3024,
+          "heightPx": 4032,
+          "authorAttributions": [
+            {
+              "displayName": "玛卡巴卡",
+              "uri": "https://maps.google.com/maps/contrib/112285277246418854171",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVrKpV6ApcfomDUAokUWDxSjSqArF7-BpQ_cZLMUaqff8jBLV9h=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhCP5fk8pFkCjLxxoDy5WXXH&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhCP5fk8pFkCjLxxoDy5WXXH!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        },
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLf_prvzAjAfAm3tISAY5WMF-MEjF78asilv7GlYy4aW3FDzqCUW6BYz08kv1I7U0sgKfx22isl3-EBkzAtce6oE-WNLnSK9p5j53jfzv0yfA9QQAYGYjo5Yv5EV4ntWHmnT91eoRDZjSzKdaooGQHs9ORRUQBlrRDaP0uI4tJ7mV5gC1ydKjqCDUuiOVUq2M5A7giceJPyRwfSS-U3U87YPryMtSkq8-p2WRe0hFkxsaO99AfwXumj4tRVIBgCGftdar1CcmjCeMqYPLY4q-A5MARJI3KXxatAjLjZLEqx12GZTOL3vdyOgAqRGsYfBRZkLTwdufIrUF6X7UjKmAWrj7KcekfONlq3aq0NFnB1KvjoKQJkdTLLkvKY76hHYv6n78J-6A7Dson9iMfbkFiJKh5wm-U76NmLOVGYar9UXvw",
+          "widthPx": 3024,
+          "heightPx": 4032,
+          "authorAttributions": [
+            {
+              "displayName": "Rhealaine Sayson",
+              "uri": "https://maps.google.com/maps/contrib/100551519333522244068",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUg2GQWNCbigFLBSPH7FWG9klZ7MJ6g0I-9h275F6R8kKV6SQ3b=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhCoahW9c9_IHOLOTXEzuJbl&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhCoahW9c9_IHOLOTXEzuJbl!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        },
+        {
+          "name": "places/ChIJdzBU538pQg0RdZcglV3B7Xc/photos/AV-0GLemwxSimWisfgzg3nGbxfyUo4kOxQuI43ltoVxbZQ-qFj650VsT9ZpcAyxX5pH5eyONk70NTega-pe3bTyERTuI0XAhmGW6aMSm2rSMxUQSpCepVQ70EwbYSemAcSa-68ocopxar_YXtJkZmLOWIV9KtspQMCGVflCmkxQu3iMjcEB9O0Xg-pi7COZjaHNr8g8EWbsDeNF2lqodutITpRHpgq_DAUSfMe8Rf8O57mGCCXM6LIH5ALQcFXXW2oadd7EImweryxAxczOxwSbuMnIOqqc_prdDLwqg6lC79XE5JT3c9cXpd9mOykFcWiRVc6FbGyquWhyKyWi6GGsxBPTCl55Nr0b1OVWaEl0QQNKiJ81u9bApWl2e7-fOe8FIxG60ziAVzU4HOFD0kQ8J7-LhufFRU2ScaFL8-08tm4HdRg",
+          "widthPx": 4032,
+          "heightPx": 3024,
+          "authorAttributions": [
+            {
+              "displayName": "Tatti",
+              "uri": "https://maps.google.com/maps/contrib/117672909490975387056",
+              "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocIrp99ytiZrjTwKhSkUINswXQWT678IOIcHQA37fc2_9kvEbQ=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhBSoMueS3u_AFGqiy1E9rgG&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhBSoMueS3u_AFGqiy1E9rgG!2e10!4m2!3m1!1s0xd42297fe7543077:0x77edc15d95209775"
+        }
+      ],
+      "subscores": {
+        "websiteOpportunity": 30,
+        "reputation": 19,
+        "activity": 14,
+        "categoryValue": 14,
+        "contactability": 6,
+        "evidenceQuality": 10
+      },
+      "scoreReasons": [
+        "No website detected on official Google Maps listing",
+        "Strong active local clientele: 531 Google reviews with 4.8★ rating"
+      ],
+      "strongestSignals": [
+        "Google Maps verified: 4.8★ across 531 customer reviews",
+        "Missing dedicated web presence"
+      ],
+      "importantUncertainties": [
+        "Check if owner handles web inquiries directly via WhatsApp or Phone"
+      ],
+      "recommendedAction": "Pitch Coffee Shop custom website package (€500) via direct phone call",
+      "reviewRating": 4.8,
+      "reviewCount": 531,
+      "reviewSentimentSummary": "Rated 4.8★ by 531 customers on Google Maps.",
+      "positiveThemes": [
+        "Google Maps verified business",
+        "OPERATIONAL"
+      ],
+      "negativeThemes": [
+        "No online booking / custom website"
+      ],
+      "customerComplaints": [],
+      "stableOperationsEvidence": "Listed on Google Maps with operational status: OPERATIONAL",
+      "contactChannels": [
+        {
+          "type": "google_maps",
+          "value": "https://maps.google.com/?cid=8641775867671910261&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+          "confidence": 100,
+          "isBusinessContact": true,
+          "verifiedAt": "2026-11-02T22:54:30.871Z"
+        },
+        {
+          "type": "address",
+          "value": "C. de la Beneficencia, 13, Centro, 28004 Madrid, Spain",
+          "confidence": 95,
+          "isBusinessContact": true,
+          "verifiedAt": "2026-11-02T22:54:30.871Z"
+        }
+      ],
+      "sources": [
+        {
+          "name": "Google Maps Platform",
+          "url": "https://maps.google.com/?cid=8641775867671910261&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+          "checkedAt": "2026-11-02T22:54:30.871Z"
+        }
+      ],
+      "notes": "Discovered via Google Maps Platform (Places API New). Maps Place ID: ChIJdzBU538pQg0RdZcglV3B7Xc. Operational: OPERATIONAL.",
+      "isStarred": true,
+      "isClicked": false,
+      "isContacted": true,
+      "searchQuery": "Cafés & Specialty Coffee in Madrid",
+      "createdAt": "2026-11-02T22:54:30.871Z",
+      "updatedAt": "2026-11-03T09:53:57.206Z",
+      "lastVerifiedAt": "2026-11-02T22:54:30.871Z",
+      "verifications": [
+        {
+          "id": "ver_1793660070873_7qfk",
+          "prospectId": "gmp_ChIJdzBU538pQg0RdZcglV3B7Xc",
+          "checkType": "business_listing",
+          "status": "no_website",
+          "evidenceUrls": [
+            "https://maps.google.com/?cid=8641775867671910261&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+          ],
+          "searchQueries": [
+            "Cafés & Specialty Coffee in Madrid"
+          ],
+          "explanation": "Verified via Google Maps Places API (New): Business is actively operational with 531 reviews (4.8★) but lists NO website.",
+          "counterEvidence": "No website URI provided in Google Maps metadata.",
+          "recommendedNextStep": "Call business or direct message offering modern responsive website.",
+          "confidenceScore": 98,
+          "checkedAt": "2026-11-02T22:54:30.871Z"
+        }
+      ],
+      "brief": {
+        "id": "brief_1793660070881_f21hm",
+        "prospectId": "gmp_ChIJdzBU538pQg0RdZcglV3B7Xc",
+        "businessOverview": "Sole Mio | Specialty Coffee is an established coffee shop in Madrid (, ). Despite having a strong local reputation (4.8★ across 531 reviews), the business currently has no independent digital presence, resulting in lost client bookings and zero local search visibility.",
+        "targetAudiences": [
+          "Local residents and neighbors in Madrid seeking reliable, top-rated coffee shop",
+          "Mobile searchers looking for immediate opening hours, location map, and direct booking/quote options",
+          "High-value clients who compare professional reputations before booking services"
+        ],
+        "verifiedStrengths": [
+          "Strong public feedback: 4.8★ rating",
+          "Convenient physical location: C. de la Beneficencia, 13, Centro, 28004 Madrid, Spain, Madrid",
+          "Proven hands-on craftmanship and established customer loyalty"
+        ],
+        "reviewInsights": [
+          "Recurring customer praise: Google Maps verified business, OPERATIONAL",
+          "Customers frequently recommend the business via word-of-mouth"
+        ],
+        "missingCapabilities": [
+          "No independent domain to showcase full services, pricing transparency, and verified customer testimonials",
+          "No direct WhatsApp or mobile click-to-book inquiry pipeline, losing leads to competitors with modern websites",
+          "Absence of Google Local Search Schema markup to capture \"near me\" inquiries"
+        ],
+        "websiteOpportunities": [
+          "Capture high-intent \"Coffee Shop in Madrid\" Google search traffic",
+          "Establish a 24/7 digital storefront that accepts booking inquiries and answers FAQs automatically",
+          "Provide clear, upfront service packages and pricing, increasing average client order value"
+        ],
+        "assumptionsToConfirm": [
+          "Confirm current official list of services, prices, and special packages",
+          "Confirm preferred contact method for booking confirmations (WhatsApp, Phone, or Email)"
+        ],
+        "direction1": {
+          "title": "Modern Craft & Quiet Luxury",
+          "tagline": "Refined, timeless aesthetic emphasizing artisanal mastery and premium customer care.",
+          "designPhilosophy": "Clean generous whitespace, subtle warm stone and slate tones, editorial typography, and high-contrast hero photography highlighting meticulous attention to detail.",
+          "colorPalette": {
+            "primary": "#0f172a",
+            "secondary": "#334155",
+            "accent": "#0284c7",
+            "background": "#090d16",
+            "surface": "#111827",
+            "text": "#f8fafc"
+          },
+          "typography": {
+            "headingFont": "Playfair Display / Serif",
+            "bodyFont": "Plus Jakarta Sans / Inter",
+            "rationale": "The serif headline evokes established prestige and artisanal heritage, balanced with a hyper-legible modern sans-serif body."
+          },
+          "layoutPhilosophy": "Asymmetric editorial grid with prominent full-width visual banner, floating quote cards, and clear sticky navigation.",
+          "heroConcept": "Atmospheric imagery of Sole Mio | Specialty Coffee's craft with an elegant headline: \"The Art of Coffee Shop in Madrid.\"",
+          "imageTreatment": "Rich, natural lighting, duotone micro-accents, deep blacks with subtle warm highlights.",
+          "conversionStrategy": "Low-friction \"Reserve an Experience\" primary CTA paired with immediate WhatsApp quick-chat inquiry.",
+          "keyComponents": [
+            "Signature Experience Grid",
+            "Curated Testimonial Showcase",
+            "Interactive Hours & Neighborhood Map",
+            "Direct WhatsApp Reservation Float"
+          ]
+        },
+        "direction2": {
+          "title": "Dynamic, High-Conversion Urban",
+          "tagline": "Energetic, direct, and mobile-optimized for swift client acquisition and fast booking.",
+          "designPhilosophy": "Bold high-contrast accents, electric blue and emerald trust indicators, quick-glance pricing chips, and instant touch-first interactions.",
+          "colorPalette": {
+            "primary": "#0284c7",
+            "secondary": "#0f766e",
+            "accent": "#38bdf8",
+            "background": "#030712",
+            "surface": "#0f172a",
+            "text": "#ffffff"
+          },
+          "typography": {
+            "headingFont": "Syne / Space Grotesk",
+            "bodyFont": "Inter",
+            "rationale": "Geometric, contemporary sans-serif with strong horizontal rhythm that drives immediate visual confidence."
+          },
+          "layoutPhilosophy": "Single-page fluid landing page with modular cards, prominent pricing pill badges, and sticky bottom booking drawer on mobile.",
+          "heroConcept": "\"Top-Rated Coffee Shop in Madrid — Book in 30 Seconds.\" Instant calendar and call buttons.",
+          "imageTreatment": "Crisp action photography, vibrant saturation, subtle radial glow accents behind hero cards.",
+          "conversionStrategy": "Instant mobile click-to-call, tap-to-WhatsApp, and automated availability inquiry form.",
+          "keyComponents": [
+            "3-Step Simple Booking Flow",
+            "Live Rating & Google Review Strip",
+            "Package Comparison Pricing Table",
+            "FAQ Accordion"
+          ]
+        },
+        "direction3": {
+          "title": "Warm Community & Local Heritage",
+          "tagline": "Approachable, warm, authentic local business storytelling that builds instant trust.",
+          "designPhilosophy": "Warm terracotta, sage, and deep espresso tones. Rounded friendly card borders, handwritten badge accents, and warm welcoming customer photography.",
+          "colorPalette": {
+            "primary": "#b45309",
+            "secondary": "#15803d",
+            "accent": "#f59e0b",
+            "background": "#0c0a09",
+            "surface": "#1c1917",
+            "text": "#fafaf9"
+          },
+          "typography": {
+            "headingFont": "Outfit / Fraunces",
+            "bodyFont": "DM Sans",
+            "rationale": "Friendly, organic geometric curves that feel human, welcoming, and deeply rooted in the local neighborhood."
+          },
+          "layoutPhilosophy": "Warm storytelling narrative layout guiding the visitor from the founders story to the services, testimonials, and neighborhood map.",
+          "heroConcept": "\"Your Neighborhood Coffee Shop in Madrid.\" Welcoming photography of the storefront and team.",
+          "imageTreatment": "Warm golden hour tones, candid smiles, authentic unposed moments of service.",
+          "conversionStrategy": "Personalized \"Stop by or Say Hello\" invitation with instant directions and 1-tap WhatsApp consultation.",
+          "keyComponents": [
+            "Neighborhood Story & Team Banner",
+            "Photo Gallery of Real Work",
+            "Google Reviews Carousel",
+            "Interactive Directions & Transit Guide"
+          ]
+        },
+        "suggestedPages": [
+          {
+            "name": "Home",
+            "purpose": "Establish immediate brand authority, showcase customer reviews, and provide frictionless booking CTAs.",
+            "sections": [
+              "Hero Value Proposition",
+              "Signature Services Highlight",
+              "Social Proof & Rating Strip",
+              "Interactive Location Map & Opening Hours"
+            ],
+            "callToAction": "Book Appointment / Request Quotation"
+          },
+          {
+            "name": "Services & Pricing",
+            "purpose": "Complete transparency on service packages, what is included, and realistic timeframes to qualify inbound leads.",
+            "sections": [
+              "Package Cards with Clear Pricing",
+              "Add-on Options",
+              "Preparation & Consultation Guide"
+            ],
+            "callToAction": "Select Package & Inquire"
+          },
+          {
+            "name": "About & Our Craft",
+            "purpose": "Build personal connection, highlight professional experience and local roots in the city.",
+            "sections": [
+              "Founder Story",
+              "Our Values & Standards",
+              "Behind the Scenes Photography"
+            ],
+            "callToAction": "Meet the Team"
+          },
+          {
+            "name": "Location & Contact",
+            "purpose": "Eliminate friction for visits: directions, parking advice, exact opening hours, phone, and direct WhatsApp chat.",
+            "sections": [
+              "Interactive Map with Transit Tips",
+              "Direct Dial Button",
+              "Contact & Booking Request Form"
+            ],
+            "callToAction": "Get Directions / Call Now"
+          }
+        ],
+        "visualDirection": {
+          "exactColorsHex": {
+            "Dark Canvas": "#0b1120",
+            "Surface Card": "#111827",
+            "Electric Accent": "#06b6d4",
+            "Primary Accent": "#3b82f6",
+            "Warm Gold": "#f59e0b",
+            "Text Crisp": "#f8fafc",
+            "Text Muted": "#94a3b8"
+          },
+          "fontPairing": "Primary Heading: \"Space Grotesk\" or \"Playfair Display\" | Body: \"Plus Jakarta Sans\" | Monospace Accents: \"JetBrains Mono\"",
+          "spacingSystem": "8px modular grid: 8px (xs), 16px (sm), 24px (md), 32px (lg), 48px (xl), 64px (2xl), 96px (section padding)",
+          "componentDesign": "Subtle 1px border highlights (border-white/10), 16px rounded corners (rounded-2xl), soft backdrop blur (backdrop-blur-md), micro-elevation on hover.",
+          "mobileBehavior": "Sticky bottom CTA bar with \"Call Business\" and \"WhatsApp Chat\" buttons. Collapsible hamburger navigation, thumb-zone optimized interactive cards.",
+          "animationIdeas": "Smooth stagger fade-in on scroll (IntersectionObserver), gentle pill pulse on CTA buttons, smooth accordion transitions for FAQs.",
+          "accessibilityGuidelines": "Compliant with WCAG 2.1 AA standards: minimum 4.5:1 text contrast ratio, keyboard focus rings, alt descriptions for all imagery, ARIA expanded states.",
+          "seoConsiderations": "LocalBusiness Schema.org JSON-LD markup with exact coordinates (40.4267143, -3.6982600999999993), addressLocality: \"Madrid\", addressCountry: \"\", openingHoursSpecification, telephone, and aggregateRating.",
+          "performanceRequirements": "Sub-1.2s Largest Contentful Paint (LCP), 100% WebP optimized images with native loading=\"lazy\", zero cumulative layout shift (CLS).",
+          "relevantIntegrations": [
+            "WhatsApp Click-to-Chat API",
+            "Google Maps Embed API",
+            "Direct Email / SMS Booking Notification Webhook",
+            "Cal.com / Google Calendar or Calendly Appointment Embed"
+          ]
+        },
+        "conversionUx": {
+          "trustBuilders": [
+            "Prominent Google Review verification badge (4.8★ rating)",
+            "Exact physical address (C. de la Beneficencia, 13, Centro, 28004 Madrid, Spain) and guaranteed response time within 2 business hours",
+            "Transparent service guarantee with no hidden extras"
+          ],
+          "callToActions": [
+            "Primary CTA: \"Book an Appointment / Request Quotation\"",
+            "Secondary CTA: \"Chat on WhatsApp with Us Today\""
+          ],
+          "inquiryFlow": "Frictionless 3-step form: 1. Select Service -> 2. Choose Preferred Date/Time -> 3. Enter Name & Mobile Number. Instant confirmation sent via WhatsApp/SMS.",
+          "bookingStrategy": "Dual path: Direct phone dial for traditional customers + WhatsApp / interactive modal for digital mobile clients."
+        },
+        "aiStudioPrompt": "# COMPLETE WEBSITE BUILD SPECIFICATION: SOLE MIO | SPECIALTY COFFEE\n\n## 1. PROJECT OVERVIEW\n- **Business Name**: Sole Mio | Specialty Coffee\n- **Industry / Category**: Coffee Shop\n- **Location**: C. de la Beneficencia, 13, Centro, 28004 Madrid, Spain, Madrid, , \n- **Target Audience**: Local residents, discerning neighborhood clients, and mobile searchers in Madrid.\n- **Reputation Status**: 4.8 Stars across 531 customer reviews.\n- **Core Value Proposition**: Premier artisanal craftsmanship, personal customer care, transparent service packages, and effortless mobile booking.\n- **Service Package Tier**: Starting at €500 with optional €40/mo managed hosting and high-speed local CDN.\n\n---\n\n## 2. DESIGN PHILOSOPHY & VISUAL SYSTEM\n- **Aesthetic**: Premium dark navy and charcoal interface with subtle electric-cyan accents and warm gold trust badges.\n- **Palette**:\n  - Primary Background: `#0b1120`\n  - Card & Surface: `#111827`\n  - Accent / Primary CTA: `#0284c7` (Electric Sky Blue)\n  - Secondary Accent: `#06b6d4` (Cyan Glow)\n  - Text Primary: `#f8fafc`\n  - Text Muted: `#94a3b8`\n  - Border Highlights: `rgba(255, 255, 255, 0.08)`\n- **Typography**:\n  - Headings: Modern geometric sans-serif or refined modern serif (`Plus Jakarta Sans`, `Space Grotesk`, or `Playfair Display`).\n  - Body: Crisp, highly legible sans-serif (`Inter`, 16px base, 1.6 line-height).\n- **Component Styling**:\n  - Border radius: `rounded-2xl` (16px) for cards, `rounded-xl` for inputs and buttons.\n  - Micro-interactions: Subtle scale-up on hover (`hover:scale-[1.02]`), gentle glowing border transitions.\n  - Backdrop blur: Glassmorphism (`backdrop-blur-md bg-slate-900/80`) for sticky navbar and modals.\n\n---\n\n## 3. PAGE STRUCTURE & SECTIONS\n\n### Page 1: Home (Hero & Conversion Hub)\n1. **Sticky Header**:\n   - Sole Mio | Specialty Coffee logo / brand mark\n   - Nav links: Services, About, Reviews, Location, FAQ\n   - Action Button: \"Book Now\" + Direct Call icon (Phone)\n2. **Hero Section**:\n   - Headline: \"Experience Coffee Shop at its Finest in Madrid\"\n   - Subheadline: \"Dedicated service, uncompromising quality, and warm neighborhood hospitality tailored to you.\"\n   - Dual CTA Buttons: [Book Appointment / Request Quote] & [Chat on WhatsApp]\n   - Trust Badge: \"Rated 4.8/5 Stars by local clients in Madrid\"\n3. **Featured Services Grid**:\n   - 3 to 4 core service cards with icons, realistic pricing indications, time duration, and a \"Select\" button.\n4. **Why Choose Sole Mio | Specialty Coffee**:\n   - 3 value pillars: Artisanal expertise, transparent pricing, guaranteed customer satisfaction.\n5. **Interactive Reviews Carousel**:\n   - Authentic customer quotes highlighting craft, punctuality, and friendly atmosphere.\n6. **Location, Map & Opening Hours**:\n   - Address: C. de la Beneficencia, 13, Centro, 28004 Madrid, Spain, Madrid\n   - Interactive OpenStreetMap/Google Maps embed\n   - Weekly opening hours table with live \"Open Now / Closed\" indicator\n   - Transit and parking tips\n7. **Lead Capture & Booking Modal / Form**:\n   - Frictionless 3-step booking inquiry: Select Service -> Choose Date/Time -> Contact Details.\n\n---\n\n## 4. FUNCTIONAL REQUIREMENTS & INTEGRATIONS\n- **Click-to-Call**: Immediate `tel:+34...` trigger for mobile visitors.\n- **Direct WhatsApp Chat**: `https://wa.me/...` pre-filled message (\"Hi Sole Mio | Specialty Coffee, I would like to inquire about...\").\n- **LocalBusiness Schema (JSON-LD)**:\n```json\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"LocalBusiness\",\n  \"name\": \"Sole Mio | Specialty Coffee\",\n  \"address\": {\n    \"@type\": \"PostalAddress\",\n    \"streetAddress\": \"C. de la Beneficencia, 13, Centro, 28004 Madrid, Spain\",\n    \"addressLocality\": \"Madrid\",\n    \"addressRegion\": \"\",\n    \"addressCountry\": \"\"\n  },\n  \"telephone\": \"\",\n  \"priceRange\": \"€€\"\n}\n```\n- **Mobile Sticky CTA Bar**: On mobile viewports (`<768px`), fixed bottom bar with [Call Now] and [Book Appointment] buttons.\n- **Fast Load Performance**: 0 render-blocking assets, responsive `srcset` images, accessible ARIA attributes.\n",
+        "createdAt": "2026-11-02T22:54:30.881Z"
+      },
+      "contactedAt": "2026-11-02T22:54:49.583Z"
+    }
+  },
+  "verifications": {},
+  "briefs": {},
+  "jobs": [],
+  "outreachDrafts": {},
+  "bannedNames": [],
+  "bannedPhones": []
+}

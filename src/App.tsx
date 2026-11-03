@@ -442,12 +442,48 @@ export default function App() {
 
           setProspects((prev) => {
             const map = new Map<string, Prospect>();
-            for (const item of itemsToUse) {
-              map.set(item.id, item);
-            }
+            // 1. Preserve all existing leads first, protecting contacted and not-interested leads
             for (const p of prev) {
-              if (!map.has(p.id)) {
-                map.set(p.id, p);
+              map.set(p.id, p);
+            }
+            // 2. Safely merge new search results
+            for (const item of itemsToUse) {
+              const existing = map.get(item.id);
+              if (existing) {
+                const wasActioned = Boolean(
+                  existing.isContacted ||
+                  (existing.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(existing.status))
+                );
+                if (wasActioned) {
+                  map.set(item.id, {
+                    ...item,
+                    ...existing,
+                    status: existing.status,
+                    isContacted: true,
+                    contactedAt: existing.contactedAt,
+                    notes: existing.notes || item.notes
+                  });
+                } else {
+                  map.set(item.id, { ...existing, ...item });
+                }
+              } else {
+                const cleanPhone = (item.phone || '').replace(/\D/g, '');
+                const normName = (item.normalizedName || item.name || '').toLowerCase().trim();
+                const matchedActioned = Array.from(map.values()).find((p) => {
+                  const pActioned = Boolean(
+                    p.isContacted ||
+                    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+                  );
+                  if (!pActioned) return false;
+                  if (cleanPhone.length >= 6 && (p.phone || '').replace(/\D/g, '') === cleanPhone) return true;
+                  if (normName && (p.normalizedName || p.name || '').toLowerCase().trim() === normName) return true;
+                  return false;
+                });
+
+                if (matchedActioned) {
+                  continue;
+                }
+                map.set(item.id, item);
               }
             }
             const merged = Array.from(map.values());
@@ -521,12 +557,48 @@ export default function App() {
 
         setProspects((prev) => {
           const map = new Map<string, Prospect>();
-          for (const item of itemsToUse) {
-            map.set(item.id, item);
-          }
+          // 1. Preserve all existing leads first, protecting contacted and not-interested leads
           for (const p of prev) {
-            if (!map.has(p.id)) {
-              map.set(p.id, p);
+            map.set(p.id, p);
+          }
+          // 2. Safely merge new search results
+          for (const item of itemsToUse) {
+            const existing = map.get(item.id);
+            if (existing) {
+              const wasActioned = Boolean(
+                existing.isContacted ||
+                (existing.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(existing.status))
+              );
+              if (wasActioned) {
+                map.set(item.id, {
+                  ...item,
+                  ...existing,
+                  status: existing.status,
+                  isContacted: true,
+                  contactedAt: existing.contactedAt,
+                  notes: existing.notes || item.notes
+                });
+              } else {
+                map.set(item.id, { ...existing, ...item });
+              }
+            } else {
+              const cleanPhone = (item.phone || '').replace(/\D/g, '');
+              const normName = (item.normalizedName || item.name || '').toLowerCase().trim();
+              const matchedActioned = Array.from(map.values()).find((p) => {
+                const pActioned = Boolean(
+                  p.isContacted ||
+                  (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+                );
+                if (!pActioned) return false;
+                if (cleanPhone.length >= 6 && (p.phone || '').replace(/\D/g, '') === cleanPhone) return true;
+                if (normName && (p.normalizedName || p.name || '').toLowerCase().trim() === normName) return true;
+                return false;
+              });
+
+              if (matchedActioned) {
+                continue;
+              }
+              map.set(item.id, item);
             }
           }
           const merged = Array.from(map.values());
@@ -970,7 +1042,7 @@ export default function App() {
     try {
       const target = prospects.find((p) => p.id === id) || (selectedProspect?.id === id ? selectedProspect : null);
       const isExplicitNew = updates.status === 'new' && (updates.isContacted === false || updates.isContacted === undefined);
-      const isContactedLead = updates.status && ['contacted', 'waiting', 'client_signed'].includes(updates.status);
+      const isContactedLead = updates.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(updates.status);
 
       const optimistic: Prospect = {
         ...(target || {}),

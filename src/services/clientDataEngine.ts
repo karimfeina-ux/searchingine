@@ -67,8 +67,17 @@ export function saveClientSettings(updated: Partial<AppSettings>): AppSettings {
 export function isQualifiedProspect(p: Prospect): boolean {
   if (!p || !p.name || p.name.trim().length === 0) return false;
 
+  // RULE: ANY CONTACTED, WAITING, SIGNED, NOT INTERESTED OR EXCLUDED LEAD IS PERMANENT & ALWAYS QUALIFIED
+  const isActionedDeal = Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+  );
+  if (isActionedDeal) {
+    return true;
+  }
+
   // RULE 1: STRICTLY NO WEBSITE ON GOOGLE MAPS OR ANY PLATFORM
-  // If it has any website, DO NOT SHOW IT AT ALL in the website.
+  // If it has any website, DO NOT SHOW IT AT ALL in the discovery search results.
   if ((p as any).hasWebsite) return false;
   if (p.websiteStatus && ['website_exists', 'website_broken', 'website_outdated'].includes(p.websiteStatus)) {
     return false;
@@ -92,11 +101,7 @@ export function isQualifiedProspect(p: Prospect): boolean {
   // STRICT RULE: MUST HAVE A PHONE NUMBER (DO NOT LIST OR SHOW WITHOUT PHONE)
   const cleanPhone = (p.phone || '').replace(/\D/g, '');
   const hasPhone = cleanPhone.length >= 6 || Boolean(p.phone && p.phone.trim().length >= 6);
-  const isActionedDeal = Boolean(
-    p.isContacted ||
-    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
-  );
-  if (!hasPhone && !isActionedDeal) {
+  if (!hasPhone) {
     return false;
   }
 
@@ -107,7 +112,7 @@ export function isQualifiedProspect(p: Prospect): boolean {
     (Array.isArray(p.contactChannels) && p.contactChannels.some((c) => c.type === 'google_maps')) ||
     (Array.isArray(p.sources) && p.sources.some((s) => s.url && (s.url.includes('google.com/maps') || s.url.includes('maps.google.com'))))
   );
-  if (!hasGoogleMapsListing && !isActionedDeal) {
+  if (!hasGoogleMapsListing) {
     return false;
   }
 
@@ -582,7 +587,10 @@ export function computeStats(prospects: Prospect[]) {
   const highPriorityCount = freshLeads.filter((p) => p.status === 'high_priority' || p.leadScore >= 80).length;
   const readyToContactCount = freshLeads.filter((p) => p.status === 'ready_to_contact').length;
   const clickedCount = freshLeads.filter((p) => p.isClicked).length;
-  const contactedCount = prospects.filter((p) => p.isContacted || (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))).length;
+  const contactedCount = prospects.filter((p) =>
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+  ).length;
   const notInterestedCount = prospects.filter((p) => p.status === 'not_interested' || p.status === 'excluded').length;
   const clientsWonCount = prospects.filter((p) => p.status === 'client_signed').length;
   const avgScore = totalLeads > 0 ? Math.round((freshLeads.reduce((acc, p) => acc + p.leadScore, 0) / totalLeads) * 10) / 10 : 0;

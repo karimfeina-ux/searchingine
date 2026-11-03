@@ -55,7 +55,7 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
 
   // Show all the things user did before: contacted, waiting, signed, not interested
   const contactedPool = prospects.filter((p) => {
-    const isContactedOrActioned = Boolean(
+    return Boolean(
       p.isContacted ||
       p.status === 'contacted' ||
       p.status === 'waiting' ||
@@ -63,13 +63,6 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
       p.status === 'not_interested' ||
       p.status === 'excluded'
     );
-    if (!isContactedOrActioned) return false;
-    // Strictly no website
-    if ((p as any).hasWebsite) return false;
-    if (p.websiteStatus && ['website_exists', 'website_broken', 'website_outdated'].includes(p.websiteStatus)) {
-      return false;
-    }
-    return true;
   });
 
   // Calculate status metric breakdown
