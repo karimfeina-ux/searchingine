@@ -161,10 +161,9 @@ async function handle(request: Request): Promise<Response> {
     if (rawWeb && !isSocialOnly) return null;
 
     const phone = xt.phone || xt['contact:phone'] || xt.mobile || xt['contact:mobile'] || '';
-    const email = xt.email || xt['contact:email'] || '';
 
-    // USER RULE: Must have a phone number or email to contact it
-    if (!phone.trim() && !email.trim()) return null;
+    // USER RULE: If they don't have a phone number, don't list them or show them
+    if (!phone.trim() || phone.replace(/\D/g, '').length < 6) return null;
 
     const name = item.name || addr.shop || addr.amenity || addr.craft || item.display_name.split(',')[0];
     if (!name || name.trim().length === 0) return null;

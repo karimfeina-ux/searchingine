@@ -162,10 +162,9 @@ export async function searchGoogleMapsBusinesses(params: {
     const normName = normalizeBusinessName(name);
     const rawPhone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
     const cleanPhone = rawPhone.replace(/\D/g, '');
-    const rawEmail = (place as any).email || '';
 
-    // USER RULE: Must have a phone number or email to contact it
-    if ((!rawPhone || cleanPhone.length < 6) && (!rawEmail || !rawEmail.includes('@'))) {
+    // USER RULE: If they don't have a phone number, don't list them or show them
+    if (!rawPhone || cleanPhone.length < 6) {
       continue;
     }
 

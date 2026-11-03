@@ -204,10 +204,9 @@ export const deepSearchProspects = async (params: {
   for (const place of places) {
     if (!place || !place.name) continue;
 
-    // USER RULE: Must have a phone number or email to contact it
-    const hasPhone = Boolean(place.phone && place.phone.trim().length >= 6);
-    const hasEmail = Boolean(place.email && place.email.trim().length >= 5 && place.email.includes('@'));
-    if (!hasPhone && !hasEmail) {
+    // USER RULE: If they don't have a phone number, don't list them or show them
+    const cleanPhone = place.phone ? place.phone.replace(/\D/g, '') : '';
+    if (!place.phone || cleanPhone.length < 6) {
       continue;
     }
 
@@ -217,7 +216,6 @@ export const deepSearchProspects = async (params: {
     }
 
     const normName = normalizeBusinessName(place.name);
-    const cleanPhone = place.phone ? place.phone.replace(/\D/g, '') : '';
     const genericNames = ['peluqueria', 'barberia', 'restaurante', 'bar', 'cafeteria', 'panaderia', 'taller', 'clinica', 'farmacia', 'dentista'];
     const isGeneric = genericNames.includes(normName);
 

@@ -89,11 +89,10 @@ export function isQualifiedProspect(p: Prospect): boolean {
     return false;
   }
 
-  // RULE 2: MUST HAVE A PHONE NUMBER OR EMAIL TO CONTACT IT
+  // STRICT RULE: MUST HAVE A PHONE NUMBER (DO NOT LIST OR SHOW WITHOUT PHONE)
   const cleanPhone = (p.phone || '').replace(/\D/g, '');
   const hasPhone = cleanPhone.length >= 6 || Boolean(p.phone && p.phone.trim().length >= 6);
-  const hasEmail = Boolean(p.email && p.email.trim().length >= 5 && p.email.includes('@'));
-  if (!hasPhone && !hasEmail) {
+  if (!hasPhone) {
     return false;
   }
 

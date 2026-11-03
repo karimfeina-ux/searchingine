@@ -82,8 +82,8 @@ export async function runRealSearch(params: { location?: string; query?: string 
   for (const p of found) {
     const id = `gp_${p.id.replace('/', '_')}`;
     const normName = normalizeBusinessName(p.name);
-    const cleanPhone = p.phone.replace(/\D/g, '');
-    if (!p.phone && !p.email) {
+    const cleanPhone = (p.phone || '').replace(/\D/g, '');
+    if (!p.phone || cleanPhone.length < 6) {
       continue;
     }
 
