@@ -1,0 +1,3 @@
+# Cloudflare Pages automatically handles SPA routing via dist/index.html.
+# API requests are handled by /functions
+/api/* /api/:splat 200

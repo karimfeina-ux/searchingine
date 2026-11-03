@@ -1,0 +1,411 @@
+import {
+  getClientSettings,
+  saveClientSettings,
+  getStoredProspects,
+  saveStoredProspects,
+  clearStoredProspects,
+  addExclusion,
+  getExcludedSets,
+  computeStats,
+  createClientBrief,
+  isQualifiedProspect
+} from './clientDataEngine.ts';
+import type { Prospect } from '../types/index.ts';
+import { runRealSearch } from './placesSearch.ts';
+
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const urlString = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+  // Only intercept /api/ routes
+  if (!urlString.includes('/api/')) {
+    return window.fetch(input, init);
+  }
+
+  const reqPath = (() => { try { return new URL(urlString, window.location.origin).pathname; } catch { return urlString; } })();
+  const reqMethod = (init?.method || 'GET').toUpperCase();
+
+  // Stats are always computed from the leads on this device (server counts are 0 without a cloud database)
+  if (reqPath === '/api/stats' && reqMethod === 'GET') {
+    return handleClientApiRoute(urlString, init);
+  }
+
+  // Settings: keep a local copy so they survive even when the cloud database is not connected
+  if (reqPath === '/api/settings') {
+    return handleSettingsRoute(input, init, reqMethod, urlString);
+  }
+
+  // Try live server first if available, cleanly fallback to client engine on Cloudflare Pages or static environments
+  try {
+    const res = await window.fetch(input, init);
+    const contentType = res.headers.get('content-type') || '';
+
+    // If response is HTML (Cloudflare Pages SPA rewrite: /* /index.html 200) -> execute client engine
+    if (contentType.includes('text/html')) {
+      return handleClientApiRoute(urlString, init);
+    }
+
+    // Live backend returned real JSON (success or structured error like 401, 429, 500)
+    if (contentType.includes('application/json')) {
+      // A broken / unconfigured backend (5xx) must never break data features: use the on-device engine.
+      // Search routes keep their real error so the user sees what went wrong.
+      const isSearchRoute = reqPath.startsWith('/api/search/') || reqPath === '/api/places-search';
+      if (res.status >= 500 && !isSearchRoute) {
+        return handleClientApiRoute(urlString, init);
+      }
+      return res;
+    }
+
+    // Any other status or non-JSON payload (e.g., 404 HTML fallback) -> execute client data engine
+    return handleClientApiRoute(urlString, init);
+  } catch {
+    // Network failed or offline: handle via client engine
+    return handleClientApiRoute(urlString, init);
+  }
+}
+
+async function handleSettingsRoute(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  method: string,
+  urlString: string
+): Promise<Response> {
+  const json = (data: any, status = 200) =>
+    new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
+
+  if (method === 'PUT') {
+    let body: any = {};
+    try { if (typeof init?.body === 'string') body = JSON.parse(init.body); } catch {}
+    const saved = saveClientSettings({ ...body, updatedAt: new Date().toISOString() });
+    // Best effort: also store in the cloud so other devices get the same settings
+    try { await window.fetch(input, init); } catch {}
+    return json(saved);
+  }
+
+  const local = getClientSettings();
+  try {
+    const res = await window.fetch(input, init);
+    const ct = res.headers.get('content-type') || '';
+    if (res.ok && ct.includes('application/json')) {
+      const remote: any = await res.json();
+      const rt = remote?.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
+      const lt = (local as any)?.updatedAt ? new Date((local as any).updatedAt).getTime() : 0;
+      // Only trust the server copy when it was really saved by someone (newer than what this device saved)
+      if (remote && rt > lt && remote.updatedAt) {
+        const merged = saveClientSettings(remote);
+        return json(merged);
+      }
+    }
+  } catch {}
+  return json(local);
+}
+
+async function handleClientApiRoute(urlString: string, init?: RequestInit): Promise<Response> {
+  const url = new URL(urlString, window.location.origin);
+  const path = url.pathname;
+  const method = (init?.method || 'GET').toUpperCase();
+  let body: any = {};
+
+  if (init?.body && typeof init.body === 'string') {
+    try {
+      body = JSON.parse(init.body);
+    } catch {}
+  }
+
+  const jsonResponse = (data: any, status = 200) => {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  // 1. Auth Login (real login is the /api/auth/login Cloudflare Function; reaching here means it is not deployed)
+  if (path === '/api/auth/login' && method === 'POST') {
+    return jsonResponse({ error: 'Login service not found. Deploy the /functions folder to Cloudflare Pages.' }, 503);
+  }
+
+  // 2. Auth Verify
+  if (path === '/api/auth/verify') {
+    return jsonResponse({ verified: !!localStorage.getItem('leadhunter_admin_token') });
+  }
+
+  // 3. Deep Prospect Search (10+ minimum, 0 website, never repeat)
+  if (path === '/api/search/deep-prospect' && method === 'POST') {
+    try {
+      const results = await runRealSearch(body);
+      return jsonResponse(results);
+    } catch (err: any) {
+      return jsonResponse({ error: err?.message || 'Search failed' }, 502);
+    }
+  }
+
+  // 3b. Google Maps Search Fallback
+  if (path === '/api/search/google-maps' && method === 'POST') {
+    try {
+      const results = await runRealSearch(body);
+      return jsonResponse({ ...results, gmpAttribution: 'Google Maps' });
+    } catch (err: any) {
+      return jsonResponse({ error: err?.message || 'Search failed' }, 502);
+    }
+  }
+
+  // 4. Settings
+  if (path === '/api/settings') {
+    if (method === 'PUT') {
+      const updated = saveClientSettings(body);
+      return jsonResponse(updated);
+    }
+    return jsonResponse(getClientSettings());
+  }
+
+  // 5. Stats
+  if (path === '/api/stats') {
+    const prospects = getStoredProspects();
+    return jsonResponse(computeStats(prospects));
+  }
+
+  // 6. Prospects Collection
+  if (path === '/api/prospects' && method === 'GET') {
+    const prospects = getStoredProspects().filter(isQualifiedProspect);
+    const status = url.searchParams.get('status');
+    const websiteStatus = url.searchParams.get('websiteStatus');
+    const search = (url.searchParams.get('search') || '').toLowerCase();
+    const hideContacted = url.searchParams.get('hideContacted') === 'true';
+    const isContactedParam = url.searchParams.get('isContacted');
+
+    let filtered = prospects;
+
+    if (hideContacted) {
+      filtered = filtered.filter((p) => !p.isContacted && p.status !== 'contacted');
+    }
+    if (isContactedParam === 'true') {
+      filtered = filtered.filter((p) => p.isContacted || p.status === 'contacted');
+    }
+    if (status) {
+      filtered = filtered.filter((p) => p.status === status);
+    }
+    if (websiteStatus) {
+      filtered = filtered.filter((p) => p.websiteStatus === websiteStatus);
+    }
+    if (search) {
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search) ||
+          p.category.toLowerCase().includes(search) ||
+          p.city.toLowerCase().includes(search)
+      );
+    }
+
+    return jsonResponse({
+      items: filtered,
+      total: filtered.length
+    });
+  }
+
+  // 6b. Prospects Batch Save / Upsert Fallback
+  if (path === '/api/prospects' && (method === 'POST' || method === 'PUT')) {
+    const existing = getStoredProspects();
+    const map = new Map<string, Prospect>();
+    for (const p of existing) map.set(p.id, p);
+
+    const itemsToSave: Prospect[] = Array.isArray(body)
+      ? body
+      : body.items && Array.isArray(body.items)
+      ? body.items
+      : body.id
+      ? [body]
+      : [];
+
+    for (const item of itemsToSave) {
+      if (isQualifiedProspect(item)) {
+        map.set(item.id, { ...(map.get(item.id) || {}), ...item, updatedAt: new Date().toISOString() } as Prospect);
+      }
+    }
+    const merged = Array.from(map.values()).filter(isQualifiedProspect);
+    saveStoredProspects(merged);
+    return jsonResponse({ success: true, count: itemsToSave.length, total: merged.length });
+  }
+
+  // 6c. Clear Prospects Collection (Permanently preserves contacted leads)
+  if (path === '/api/prospects/clear' && method === 'POST') {
+    const prev = getStoredProspects();
+    const remaining = clearStoredProspects({ ...(body || {}), keepContacted: true, cleanAll: false });
+    return jsonResponse({ success: true, remainingCount: remaining.length, deletedCount: prev.length - remaining.length });
+  }
+
+  // 6d. Exclusions fallback
+  if (path === '/api/exclusions') {
+    if (method === 'POST') {
+      if (body.name || body.phone) {
+        addExclusion(body.name, body.phone);
+      }
+      return jsonResponse({ success: true });
+    }
+    const { names, phones } = getExcludedSets();
+    return jsonResponse({ names: Array.from(names), phones: Array.from(phones) });
+  }
+
+  // 7. Individual Prospect actions
+  const prospectMatch = path.match(/^\/api\/prospects\/([^\/]+)(?:\/(.*))?$/);
+  if (prospectMatch) {
+    const id = prospectMatch[1];
+    const action = prospectMatch[2] || '';
+    const prospects = getStoredProspects();
+    let prospect: Prospect | undefined = prospects.find((p) => p.id === id);
+
+    if (!prospect && body.prospect) {
+      prospect = { ...body.prospect, id } as Prospect;
+      prospects.push(prospect);
+    }
+
+    if (!prospect) {
+      return jsonResponse({ error: 'Prospect not found' }, 404);
+    }
+
+    // Click tracking (NEVER REPEAT)
+    if (action === 'click' && method === 'POST') {
+      prospect.isClicked = true;
+      prospect.clickedAt = new Date().toISOString();
+      saveStoredProspects(prospects);
+      addExclusion(prospect.name, prospect.phone);
+      return jsonResponse(prospect);
+    }
+
+    // Contact tracking (NEVER REPEAT)
+    if (action === 'contact' && method === 'POST') {
+      prospect.isContacted = body.contacted !== false;
+      prospect.contactedAt = new Date().toISOString();
+      if (prospect.isContacted) {
+        prospect.status = body.status || 'contacted';
+        addExclusion(prospect.name, prospect.phone);
+      }
+      prospect.updatedAt = new Date().toISOString();
+      saveStoredProspects(prospects);
+      return jsonResponse(prospect);
+    }
+
+    // Status change
+    if (action === 'status' && method === 'PUT') {
+      if (body.status) {
+        prospect.status = body.status;
+        if (
+          body.status === 'contacted' ||
+          body.status === 'waiting' ||
+          body.status === 'client_signed' ||
+          body.status === 'not_interested'
+        ) {
+          prospect.isContacted = true;
+          prospect.contactedAt = prospect.contactedAt || new Date().toISOString();
+          addExclusion(prospect.name, prospect.phone);
+        }
+      }
+      if (body.notes !== undefined) prospect.notes = body.notes;
+      prospect.updatedAt = new Date().toISOString();
+      saveStoredProspects(prospects);
+      return jsonResponse(prospect);
+    }
+
+    // Delete prospect from research (adds to permanent exclusion so it never comes back)
+    if ((action === 'delete' || !action) && method === 'DELETE') {
+      addExclusion(prospect.name, prospect.phone);
+      const remaining = prospects.filter((p) => p.id !== id);
+      saveStoredProspects(remaining);
+      return jsonResponse({ success: true, deletedId: id });
+    }
+
+    // Star toggle
+    if (action === 'star' && method === 'POST') {
+      prospect.isStarred = !prospect.isStarred;
+      prospect.updatedAt = new Date().toISOString();
+      saveStoredProspects(prospects);
+      return jsonResponse({ isStarred: prospect.isStarred });
+    }
+
+    // Generate brief
+    if (action === 'generate-brief' && method === 'POST') {
+      prospect.brief = createClientBrief(prospect, getClientSettings());
+      saveStoredProspects(prospects);
+      return jsonResponse(prospect.brief);
+    }
+
+    // Update single prospect (PUT or PATCH)
+    if (!action && (method === 'PUT' || method === 'PATCH')) {
+      const isExplicitNew = body.status === 'new' && (body.isContacted === false || body.isContacted === undefined);
+      Object.assign(prospect, body, {
+        id,
+        isContacted: isExplicitNew ? false : (body.isContacted ?? prospect.isContacted),
+        contactedAt: isExplicitNew ? undefined : (body.contactedAt ?? prospect.contactedAt),
+        updatedAt: new Date().toISOString()
+      });
+      saveStoredProspects(prospects);
+      return jsonResponse(prospect);
+    }
+
+    // Get single prospect
+    if (!action && method === 'GET') {
+      return jsonResponse(prospect);
+    }
+  }
+
+  // 8. Run discovery now: one real search from the cities/categories in Settings (rotates each click)
+  if (path === '/api/scheduler/run-now' && method === 'POST') {
+    const st = getClientSettings();
+    const cities = st.cities?.length ? st.cities : ['Madrid'];
+    const cats = st.categories?.length ? st.categories : ['peluquería'];
+    let n = 0;
+    try { n = parseInt(localStorage.getItem('leadhunter_run_idx') || '0', 10) || 0; localStorage.setItem('leadhunter_run_idx', String(n + 1)); } catch {}
+    try {
+      const results = await runRealSearch({ location: cities[n % cities.length], query: cats[Math.floor(n / cities.length) % cats.length] });
+      return jsonResponse({ success: true, ...results });
+    } catch (err: any) {
+      return jsonResponse({ error: err?.message || 'Discovery failed' }, 502);
+    }
+  }
+
+  if (path === '/api/scheduler/toggle' && method === 'POST') {
+    return jsonResponse({ enabled: false });
+  }
+
+  if (path === '/api/jobs') {
+    return jsonResponse([]);
+  }
+
+  if (path.startsWith('/api/scheduler')) {
+    return jsonResponse({
+      isActive: false,
+      isCurrentlyRunning: false,
+      scheduleTime: getClientSettings().dailyScheduleTime,
+      timezone: 'Europe/Madrid',
+      nextScheduledRun: null,
+      lastRun: null,
+      recentJobs: []
+    });
+  }
+
+  if (path === '/api/providers/status') {
+    return jsonResponse({
+      providers: [
+        {
+          name: 'OpenStreetMap Overpass',
+          type: 'Business listings (name, phone, address)',
+          status: 'connected',
+          pricing: 'Free',
+          rateLimits: 'Fair use on public servers',
+          notes: 'Source of all leads. Data is volunteer-edited: verify each business on Google Maps before contacting.'
+        },
+        {
+          name: 'OpenStreetMap Nominatim',
+          type: 'Location lookup',
+          status: 'connected',
+          pricing: 'Free',
+          rateLimits: '1 request/second',
+          notes: 'Turns the city you type into a search area.'
+        }
+      ],
+      estimatedMonthlySpend: 0,
+      dailyBudgetCap: 0,
+      manualResearchModeAvailable: true
+    });
+  }
+
+  return jsonResponse({ error: 'Endpoint not found' }, 404);
+}

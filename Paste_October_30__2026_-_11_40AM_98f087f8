@@ -1,0 +1,730 @@
+# PROMPT FOR GOOGLE AI STUDIO (copy everything below this line)
+
+You are editing my existing app "Searchingine / LeadHunter AI". Make EXACTLY the changes below. Do NOT change the design, layout, colors, texts or any component styling. Do not add npm packages. Do not rename files. Apply every step.
+
+GOAL: replace the fake lead generator with REAL businesses from free OpenStreetMap data, add a real login, and remove every invented/fake value (names, phones, ratings, statuses). The app is hosted on Cloudflare Pages, so the backend lives in the /functions folder (Cloudflare Pages Functions) at the PROJECT ROOT, NOT inside /src or /server. The AI Studio preview cannot run these functions; that is expected.
+
+## STEP 1 - Create these 3 new files at the project root, with exactly this content
+
+### FILE: functions/_lib/auth.ts
+````ts
+// Tiny signed-token helper (HMAC-SHA256 via WebCrypto). Not a route: it exports no onRequest handlers.
+export interface AuthEnv {
+  ADMIN_EMAIL?: string;
+  ADMIN_PASSWORD?: string;
+  AUTH_SECRET?: string;
+}
+
+const enc = new TextEncoder();
+const b64url = (buf: ArrayBuffer | Uint8Array) => {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let s = '';
+  bytes.forEach((b) => (s += String.fromCharCode(b)));
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+async function hmac(secret: string, data: string) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return b64url(await crypto.subtle.sign('HMAC', key, enc.encode(data)));
+}
+
+export function safeEqual(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+export async function signToken(secret: string, email: string, days = 30) {
+  const payload = b64url(enc.encode(JSON.stringify({ email, exp: Date.now() + days * 86400000 })));
+  return `${payload}.${await hmac(secret, payload)}`;
+}
+
+export async function verifyToken(secret: string | undefined, token: string | null): Promise<string | null> {
+  if (!secret || !token) return null;
+  const [payload, sig] = token.split('.');
+  if (!payload || !sig || !safeEqual(sig, await hmac(secret, payload))) return null;
+  try {
+    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return json.exp > Date.now() ? String(json.email) : null;
+  } catch {
+    return null;
+  }
+}
+````
+
+### FILE: functions/api/auth/login.ts
+````ts
+// POST /api/auth/login  { email, password }
+// Credentials live ONLY in Cloudflare secrets: ADMIN_EMAIL, ADMIN_PASSWORD, AUTH_SECRET.
+import { AuthEnv, safeEqual, signToken } from '../../_lib/auth';
+
+const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+
+export const onRequestPost = async ({ request, env }: { request: Request; env: AuthEnv }) => {
+  try {
+    if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD || !env.AUTH_SECRET) {
+      return json({ error: 'Login is not configured: add ADMIN_EMAIL, ADMIN_PASSWORD and AUTH_SECRET in Cloudflare (Settings → Variables and Secrets).' }, 500);
+    }
+    const { email = '', password = '' } = (await request.json()) as { email?: string; password?: string };
+    const okEmail = safeEqual(String(email).trim().toLowerCase(), env.ADMIN_EMAIL.trim().toLowerCase());
+    const okPass = safeEqual(String(password), env.ADMIN_PASSWORD);
+    if (!okEmail || !okPass) {
+      await new Promise((r) => setTimeout(r, 600)); // slow down guessing
+      return json({ error: 'Access denied: wrong email or password.' }, 401);
+    }
+    const token = await signToken(env.AUTH_SECRET, env.ADMIN_EMAIL);
+    const name = env.ADMIN_EMAIL.split('@')[0];
+    return json({ success: true, token, user: { email: env.ADMIN_EMAIL, name: name.charAt(0).toUpperCase() + name.slice(1), role: 'Administrator' } });
+  } catch (e: any) {
+    return json({ error: e?.message || 'Login error' }, 500);
+  }
+};
+````
+
+### FILE: functions/api/places-search.ts
+````ts
+// Cloudflare Pages Function  ->  POST /api/places-search
+// 100% free: OpenStreetMap Nominatim (geocoding) + Overpass API (business data). No API key needed.
+
+import { AuthEnv, verifyToken } from '../_lib/auth';
+
+const UA = 'searchingine-lead-finder/1.0 (contact: owner of this site)';
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+
+// keyword (Spanish/English) -> OSM tag filters
+const CATEGORIES: { words: string[]; tags: string[] }[] = [
+  { words: ['peluquer', 'hair', 'salon de belleza', 'salón'], tags: ['shop=hairdresser', 'shop=beauty'] },
+  { words: ['barber'], tags: ['shop=hairdresser'] },
+  { words: ['panader', 'bakery', 'pasteler', 'pastry'], tags: ['shop=bakery', 'shop=pastry'] },
+  { words: ['cafe', 'café', 'cafeter', 'coffee'], tags: ['amenity=cafe'] },
+  { words: ['restaur'], tags: ['amenity=restaurant'] },
+  { words: [' bar ', 'tapas', ' pub '], tags: ['amenity=bar', 'amenity=pub'] },
+  { words: ['dentist', 'dental', 'clínica dental', 'clinica dental'], tags: ['amenity=dentist'] },
+  { words: ['clínica', 'clinica', 'clinic', 'fisio', 'physio'], tags: ['amenity=clinic', 'healthcare=physiotherapist', 'healthcare=clinic'] },
+  { words: ['veterin', ' vet '], tags: ['amenity=veterinary'] },
+  { words: ['gym', 'gimnas', 'fitness', 'yoga', 'pilates'], tags: ['leisure=fitness_centre', 'sport=yoga', 'sport=pilates'] },
+  { words: ['taller', 'mecánic', 'mecanic', 'mechanic', 'car repair', 'auto repair'], tags: ['shop=car_repair'] },
+  { words: ['lavado', 'detailing', 'car wash'], tags: ['amenity=car_wash'] },
+  { words: ['carpinter', 'madera', 'wood'], tags: ['craft=carpenter', 'craft=joiner'] },
+  { words: ['fontaner', 'plumb'], tags: ['craft=plumber'] },
+  { words: ['electric'], tags: ['craft=electrician'] },
+  { words: ['pintor', 'paint'], tags: ['craft=painter'] },
+  { words: ['cerraj', 'locksmith'], tags: ['craft=locksmith'] },
+  { words: ['inmobil', 'real estate'], tags: ['office=estate_agent'] },
+  { words: ['abogad', 'lawyer', 'legal'], tags: ['office=lawyer'] },
+  { words: ['gestor', 'asesor', 'accountant', 'contab'], tags: ['office=accountant'] },
+  { words: ['florist', 'flor'], tags: ['shop=florist'] },
+  { words: ['ropa', 'boutique', 'clothes', 'moda'], tags: ['shop=clothes', 'shop=boutique'] },
+  { words: ['joyer', 'jewel'], tags: ['shop=jewelry'] },
+  { words: ['óptic', 'optic'], tags: ['shop=optician'] },
+  { words: ['masaj', ' spa ', 'massage'], tags: ['shop=massage', 'leisure=spa', 'amenity=spa'] },
+  { words: ['tatu', 'tattoo'], tags: ['shop=tattoo'] },
+  { words: ['hotel', 'hostal', 'alojamiento'], tags: ['tourism=hotel', 'tourism=guest_house', 'tourism=hostel'] },
+  { words: ['academia', 'escuela', 'school', 'autoescuela'], tags: ['amenity=driving_school', 'amenity=language_school', 'amenity=music_school'] }
+];
+
+const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+  });
+
+const esc = (s: string) => s.replace(/[\\"]/g, '\\$&');
+
+async function overpass(ql: string): Promise<any> {
+  let lastErr = '';
+  for (const url of OVERPASS) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA },
+        body: 'data=' + encodeURIComponent(ql),
+        signal: AbortSignal.timeout(20000)
+      });
+      if (res.ok) return await res.json();
+      lastErr = `${url} -> ${res.status}`;
+    } catch (e: any) {
+      lastErr = `${url} -> ${e?.message || 'network error'}`;
+    }
+  }
+  throw new Error('Overpass busy, try again in a minute. ' + lastErr);
+}
+
+export const onRequestPost = async ({ request, env }: { request: Request; env: AuthEnv }) => {
+  try {
+    const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '') || null;
+    if (!(await verifyToken(env.AUTH_SECRET, token))) {
+      return json({ error: 'Session expired or not logged in. Please log in again.' }, 401);
+    }
+    return await handle(request);
+  } catch (e: any) {
+    // Always answer with JSON so the app can show a readable message.
+    return json({ error: e?.message || 'Unexpected server error' }, 502);
+  }
+};
+
+async function handle(request: Request): Promise<Response> {
+  const origin = request.headers.get('Origin');
+  if (origin && new URL(origin).host !== new URL(request.url).host) {
+    return json({ error: 'Forbidden origin' }, 403);
+  }
+
+  let body: { location?: string; query?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid JSON body' }, 400);
+  }
+  const location = String(body.location || '').trim().slice(0, 120);
+  const query = String(body.query || '').trim().slice(0, 120);
+  if (!location || !query) return json({ error: 'Both location and query are required.' }, 400);
+
+  // 1) geocode the place -> bounding box
+  const geoRes = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(location)}`,
+    { headers: { 'User-Agent': UA, 'Accept-Language': 'es' }, signal: AbortSignal.timeout(10000) }
+  );
+  if (!geoRes.ok) return json({ error: `Could not look up "${location}" (${geoRes.status}).` }, 502);
+  const geo: any[] = await geoRes.json();
+  if (!geo.length) return json({ error: `Location "${location}" not found.` }, 404);
+  const [south, north, west, east] = geo[0].boundingbox.map(Number);
+  const bbox = `${south},${west},${north},${east}`;
+
+  // 2) build the Overpass query: operating businesses WITH a phone and WITHOUT a website tag
+  const q = ` ${query.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ')} `;
+  const matched = CATEGORIES.filter((c) => c.words.some((w) => q.includes(w)));
+  const tagSets = matched.flatMap((c) => c.tags);
+  const noSite = '[!"website"][!"contact:website"][!"url"]';
+  const clauses: string[] = [];
+  const phoneKeys = ['phone', 'contact:phone', 'contact:mobile', 'mobile'];
+
+  if (tagSets.length) {
+    for (const t of new Set(tagSets)) {
+      const [k, v] = t.split('=');
+      for (const pk of phoneKeys) clauses.push(`nwr["${k}"="${v}"]["${pk}"]${noSite}["name"](${bbox});`);
+    }
+  } else {
+    // unknown category: match on the business name
+    for (const pk of phoneKeys) clauses.push(`nwr["name"~"${esc(query)}",i]["${pk}"]${noSite}(${bbox});`);
+  }
+
+  const data = await overpass(`[out:json][timeout:25];(${clauses.join('')});out center tags 300;`);
+
+  const places = (data.elements || [])
+    .filter((e: any) => e.tags?.name && !e.tags['disused:shop'] && !e.tags['disused:amenity'])
+    .map((e: any) => {
+      const t = e.tags;
+      const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
+      return {
+        id: `${e.type}/${e.id}`,
+        name: t.name,
+        phone: t.phone || t['contact:phone'] || t.mobile || t['contact:mobile'] || '',
+        street,
+        postcode: t['addr:postcode'] || '',
+        city: t['addr:city'] || '',
+        facebook: t['contact:facebook'] || t.facebook || '',
+        instagram: t['contact:instagram'] || t.instagram || '',
+        email: t.email || t['contact:email'] || '',
+        category: t.shop || t.amenity || t.craft || t.office || t.healthcare || t.leisure || t.tourism || query,
+        lat: e.lat ?? e.center?.lat,
+        lon: e.lon ?? e.center?.lon
+      };
+    });
+
+  return json({ places, categoryMatched: matched.length > 0 });
+}
+````
+
+
+## STEP 2 - Create this new file
+
+### FILE: src/services/placesSearch.ts
+````ts
+import type { Prospect, WebsiteStatus } from '../types/index.ts';
+import {
+  createClientBrief,
+  getClientSettings,
+  getExcludedSets,
+  getStoredProspects,
+  normalizeBusinessName,
+  saveStoredProspects
+} from './clientDataEngine.ts';
+
+interface OsmPlace {
+  id: string;
+  name: string;
+  phone: string;
+  street: string;
+  postcode: string;
+  city: string;
+  facebook: string;
+  instagram: string;
+  email: string;
+  category: string;
+  lat?: number;
+  lon?: number;
+}
+
+export async function runRealSearch(params: { location?: string; query?: string }) {
+  const location = (params.location || '').trim();
+  const query = (params.query || '').trim();
+  if (!location || !query) throw new Error('Enter both a location and a business type.');
+
+  const res = await window.fetch('/api/places-search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('leadhunter_admin_token') || ''}`
+    },
+    body: JSON.stringify({ location, query })
+  });
+
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    throw new Error('Search service not found. Make sure the /functions folder is deployed to Cloudflare Pages.');
+  }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Search failed');
+
+  const settings = getClientSettings();
+  const { names: excludedNames, phones: excludedPhones } = getExcludedSets();
+  const existing = getStoredProspects();
+  const knownIds = new Set(existing.map((p) => p.id));
+  const now = new Date().toISOString();
+
+  const found: OsmPlace[] = data.places || [];
+  const items: Prospect[] = [];
+  let skippedDuplicates = 0;
+
+  for (const p of found) {
+    const id = `gp_${p.id.replace('/', '_')}`;
+    const normName = normalizeBusinessName(p.name);
+    const cleanPhone = p.phone.replace(/\D/g, '');
+    if (knownIds.has(id) || excludedNames.has(normName) || (cleanPhone && excludedPhones.has(cleanPhone))) {
+      skippedDuplicates++;
+      continue;
+    }
+
+    const social = p.facebook || p.instagram;
+    const mapsUrl = p.lat != null && p.lon != null
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ' ' + p.city)}`
+      : `https://www.openstreetmap.org/${p.id}`;
+    const osmUrl = `https://www.openstreetmap.org/${p.id}`;
+    const address = [p.street, p.postcode, p.city || location].filter(Boolean).join(', ');
+    const websiteStatus: WebsiteStatus = 'possibly_no_website';
+
+    const sub = {
+      websiteOpportunity: 28,
+      reputation: 8,
+      activity: social ? 8 : 4,
+      categoryValue: 10,
+      contactability: p.email ? 10 : 8,
+      evidenceQuality: 5
+    };
+    const leadScore = Object.values(sub).reduce((a, b) => a + b, 0);
+
+    const contactChannels: Prospect['contactChannels'] = [
+      { type: 'phone', value: p.phone, confidence: 80, isBusinessContact: true, sourceUrl: osmUrl, verifiedAt: now },
+      { type: 'address', value: address, confidence: 70, isBusinessContact: true, sourceUrl: osmUrl, verifiedAt: now },
+      { type: 'google_maps', value: mapsUrl, confidence: 60, isBusinessContact: true, sourceUrl: mapsUrl, verifiedAt: now }
+    ];
+    if (p.email) contactChannels.push({ type: 'email', value: p.email, confidence: 80, isBusinessContact: true, sourceUrl: osmUrl, verifiedAt: now });
+    if (p.facebook) contactChannels.push({ type: 'facebook', value: p.facebook, confidence: 70, isBusinessContact: true, sourceUrl: osmUrl, verifiedAt: now });
+    if (p.instagram) contactChannels.push({ type: 'instagram', value: p.instagram, confidence: 70, isBusinessContact: true, sourceUrl: osmUrl, verifiedAt: now });
+
+    const prospect: Prospect = {
+      id,
+      name: p.name,
+      normalizedName: normName,
+      category: p.category,
+      address,
+      city: p.city || location,
+      region: '',
+      country: 'España',
+      postalCode: p.postcode || undefined,
+      latitude: p.lat,
+      longitude: p.lon,
+      phone: p.phone,
+      email: p.email || undefined,
+      websiteCandidate: '',
+      websiteStatus,
+      status: leadScore >= 80 ? 'high_priority' : 'new',
+      leadScore,
+      subscores: sub,
+      scoreReasons: [
+        'OpenStreetMap lists this business with a phone number but no website.',
+        social ? 'Has a Facebook/Instagram page listed, so it is active online but has no website.' : 'No website or social page listed.'
+      ],
+      strongestSignals: ['Real business listing from OpenStreetMap', 'Published phone number'],
+      importantUncertainties: [
+        'OpenStreetMap is volunteer-edited: the business may have closed, changed number or already have a website. Search it on Google Maps and check the phone before contacting.',
+        'No rating or review data is available from this free source.'
+      ],
+      recommendedAction: 'Check the business on Google Maps first, then call and offer a simple website with WhatsApp contact.',
+      reviewRating: 0,
+      reviewCount: 0,
+      reviewSentimentSummary: 'No review data (free OpenStreetMap source).',
+      positiveThemes: [],
+      negativeThemes: [],
+      customerComplaints: [],
+      stableOperationsEvidence: 'Listed in OpenStreetMap; verify it is still open.',
+      contactChannels,
+      sources: [
+        { name: 'OpenStreetMap', url: osmUrl, checkedAt: now },
+        { name: 'Check on Google Maps', url: mapsUrl, checkedAt: now }
+      ],
+      notes: `Found via OpenStreetMap for "${query}" in ${location}.`,
+      isStarred: false,
+      isClicked: false,
+      isContacted: false,
+      searchQuery: `${location} ${query}`,
+      createdAt: now,
+      updatedAt: now,
+      lastVerifiedAt: now
+    };
+    prospect.brief = createClientBrief(prospect, settings);
+
+    knownIds.add(id);
+    items.push(prospect);
+  }
+
+  saveStoredProspects([...items, ...existing]);
+
+  return { items, total: items.length, scanned: found.length, skippedDuplicates, location, query };
+}
+````
+
+
+## STEP 3 - Replace the whole content of src/services/apiBridge.ts with exactly this
+
+### FILE: src/services/apiBridge.ts
+````ts
+import {
+  getClientSettings,
+  saveClientSettings,
+  getStoredProspects,
+  saveStoredProspects,
+  addExclusion,
+  computeStats,
+  createClientBrief
+} from './clientDataEngine.ts';
+import type { Prospect } from '../types/index.ts';
+import { runRealSearch } from './placesSearch.ts';
+
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const urlString = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+  // Only intercept /api/ routes
+  if (!urlString.includes('/api/')) {
+    return window.fetch(input, init);
+  }
+
+  // Try live server first if available, cleanly fallback to client engine on Cloudflare Pages or static environments
+  try {
+    const res = await window.fetch(input, init);
+    const contentType = res.headers.get('content-type') || '';
+
+    // If response is HTML (Cloudflare Pages SPA rewrite: /* /index.html 200) -> execute client engine
+    if (contentType.includes('text/html')) {
+      return handleClientApiRoute(urlString, init);
+    }
+
+    // Live backend returned real JSON
+    if (res.ok && contentType.includes('application/json')) {
+      return res;
+    }
+
+    // Edge check: If backend explicitly returned structured JSON error/auth
+    if (res.status === 401 && contentType.includes('application/json')) {
+      return res;
+    }
+
+    // Any other status or non-JSON payload -> execute client data engine
+    return handleClientApiRoute(urlString, init);
+  } catch {
+    // Network failed or offline: handle via client engine
+    return handleClientApiRoute(urlString, init);
+  }
+}
+
+async function handleClientApiRoute(urlString: string, init?: RequestInit): Promise<Response> {
+  const url = new URL(urlString, window.location.origin);
+  const path = url.pathname;
+  const method = (init?.method || 'GET').toUpperCase();
+  let body: any = {};
+
+  if (init?.body && typeof init.body === 'string') {
+    try {
+      body = JSON.parse(init.body);
+    } catch {}
+  }
+
+  const jsonResponse = (data: any, status = 200) => {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  // 1. Auth Login (real login is the /api/auth/login Cloudflare Function; reaching here means it is not deployed)
+  if (path === '/api/auth/login' && method === 'POST') {
+    return jsonResponse({ error: 'Login service not found. Deploy the /functions folder to Cloudflare Pages.' }, 503);
+  }
+
+  // 2. Auth Verify
+  if (path === '/api/auth/verify') {
+    return jsonResponse({ verified: !!localStorage.getItem('leadhunter_admin_token') });
+  }
+
+  // 3. Deep Prospect Search (10+ minimum, 0 website, never repeat)
+  if (path === '/api/search/deep-prospect' && method === 'POST') {
+    try {
+      const results = await runRealSearch(body);
+      return jsonResponse(results);
+    } catch (err: any) {
+      return jsonResponse({ error: err?.message || 'Search failed' }, 502);
+    }
+  }
+
+  // 4. Settings
+  if (path === '/api/settings') {
+    if (method === 'PUT') {
+      const updated = saveClientSettings(body);
+      return jsonResponse(updated);
+    }
+    return jsonResponse(getClientSettings());
+  }
+
+  // 5. Stats
+  if (path === '/api/stats') {
+    const prospects = getStoredProspects();
+    return jsonResponse(computeStats(prospects));
+  }
+
+  // 6. Prospects Collection
+  if (path === '/api/prospects' && method === 'GET') {
+    const prospects = getStoredProspects();
+    const status = url.searchParams.get('status');
+    const websiteStatus = url.searchParams.get('websiteStatus');
+    const search = (url.searchParams.get('search') || '').toLowerCase();
+    const hideContacted = url.searchParams.get('hideContacted') === 'true';
+    const isContactedParam = url.searchParams.get('isContacted');
+
+    let filtered = prospects;
+
+    if (hideContacted) {
+      filtered = filtered.filter((p) => !p.isContacted && p.status !== 'contacted');
+    }
+    if (isContactedParam === 'true') {
+      filtered = filtered.filter((p) => p.isContacted || p.status === 'contacted');
+    }
+    if (status) {
+      filtered = filtered.filter((p) => p.status === status);
+    }
+    if (websiteStatus) {
+      filtered = filtered.filter((p) => p.websiteStatus === websiteStatus);
+    }
+    if (search) {
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search) ||
+          p.category.toLowerCase().includes(search) ||
+          p.city.toLowerCase().includes(search)
+      );
+    }
+
+    return jsonResponse({
+      items: filtered,
+      total: filtered.length
+    });
+  }
+
+  // 7. Individual Prospect actions
+  const prospectMatch = path.match(/^\/api\/prospects\/([^\/]+)(?:\/(.*))?$/);
+  if (prospectMatch) {
+    const id = prospectMatch[1];
+    const action = prospectMatch[2] || '';
+    const prospects = getStoredProspects();
+    const prospect = prospects.find((p) => p.id === id);
+
+    if (!prospect) {
+      return jsonResponse({ error: 'Prospect not found' }, 404);
+    }
+
+    // Click tracking (NEVER REPEAT)
+    if (action === 'click' && method === 'POST') {
+      prospect.isClicked = true;
+      prospect.clickedAt = new Date().toISOString();
+      saveStoredProspects(prospects);
+      addExclusion(prospect.name, prospect.phone);
+      return jsonResponse(prospect);
+    }
+
+    // Contact tracking (NEVER REPEAT)
+    if (action === 'contact' && method === 'POST') {
+      prospect.isContacted = body.contacted !== false;
+      prospect.contactedAt = new Date().toISOString();
+      if (prospect.isContacted) {
+        prospect.status = 'contacted';
+        addExclusion(prospect.name, prospect.phone);
+      }
+      saveStoredProspects(prospects);
+      return jsonResponse(prospect);
+    }
+
+    // Status change
+    if (action === 'status' && method === 'PUT') {
+      if (body.status) prospect.status = body.status;
+      if (body.notes !== undefined) prospect.notes = body.notes;
+      prospect.updatedAt = new Date().toISOString();
+      saveStoredProspects(prospects);
+      return jsonResponse(prospect);
+    }
+
+    // Star toggle
+    if (action === 'star' && method === 'POST') {
+      prospect.isStarred = !prospect.isStarred;
+      prospect.updatedAt = new Date().toISOString();
+      saveStoredProspects(prospects);
+      return jsonResponse({ isStarred: prospect.isStarred });
+    }
+
+    // Generate brief
+    if (action === 'generate-brief' && method === 'POST') {
+      prospect.brief = createClientBrief(prospect, getClientSettings());
+      saveStoredProspects(prospects);
+      return jsonResponse(prospect.brief);
+    }
+
+    // Get single prospect
+    if (!action && method === 'GET') {
+      return jsonResponse(prospect);
+    }
+  }
+
+  // 8. Run discovery now: one real search from the cities/categories in Settings (rotates each click)
+  if (path === '/api/scheduler/run-now' && method === 'POST') {
+    const st = getClientSettings();
+    const cities = st.cities?.length ? st.cities : ['Madrid'];
+    const cats = st.categories?.length ? st.categories : ['peluquería'];
+    let n = 0;
+    try { n = parseInt(localStorage.getItem('leadhunter_run_idx') || '0', 10) || 0; localStorage.setItem('leadhunter_run_idx', String(n + 1)); } catch {}
+    try {
+      const results = await runRealSearch({ location: cities[n % cities.length], query: cats[Math.floor(n / cities.length) % cats.length] });
+      return jsonResponse({ success: true, ...results });
+    } catch (err: any) {
+      return jsonResponse({ error: err?.message || 'Discovery failed' }, 502);
+    }
+  }
+
+  if (path === '/api/scheduler/toggle' && method === 'POST') {
+    return jsonResponse({ enabled: false });
+  }
+
+  if (path === '/api/jobs') {
+    return jsonResponse([]);
+  }
+
+  if (path.startsWith('/api/scheduler')) {
+    return jsonResponse({
+      isActive: false,
+      isCurrentlyRunning: false,
+      scheduleTime: getClientSettings().dailyScheduleTime,
+      timezone: 'Europe/Madrid',
+      nextScheduledRun: null,
+      lastRun: null,
+      recentJobs: []
+    });
+  }
+
+  if (path === '/api/providers/status') {
+    return jsonResponse({
+      providers: [
+        {
+          name: 'OpenStreetMap Overpass',
+          type: 'Business listings (name, phone, address)',
+          status: 'connected',
+          pricing: 'Free',
+          rateLimits: 'Fair use on public servers',
+          notes: 'Source of all leads. Data is volunteer-edited: verify each business on Google Maps before contacting.'
+        },
+        {
+          name: 'OpenStreetMap Nominatim',
+          type: 'Location lookup',
+          status: 'connected',
+          pricing: 'Free',
+          rateLimits: '1 request/second',
+          notes: 'Turns the city you type into a search area.'
+        }
+      ],
+      estimatedMonthlySpend: 0,
+      dailyBudgetCap: 0,
+      manualResearchModeAvailable: true
+    });
+  }
+
+  return jsonResponse({ error: 'Endpoint not found' }, 404);
+}
+````
+
+
+## STEP 4 - Edit src/services/clientDataEngine.ts (do not touch anything else in it)
+a) DELETE the whole `export const INITIAL_CURATED_PROSPECTS: Prospect[] = [ ... ];` constant.
+b) DELETE the whole `export function runClientDeepSearch(...) { ... }` function (the "Deep Prospect Generator", everything up to just before `export function computeStats`).
+c) Replace the whole `getStoredProspects` function with exactly:
+````ts
+export function getStoredProspects(): Prospect[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PROSPECTS);
+    if (raw) {
+      let parsed = JSON.parse(raw);
+      // One-time cleanup: remove the invented demo leads created by earlier versions.
+      if (Array.isArray(parsed) && !localStorage.getItem('leadhunter_purged_fake_v1')) {
+        parsed = parsed.filter((p: Prospect) => typeof p.id === 'string' && p.id.startsWith('gp_'));
+        localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(parsed));
+        localStorage.setItem('leadhunter_purged_fake_v1', '1');
+      }
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return [];
+}
+````
+d) In `defaultSettings` set: `cities: ['Valencia, España', 'Madrid, España', 'Barcelona, España', 'Sevilla, España', 'Málaga, España'],` and `region: 'España',` and `country: 'España',` and `categories: ['peluquería', 'barbería', 'panadería', 'cafetería', 'taller mecánico', 'clínica dental', 'fontanero', 'carpintero', 'gimnasio', 'restaurante'],`
+e) In `createClientBrief` replace the line
+`` `Strong public feedback: ${prospect.reviewRating.toFixed(1)}★ rating on Google Maps` ``
+with
+`` prospect.reviewRating > 0 ? `Strong public feedback: ${prospect.reviewRating.toFixed(1)}★ rating on Google Maps` : 'Established local business listed in OpenStreetMap' ``
+and replace the line
+`` `Prominent Google Review verification badge (${prospect.reviewRating}★ rating)` ``
+with
+`` prospect.reviewRating > 0 ? `Prominent Google Review verification badge (${prospect.reviewRating}★ rating)` : 'Customer testimonials section (collect reviews from happy clients)' ``
+
+## STEP 5 - Edit src/App.tsx
+a) Replace the whole `useState` initializer of `adminUser` with:
+````tsx
+const [adminUser, setAdminUser] = useState<{ email: string; name: string } | null>(() => {
+  try {
+    if (localStorage.getItem('leadhunter_logged_out') === 'true') return null;
+    const savedUser = localStorage.getItem('leadhunter_admin_user');
+    const token = localStorage.getItem('leadhunter_admin_token');
+    if (savedUser && token) return JSON.parse(savedUser);
+  } catch {}
+  return null;
+});
+````
+(no more automatic default login, no "initial_session" token).
+b) In the initial `schedulerStatus` state change `isActive: true` to `isActive: false`.
+
+## STEP 6 - Edit src/components/AdminLogin.tsx
+a) DELETE the whole "Quick Access Demo Mode" button (the second <button type="button"> that creates demoUser). Keep the main submit button and everything else.
+b) In the successful login branch, right after `localStorage.setItem('leadhunter_admin_user', JSON.stringify(data.user));` add `localStorage.removeItem('leadhunter_logged_out');`
+
+## STEP 7 - Cleanup
+- DELETE public/_redirects (not needed on Cloudflare Pages).
+- Do not create or modify server.ts, server/, wrangler.toml or package.json.
+- Make sure nothing in the app generates random business names, phone numbers, ratings or reviews anymore (search the whole project for Math.random used for that and remove it from client code).
+
+When finished, list the files you created/changed and confirm that `npm run build` passes with no TypeScript errors. Do not add any extra features.
