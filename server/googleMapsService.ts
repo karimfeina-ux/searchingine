@@ -40,9 +40,50 @@ export function getGoogleMapsApiKey(): string {
   ).trim();
 }
 
+function getSearchQueries(query: string, location: string): string[] {
+  const qClean = query.trim();
+  const qLower = qClean.toLowerCase();
+  const queries: string[] = [`${qClean} in ${location}`];
+
+  if (qLower.includes('café') || qLower.includes('cafe') || qLower.includes('coffee') || qLower.includes('roaster')) {
+    queries.push(`cafeteria in ${location}`, `café in ${location}`, `coffee shop in ${location}`, `café de especialidad in ${location}`);
+  } else if (qLower.includes('barber') || qLower.includes('hair') || qLower.includes('peluquer')) {
+    queries.push(`barbería in ${location}`, `peluquería in ${location}`, `peluquería unisex in ${location}`, `barbershop in ${location}`);
+  } else if (qLower.includes('restauran') || qLower.includes('tapa') || qLower.includes('dining')) {
+    queries.push(`restaurante in ${location}`, `bar de tapas in ${location}`, `mesón in ${location}`, `restaurant in ${location}`);
+  } else if (qLower.includes('panader') || qLower.includes('baker') || qLower.includes('pasteler')) {
+    queries.push(`panadería in ${location}`, `pastelería in ${location}`, `bakery in ${location}`);
+  } else if (qLower.includes('gym') || qLower.includes('fitness') || qLower.includes('pilates') || qLower.includes('gimnas')) {
+    queries.push(`gimnasio in ${location}`, `centro de fitness in ${location}`, `estudio pilates in ${location}`);
+  } else if (qLower.includes('taller') || qLower.includes('mecanic') || qLower.includes('auto repair')) {
+    queries.push(`taller mecánico in ${location}`, `reparación automóvil in ${location}`);
+  } else if (qLower.includes('boutique') || qLower.includes('artisan') || qLower.includes('craft')) {
+    queries.push(`tienda boutique in ${location}`, `taller artesanal in ${location}`, `comercio local in ${location}`);
+  }
+
+  return Array.from(new Set(queries));
+}
+
 /**
  * Searches real local businesses using Google Maps Places API (New) Text Search
  */
+// In-memory TTL cache to protect against quota exhaustion & duplicate rapid queries
+interface GmpCacheEntry {
+  timestamp: number;
+  data: {
+    items: Prospect[];
+    total: number;
+    location: string;
+    query: string;
+    rawCount: number;
+    source: 'google_maps_places_new';
+    quotaExceeded?: boolean;
+  };
+}
+const gmpSearchCache = new Map<string, GmpCacheEntry>();
+const inFlightGmpSearches = new Map<string, Promise<any>>();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 export async function searchGoogleMapsBusinesses(params: {
   query: string;
   location?: string;
@@ -57,6 +98,7 @@ export async function searchGoogleMapsBusinesses(params: {
   query: string;
   rawCount: number;
   source: 'google_maps_places_new';
+  quotaExceeded?: boolean;
 }> {
   const apiKey = getGoogleMapsApiKey();
   if (!apiKey) {
@@ -65,18 +107,59 @@ export async function searchGoogleMapsBusinesses(params: {
 
   const locationStr = (params.location || 'Madrid, Spain').trim();
   const queryStr = (params.query || 'barbershop').trim();
-  const fullTextQuery = `${queryStr} in ${locationStr}`;
+  const cacheKey = `${locationStr.toLowerCase()}::${queryStr.toLowerCase()}::${Boolean(params.onlyNoWebsite)}`;
 
-  const pageSize = Math.min(Math.max(Number(params.pageSize || 20), 1), 20);
-
-  const requestBody: Record<string, any> = {
-    textQuery: fullTextQuery,
-    pageSize,
-  };
-
-  if (params.minRating && params.minRating > 0) {
-    requestBody.minRating = Math.min(Math.max(params.minRating, 1.0), 5.0);
+  // 1. Check cache
+  const cached = gmpSearchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS && cached.data.items.length > 0) {
+    return cached.data;
   }
+
+  // 2. Coalesce in-flight queries
+  if (inFlightGmpSearches.has(cacheKey)) {
+    return inFlightGmpSearches.get(cacheKey)!;
+  }
+
+  const executionPromise = (async () => {
+    return await executeGoogleMapsSearch(params, apiKey, locationStr, queryStr, cacheKey);
+  })();
+
+  inFlightGmpSearches.set(cacheKey, executionPromise);
+  try {
+    const result = await executionPromise;
+    if (result.items.length > 0) {
+      gmpSearchCache.set(cacheKey, { timestamp: Date.now(), data: result });
+    }
+    return result;
+  } finally {
+    inFlightGmpSearches.delete(cacheKey);
+  }
+}
+
+async function executeGoogleMapsSearch(
+  params: {
+    query: string;
+    location?: string;
+    onlyNoWebsite?: boolean;
+    minRating?: number;
+    minReviews?: number;
+    pageSize?: number;
+  },
+  apiKey: string,
+  locationStr: string,
+  queryStr: string,
+  _cacheKey: string
+): Promise<{
+  items: Prospect[];
+  total: number;
+  location: string;
+  query: string;
+  rawCount: number;
+  source: 'google_maps_places_new';
+  quotaExceeded?: boolean;
+}> {
+  const fullTextQuery = `${queryStr} in ${locationStr}`;
+  const queriesToRun = getSearchQueries(queryStr, locationStr);
 
   // Field mask for Places API (New) Text Search
   const fieldMask = [
@@ -99,55 +182,99 @@ export async function searchGoogleMapsBusinesses(params: {
     'nextPageToken'
   ].join(',');
 
-  let places: GooglePlaceResult[] = [];
-  let nextPageToken: string | undefined = undefined;
-  let pageCount = 0;
-  const maxPages = 5;
+  const placeMap = new Map<string, GooglePlaceResult>();
+  let quotaExceeded = false;
 
-  do {
-    const requestBody: Record<string, any> = {
-      textQuery: fullTextQuery,
-      pageSize: 20,
-    };
-    if (nextPageToken) {
-      requestBody.pageToken = nextPageToken;
-      // Brief pause to allow next page token propagation
-      await new Promise((r) => setTimeout(r, 400));
-    }
-    if (params.minRating && params.minRating > 0 && !nextPageToken) {
-      requestBody.minRating = Math.min(Math.max(params.minRating, 1.0), 5.0);
-    }
+  // Pace queries: primary query first, limit secondary variations to avoid rate limits
+  for (let qIdx = 0; qIdx < queriesToRun.length; qIdx++) {
+    const textQuery = queriesToRun[qIdx];
+    // If primary query already found sufficient candidates, skip secondary queries
+    if (placeMap.size >= 30 && qIdx > 0) break;
 
-    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
-        'X-Goog-FieldMask': fieldMask,
-      },
-      body: JSON.stringify(requestBody),
-    });
+    let nextPageToken: string | undefined = undefined;
+    let pageCount = 0;
+    const maxPages = qIdx === 0 ? 2 : 1; // 2 pages for main query, 1 for variations
 
-    if (!response.ok) {
-      if (places.length === 0) {
-        const errorBody = await response.text();
-        console.error(`Google Places API error (${response.status}):`, errorBody);
-        if (response.status === 429) {
-          throw new Error('Google Maps Platform quota exceeded. Please check your account limits.');
-        }
-        throw new Error(`Google Maps search failed: ${response.status} ${response.statusText}`);
+    do {
+      const requestBody: Record<string, any> = {
+        textQuery,
+        pageSize: 20,
+      };
+      if (nextPageToken) {
+        requestBody.pageToken = nextPageToken;
+        await new Promise((r) => setTimeout(r, 400));
       }
-      break;
-    }
+      if (params.minRating && params.minRating > 0 && !nextPageToken) {
+        requestBody.minRating = Math.min(Math.max(params.minRating, 1.0), 5.0);
+      }
 
-    const data: { places?: GooglePlaceResult[]; nextPageToken?: string } = await response.json();
-    if (Array.isArray(data.places)) {
-      places = places.concat(data.places);
-    }
-    nextPageToken = data.nextPageToken;
-    pageCount++;
-  } while (nextPageToken && pageCount < maxPages && places.length < 100);
+      let response: Response;
+      try {
+        response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
+            'X-Goog-FieldMask': fieldMask,
+          },
+          body: JSON.stringify(requestBody),
+        });
+      } catch (networkErr: any) {
+        console.warn('[GoogleMapsService] Network error during Places API search:', networkErr?.message);
+        break;
+      }
+
+      // Handle 429 quota / rate limit with single retry
+      if (response.status === 429) {
+        quotaExceeded = true;
+        console.warn(`[GoogleMapsService] Places API 429 (Rate Limit/Quota). Backing off...`);
+        await new Promise((r) => setTimeout(r, 1000));
+        try {
+          const retryRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
+              'X-Goog-FieldMask': fieldMask,
+            },
+            body: JSON.stringify(requestBody),
+          });
+          if (retryRes.ok) {
+            response = retryRes;
+            quotaExceeded = false;
+          }
+        } catch {}
+      }
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          quotaExceeded = true;
+        }
+        break;
+      }
+
+      try {
+        const data: { places?: GooglePlaceResult[]; nextPageToken?: string } = await response.json();
+        if (Array.isArray(data.places)) {
+          for (const p of data.places) {
+            if (p.id && !placeMap.has(p.id)) {
+              placeMap.set(p.id, p);
+            }
+          }
+        }
+        nextPageToken = data.nextPageToken;
+        pageCount++;
+      } catch {
+        break;
+      }
+    } while (nextPageToken && pageCount < maxPages && placeMap.size < 60);
+
+    if (quotaExceeded) break;
+  }
+
+  const places = Array.from(placeMap.values());
 
   const { names: excludedNames, phones: excludedPhones } = getExcludedBusinessNamesAndPhones();
   const settings = getSettings();
@@ -402,5 +529,6 @@ export async function searchGoogleMapsBusinesses(params: {
     query: queryStr,
     rawCount: places.length,
     source: 'google_maps_places_new',
+    quotaExceeded,
   };
 }

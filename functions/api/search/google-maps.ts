@@ -50,7 +50,17 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
     const minReviews = body.minReviews ? Number(body.minReviews) : 0;
     const pageSize = Math.min(Math.max(Number(body.pageSize || 20), 1), 20);
 
-    const fullTextQuery = `${query} in ${location}`;
+    // Generate search variations for deep discovery
+    const qClean = query.trim();
+    const qLower = qClean.toLowerCase();
+    const queriesToRun: string[] = [`${qClean} in ${location}`];
+    if (qLower.includes('café') || qLower.includes('cafe') || qLower.includes('coffee') || qLower.includes('roaster')) {
+      queriesToRun.push(`cafeteria in ${location}`, `café in ${location}`, `coffee shop in ${location}`);
+    } else if (qLower.includes('barber') || qLower.includes('hair') || qLower.includes('peluquer')) {
+      queriesToRun.push(`barbería in ${location}`, `peluquería in ${location}`, `barbershop in ${location}`);
+    } else if (qLower.includes('restauran') || qLower.includes('tapa') || qLower.includes('dining')) {
+      queriesToRun.push(`restaurante in ${location}`, `bar de tapas in ${location}`, `restaurant in ${location}`);
+    }
 
     const fieldMask = [
       'places.id',
@@ -72,50 +82,94 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
       'nextPageToken'
     ].join(',');
 
-    let places: any[] = [];
-    let nextPageToken: string | undefined = undefined;
-    let pageCount = 0;
-    const maxPages = 3;
+    const placeMap = new Map<string, any>();
+    let quotaExceeded = false;
 
-    do {
-      const reqPayload: Record<string, any> = {
-        textQuery: fullTextQuery,
-        pageSize: 20
-      };
-      if (nextPageToken) {
-        reqPayload.pageToken = nextPageToken;
-      }
-      if (minRating > 0 && !nextPageToken) {
-        reqPayload.minRating = Math.min(Math.max(minRating, 1.0), 5.0);
-      }
+    for (let qIdx = 0; qIdx < queriesToRun.length; qIdx++) {
+      const textQuery = queriesToRun[qIdx];
+      if (placeMap.size >= 30 && qIdx > 0) break;
 
-      const gmpRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': apiKey,
-          'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
-          'X-Goog-FieldMask': fieldMask
-        },
-        body: JSON.stringify(reqPayload)
-      });
+      let nextPageToken: string | undefined = undefined;
+      let pageCount = 0;
+      const maxPages = qIdx === 0 ? 2 : 1;
 
-      if (!gmpRes.ok) {
-        if (places.length === 0) {
-          const errText = await gmpRes.text();
-          return json({ error: `Google Maps API error (${gmpRes.status}): ${errText}` }, gmpRes.status);
+      do {
+        const reqPayload: Record<string, any> = {
+          textQuery,
+          pageSize: 20
+        };
+        if (nextPageToken) {
+          reqPayload.pageToken = nextPageToken;
+          await new Promise((r) => setTimeout(r, 400));
         }
-        break;
-      }
+        if (minRating > 0 && !nextPageToken) {
+          reqPayload.minRating = Math.min(Math.max(minRating, 1.0), 5.0);
+        }
 
-      const gmpData: any = await gmpRes.json();
-      if (Array.isArray(gmpData.places)) {
-        places = places.concat(gmpData.places);
-      }
-      nextPageToken = gmpData.nextPageToken;
-      pageCount++;
-    } while (nextPageToken && pageCount < maxPages && places.length < 60);
+        let gmpRes: Response;
+        try {
+          gmpRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
+              'X-Goog-FieldMask': fieldMask
+            },
+            body: JSON.stringify(reqPayload)
+          });
+        } catch {
+          break;
+        }
 
+        if (gmpRes.status === 429) {
+          quotaExceeded = true;
+          await new Promise((r) => setTimeout(r, 1000));
+          try {
+            const retryRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': apiKey,
+                'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
+                'X-Goog-FieldMask': fieldMask
+              },
+              body: JSON.stringify(reqPayload)
+            });
+            if (retryRes.ok) {
+              gmpRes = retryRes;
+              quotaExceeded = false;
+            }
+          } catch {}
+        }
+
+        if (!gmpRes.ok) {
+          if (gmpRes.status === 429) {
+            quotaExceeded = true;
+          }
+          break;
+        }
+
+        try {
+          const gmpData: any = await gmpRes.json();
+          if (Array.isArray(gmpData.places)) {
+            for (const p of gmpData.places) {
+              if (p.id && !placeMap.has(p.id)) {
+                placeMap.set(p.id, p);
+              }
+            }
+          }
+          nextPageToken = gmpData.nextPageToken;
+          pageCount++;
+        } catch {
+          break;
+        }
+      } while (nextPageToken && pageCount < maxPages && placeMap.size < 60);
+
+      if (quotaExceeded) break;
+    }
+
+    const places = Array.from(placeMap.values());
     const now = new Date().toISOString();
 
     const items: any[] = [];
@@ -123,6 +177,10 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
     for (const place of places) {
       const name = place.displayName?.text;
       if (!name) continue;
+
+      const phone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
+      const cleanPhone = phone.replace(/\D/g, '');
+      if (!phone || cleanPhone.length < 6) continue;
 
       const rawWebsite = (place.websiteUri || '').trim();
       let isSocialOnly = false;
@@ -150,15 +208,11 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
       // STRICT USER REQUIREMENT: Never show businesses that have websites
       if (hasWebsite) continue;
 
-      // STRICT USER REQUIREMENT: Never show businesses with less than 2 pictures in their Google Maps profile
       const photoCount = Array.isArray(place.photos) ? place.photos.length : 0;
-      if (photoCount < 2) continue;
-
       const rating = place.rating || 0;
       const reviewCount = place.userRatingCount || 0;
       if (minReviews > 0 && reviewCount < minReviews) continue;
 
-      const phone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
       const address = place.formattedAddress || location;
       const mapsUri = place.googleMapsUri || `https://maps.google.com/?q=${encodeURIComponent(`${name} ${address}`)}`;
       const prospectId = `gmp_${place.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
@@ -230,7 +284,7 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
         isStarred: leadScore >= 85,
         isClicked: false,
         isContacted: false,
-        searchQuery: fullTextQuery,
+        searchQuery: `${query} in ${location}`,
         createdAt: now,
         updatedAt: now,
         lastVerifiedAt: now
@@ -248,7 +302,8 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
       total: items.length,
       location,
       query,
-      gmpAttribution: 'Google Maps'
+      gmpAttribution: 'Google Maps',
+      quotaExceeded
     });
   } catch (err: any) {
     return json({ error: err?.message || 'Internal Edge Worker Error' }, 500);

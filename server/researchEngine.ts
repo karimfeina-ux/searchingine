@@ -129,6 +129,7 @@ export const deepSearchProspects = async (params: {
   query?: string;
   location?: string;
   category?: string;
+  skipGmp?: boolean;
 }): Promise<{
   items: Prospect[];
   total: number;
@@ -136,23 +137,28 @@ export const deepSearchProspects = async (params: {
   category: string;
   query: string;
   source?: string;
+  quotaExceeded?: boolean;
 }> => {
   const targetLocation = (params.location || 'Madrid, Spain').trim();
   const targetQuery = (params.query || params.category || 'peluquería').trim();
   const settings = getSettings();
   const now = new Date().toISOString();
+  let gmpQuotaHit = false;
 
   // 1. Check if Google Maps Platform is configured and has an API Key
   const googleMapsKey = getGoogleMapsApiKey();
-  if (googleMapsKey) {
+  if (googleMapsKey && !params.skipGmp) {
     try {
-      console.log(`[ResearchEngine] Searching Google Maps Places API (New) for "${targetQuery}" in "${targetLocation}"...`);
       const gmpResult = await searchGoogleMapsBusinesses({
         location: targetLocation,
         query: targetQuery,
         onlyNoWebsite: false,
         pageSize: 20
       });
+
+      if (gmpResult.quotaExceeded) {
+        gmpQuotaHit = true;
+      }
 
       if (gmpResult.items && gmpResult.items.length > 0) {
         // Persist discovered Google Maps prospects into local DB
@@ -177,11 +183,14 @@ export const deepSearchProspects = async (params: {
           location: targetLocation,
           category: targetQuery,
           query: `${targetLocation} ${targetQuery}`,
-          source: 'google_maps_places_new'
+          source: 'google_maps_places_new',
+          quotaExceeded: gmpResult.quotaExceeded
         };
       }
-    } catch (gmpErr) {
-      console.warn('[ResearchEngine] Google Maps search notice (falling back to OpenStreetMap):', gmpErr);
+    } catch (gmpErr: any) {
+      if (gmpErr?.message?.includes('quota') || gmpErr?.message?.includes('429')) {
+        gmpQuotaHit = true;
+      }
     }
   }
 
@@ -374,6 +383,8 @@ export const deepSearchProspects = async (params: {
     total: qualifiedList.length,
     location: targetLocation,
     category: targetQuery,
-    query: `${targetLocation} ${targetQuery}`
+    query: `${targetLocation} ${targetQuery}`,
+    source: 'openstreetmap',
+    quotaExceeded: gmpQuotaHit
   };
 };

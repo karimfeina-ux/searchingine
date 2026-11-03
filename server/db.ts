@@ -460,16 +460,8 @@ export const getExcludedBusinessNamesAndPhones = (): { names: Set<string>; phone
   const names = new Set<string>(store.bannedNames || []);
   const phones = new Set<string>(store.bannedPhones || []);
   for (const p of Object.values(store.prospects)) {
-    // Exclude businesses that are contacted, waiting, signed, clicked, not interested, or excluded
-    if (
-      p.isContacted ||
-      p.isClicked ||
-      p.status === 'contacted' ||
-      p.status === 'waiting' ||
-      p.status === 'client_signed' ||
-      p.status === 'not_interested' ||
-      p.status === 'excluded'
-    ) {
+    // Strictly exclude only businesses explicitly marked not interested or excluded/banned
+    if (p.status === 'not_interested' || p.status === 'excluded') {
       if (p.phone) {
         const cleanPhone = p.phone.replace(/\D/g, '');
         if (cleanPhone.length >= 6) phones.add(cleanPhone);

@@ -31,17 +31,12 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
       return handleClientApiRoute(urlString, init);
     }
 
-    // Live backend returned real JSON
-    if (res.ok && contentType.includes('application/json')) {
+    // Live backend returned real JSON (success or structured error like 401, 429, 500)
+    if (contentType.includes('application/json')) {
       return res;
     }
 
-    // Edge check: If backend explicitly returned structured JSON error/auth
-    if (res.status === 401 && contentType.includes('application/json')) {
-      return res;
-    }
-
-    // Any other status or non-JSON payload -> execute client data engine
+    // Any other status or non-JSON payload (e.g., 404 HTML fallback) -> execute client data engine
     return handleClientApiRoute(urlString, init);
   } catch {
     // Network failed or offline: handle via client engine

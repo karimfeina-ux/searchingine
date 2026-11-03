@@ -141,11 +141,29 @@ async function handle(request: Request): Promise<Response> {
   const matched = CATEGORIES.filter((c) => c.words.some((w) => q.includes(w)));
   const tagSets = matched.flatMap((c) => c.tags);
 
+  // Derive localized search keywords for Nominatim
+  const searchKeywords: string[] = [query];
+  if (q.includes('cafe') || q.includes('café') || q.includes('coffee') || q.includes('roaster')) {
+    searchKeywords.push('cafetería', 'café', 'coffee shop');
+  } else if (q.includes('barber') || q.includes('hair') || q.includes('peluquer') || q.includes('salon')) {
+    searchKeywords.push('peluquería', 'barbería', 'salón de belleza');
+  } else if (q.includes('restaur') || q.includes('tapa') || q.includes('bistr')) {
+    searchKeywords.push('restaurante', 'bar de tapas', 'mesón');
+  } else if (q.includes('panad') || q.includes('bakery') || q.includes('pasteler')) {
+    searchKeywords.push('panadería', 'pastelería');
+  } else if (q.includes('gym') || q.includes('fitness') || q.includes('pilates') || q.includes('gimnas')) {
+    searchKeywords.push('gimnasio', 'centro de fitness');
+  } else if (q.includes('taller') || q.includes('mecanic') || q.includes('auto repair')) {
+    searchKeywords.push('taller mecánico', 'reparación automóvil');
+  } else if (q.includes('boutique') || q.includes('artisan') || q.includes('craft') || q.includes('tienda')) {
+    searchKeywords.push('tienda boutique', 'taller artesanal', 'comercio');
+  }
+
   // 2) PRIMARY SEARCH: Fast, reliable, sub-second OpenStreetMap Nominatim search
   const parseNominatimItem = (item: any) => {
     const xt = item.extratags || {};
     const addr = item.address || {};
-    const rawWeb = xt.website || xt['contact:website'] || xt.url || '';
+    const rawWeb = xt.website || xt['contact:website'] || xt.url || addr.website || '';
     const isSocialOnly = Boolean(
       rawWeb && (
         rawWeb.includes('instagram.com') ||
@@ -160,7 +178,7 @@ async function handle(request: Request): Promise<Response> {
     // USER RULE: Has no website listed on Google Maps or any platform
     if (rawWeb && !isSocialOnly) return null;
 
-    const phone = xt.phone || xt['contact:phone'] || xt.mobile || xt['contact:mobile'] || '';
+    const phone = xt.phone || xt['contact:phone'] || xt.mobile || xt['contact:mobile'] || xt['phone:mobile'] || xt['contact:whatsapp'] || addr.phone || '';
 
     // USER RULE: If they don't have a phone number, don't list them or show them
     if (!phone.trim() || phone.replace(/\D/g, '').length < 6) return null;
@@ -188,18 +206,19 @@ async function handle(request: Request): Promise<Response> {
   };
 
   const nominatimUrls: string[] = [];
-  if (bboxCoords) {
-    const { south, north, west, east } = bboxCoords;
+  const uniqueTerms = Array.from(new Set(searchKeywords)).slice(0, 3);
+
+  for (const term of uniqueTerms) {
+    if (bboxCoords) {
+      const { south, north, west, east } = bboxCoords;
+      nominatimUrls.push(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&extratags=1&limit=30&viewbox=${west},${north},${east},${south}&bounded=1&q=${encodeURIComponent(term)}`
+      );
+    }
     nominatimUrls.push(
-      `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&extratags=1&limit=30&viewbox=${west},${north},${east},${south}&bounded=1&q=${encodeURIComponent(query)}`
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&extratags=1&limit=30&q=${encodeURIComponent(`${term}, ${location}`)}`
     );
   }
-  nominatimUrls.push(
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&extratags=1&limit=30&q=${encodeURIComponent(`${query}, ${location}`)}`
-  );
-  nominatimUrls.push(
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&extratags=1&limit=30&q=${encodeURIComponent(`${query} ${location}`)}`
-  );
 
   const seenIds = new Set<string>();
   const verifiedPlaces: any[] = [];
@@ -235,24 +254,23 @@ async function handle(request: Request): Promise<Response> {
     return json({ places: verifiedPlaces, categoryMatched: matched.length > 0 });
   }
 
-  // 3) SECONDARY FALLBACK: Optional Overpass lookup with silent error suppression
+  // 3) SECONDARY FALLBACK: Overpass lookup with nwr and phone regex
   if (bbox) {
     try {
       const noSite = '[!"website"][!"contact:website"][!"url"]';
       const clauses: string[] = [];
-      const phoneKeys = ['phone', 'contact:phone', 'contact:mobile', 'mobile'];
 
       if (tagSets.length) {
         for (const t of new Set(tagSets)) {
           const [k, v] = t.split('=');
-          for (const pk of phoneKeys) clauses.push(`node["${k}"="${v}"]["${pk}"]${noSite}["name"](${bbox});`);
+          clauses.push(`nwr["${k}"="${v}"][~"^(phone|contact:phone|mobile|contact:mobile)$"~"."]${noSite}["name"](${bbox});`);
         }
       } else {
-        for (const pk of phoneKeys) clauses.push(`node["name"~"${esc(query)}",i]["${pk}"]${noSite}(${bbox});`);
+        clauses.push(`nwr["name"~"${esc(query)}",i][~"^(phone|contact:phone|mobile|contact:mobile)$"~"."]${noSite}(${bbox});`);
       }
 
       if (clauses.length > 0) {
-        const overpassData = await overpass(`[out:json][timeout:3];(${clauses.join('')});out center tags 50;`);
+        const overpassData = await overpass(`[out:json][timeout:10];(${clauses.join('')});out center tags 50;`);
         if (overpassData && Array.isArray(overpassData.elements) && overpassData.elements.length > 0) {
           const overpassPlaces = overpassData.elements
             .filter((e: any) => e.tags?.name && !e.tags['disused:shop'] && !e.tags['disused:amenity'])

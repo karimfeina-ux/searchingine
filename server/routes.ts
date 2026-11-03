@@ -193,13 +193,14 @@ router.post('/search/google-maps', async (req, res) => {
       console.warn('Google Maps search notice:', gmpErr?.message);
     }
 
-    // Also run deepSearchProspects to uncover all additional businesses in the area
+    // Also run deepSearchProspects via OpenStreetMap to discover all additional businesses
     let deepResults: any = null;
     try {
       const { deepSearchProspects } = await import('./researchEngine.ts');
       deepResults = await deepSearchProspects({
         query: (query || '').trim(),
-        location: (location || '').trim()
+        location: (location || '').trim(),
+        skipGmp: true // Skip duplicate Google Maps calls since already queried above
       });
     } catch (deepErr: any) {
       console.warn('Deep discovery engine notice:', deepErr?.message);
@@ -255,6 +256,8 @@ router.post('/search/google-maps', async (req, res) => {
       broadcastSync('prospects_batch', { count: allItems.length });
     }
 
+    const quotaExceeded = Boolean(gmpResults?.quotaExceeded || deepResults?.quotaExceeded);
+
     res.json({
       items: allItems,
       total: allItems.length,
@@ -262,7 +265,8 @@ router.post('/search/google-maps', async (req, res) => {
       query: (query || 'barbershop').trim(),
       rawCount: allItems.length,
       source: 'all_possible_sources',
-      gmpAttribution: 'Google Maps'
+      gmpAttribution: 'Google Maps',
+      quotaExceeded
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Business search failed.' });

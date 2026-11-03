@@ -11,7 +11,13 @@ if (typeof window !== 'undefined') {
   console.error = (...args: unknown[]) => {
     origError.apply(console, args);
     const msg = args.map((a) => String(a)).join(' ');
-    if (msg.includes('OverQuotaMapError') || msg.includes('QuotaExceededError')) {
+    if (
+      msg.includes('OverQuotaMapError') ||
+      msg.includes('QuotaExceededError') ||
+      msg.includes('RESOURCE_EXHAUSTED') ||
+      msg.includes('quota exceeded') ||
+      msg.includes('Places API error (429)')
+    ) {
       window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
     }
   };

@@ -132,9 +132,16 @@ export const onRequestPost = async ({ request, env = {} }: { request: Request; e
                 }
               }
 
+              // STRICT RULE: Has no website listed in Google Maps or the internet
+              if (hasWebsite) continue;
+
+              const phone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
+              const cleanPhone = phone.replace(/\D/g, '');
+              // STRICT RULE: Must have a phone number for outreach
+              if (!phone || cleanPhone.length < 6) continue;
+
               const rating = place.rating || 0;
               const reviewCount = place.userRatingCount || 0;
-              const phone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
               const address = place.formattedAddress || location;
               const mapsUri = place.googleMapsUri || `https://maps.google.com/?q=${encodeURIComponent(`${name} ${address}`)}`;
               const prospectId = `gmp_${place.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;

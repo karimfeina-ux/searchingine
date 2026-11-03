@@ -287,18 +287,10 @@ export function getExcludedSets(): { names: Set<string>; phones: Set<string> } {
     }
   } catch {}
 
-  // Also include clicked, contacted, waiting, signed, not_interested, or excluded prospects in exclusions
+  // Strictly exclude only prospects explicitly marked as not_interested or excluded/banned
   const prospects = getStoredProspects();
   for (const p of prospects) {
-    if (
-      p.isClicked ||
-      p.isContacted ||
-      p.status === 'contacted' ||
-      p.status === 'waiting' ||
-      p.status === 'client_signed' ||
-      p.status === 'not_interested' ||
-      p.status === 'excluded'
-    ) {
+    if (p.status === 'not_interested' || p.status === 'excluded') {
       if (p.name) names.add(normalizeBusinessName(p.name));
       if (p.phone) {
         const clean = p.phone.replace(/\D/g, '');
