@@ -486,13 +486,16 @@ router.post('/prospects/:id/ban-website', (req, res) => {
 
 router.post('/prospects/:id/not-interested', (req, res) => {
   try {
-    const { reason = 'Not interested after contact (Deleted from research)' } = req.body || {};
+    const { reason = 'Not interested after contact' } = req.body || {};
     const result = banAndExcludeProspect(req.params.id, reason);
     if (!result.success) {
       return res.status(404).json({ error: 'Prospect not found' });
     }
-    broadcastSync('prospect_excluded', { id: req.params.id, name: result.name });
-    res.json({ success: true, excluded: true, name: result.name });
+    const updated = getProspectById(req.params.id);
+    if (updated) {
+      broadcastSync('prospect_updated', updated);
+    }
+    res.json({ success: true, excluded: true, name: result.name, prospect: updated });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

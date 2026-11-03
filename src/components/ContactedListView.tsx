@@ -53,23 +53,30 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Filter only prospects that have been contacted or progressed AND strictly have NO website and have phone
+  // Show all the things user did before: contacted, waiting, signed, not interested
   const contactedPool = prospects.filter((p) => {
-    if (!isQualifiedProspect(p)) return false;
-    return Boolean(
+    const isContactedOrActioned = Boolean(
       p.isContacted ||
       p.status === 'contacted' ||
       p.status === 'waiting' ||
       p.status === 'client_signed' ||
-      p.status === 'not_interested'
+      p.status === 'not_interested' ||
+      p.status === 'excluded'
     );
+    if (!isContactedOrActioned) return false;
+    // Strictly no website
+    if ((p as any).hasWebsite) return false;
+    if (p.websiteStatus && ['website_exists', 'website_broken', 'website_outdated'].includes(p.websiteStatus)) {
+      return false;
+    }
+    return true;
   });
 
   // Calculate status metric breakdown
   const waitingLeads = contactedPool.filter((p) => p.status === 'waiting');
   const signedLeads = contactedPool.filter((p) => p.status === 'client_signed');
   const outreachLeads = contactedPool.filter((p) => p.status === 'contacted' || (!p.status && p.isContacted));
-  const refusedLeads = contactedPool.filter((p) => p.status === 'not_interested');
+  const refusedLeads = contactedPool.filter((p) => p.status === 'not_interested' || p.status === 'excluded');
 
   const estimatedRevenue = signedLeads.length * 500;
 
@@ -78,9 +85,9 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
     if (filterType === 'waiting' && p.status !== 'waiting') return false;
     if (filterType === 'signed' && p.status !== 'client_signed') return false;
     if (filterType === 'contacted' && p.status !== 'contacted' && p.status !== 'ready_to_contact' && p.status !== 'high_priority') {
-      if (p.status === 'waiting' || p.status === 'client_signed' || p.status === 'not_interested') return false;
+      if (p.status === 'waiting' || p.status === 'client_signed' || p.status === 'not_interested' || p.status === 'excluded') return false;
     }
-    if (filterType === 'refused' && p.status !== 'not_interested') return false;
+    if (filterType === 'refused' && p.status !== 'not_interested' && p.status !== 'excluded') return false;
 
     if (search.trim()) {
       const q = search.toLowerCase();

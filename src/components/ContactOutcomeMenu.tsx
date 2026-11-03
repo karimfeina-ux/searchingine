@@ -213,7 +213,7 @@ export const ContactOutcomeMenu: React.FC<ContactOutcomeMenuProps> = ({
                     <span>{tr.optionNotInterested}</span>
                   </div>
                   <div className="text-[10px] text-rose-400/80">
-                    {lang === 'es' ? 'Eliminar y excluir para siempre de búsquedas' : 'Delete and permanently ban from searches'}
+                    {lang === 'es' ? 'Guardar en Contactados como No Interesado' : 'Save to Contacted pipeline under Not Interested'}
                   </div>
                 </div>
               </button>

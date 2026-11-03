@@ -21,7 +21,7 @@ import { CloudflareDeployModal } from './components/CloudflareDeployModal.tsx';
 import { GoogleMapsProspectsView } from './components/GoogleMapsProspectsView.tsx';
 import { ContactedListView } from './components/ContactedListView.tsx';
 import { apiFetch } from './services/apiBridge.ts';
-import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets, backupLocalData, isQualifiedProspect } from './services/clientDataEngine.ts';
+import { defaultSettings, getStoredProspects, computeStats, saveStoredProspects, deleteProspectClient, getExcludedSets, addExclusion, backupLocalData, isQualifiedProspect } from './services/clientDataEngine.ts';
 import { liveSync, type SyncMessage } from './services/liveSync.ts';
 import { Loader2, AlertCircle, X, Compass, Database, CheckCircle2, Settings } from 'lucide-react';
 
@@ -193,7 +193,7 @@ export default function App() {
               const remote = map.get(p.id);
               if (!remote) {
                 map.set(p.id, p);
-                if (p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status)) {
+                if (p.isContacted || ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status)) {
                   unsynced.push(p);
                 }
               } else {
@@ -202,11 +202,11 @@ export default function App() {
 
                 const isLocalContacted = Boolean(
                   p.isContacted ||
-                  (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested'].includes(p.status))
+                  (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
                 );
                 const isRemoteContacted = Boolean(
                   remote.isContacted ||
-                  (remote.status && ['contacted', 'waiting', 'client_signed', 'not_interested'].includes(remote.status))
+                  (remote.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(remote.status))
                 );
 
                 let mergedProspect = localTime > remoteTime ? { ...remote, ...p } : { ...p, ...remote };
@@ -251,7 +251,7 @@ export default function App() {
             }).catch(() => {});
             setProspects(localItems);
           } else {
-            setProspects((prev) => prev.filter((p) => isQualifiedProspect(p) && (p.isContacted || ['contacted', 'waiting', 'client_signed'].includes(p.status))));
+            setProspects((prev) => prev.filter((p) => isQualifiedProspect(p) && (p.isContacted || ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))));
           }
         }
       }
@@ -326,14 +326,13 @@ export default function App() {
         setSelectedProspect((prev) => (prev && prev.id === id ? null : prev));
       } else if (msg.type === 'prospect_excluded' && msg.data) {
         const { id } = msg.data;
-        deleteProspectClient(id);
         setProspects((prev) => {
-          const next = prev.filter((p) => p.id !== id);
+          const next = prev.map((p) => (p.id === id ? { ...p, status: 'not_interested' as LeadStatus, isContacted: true } : p));
           saveStoredProspects(next);
           setStats(computeStats(next));
           return next;
         });
-        setSelectedProspect((prev) => (prev?.id === id ? null : prev));
+        setSelectedProspect((prev) => (prev && prev.id === id ? { ...prev, status: 'not_interested' as LeadStatus, isContacted: true } : prev));
       } else if (msg.type === 'settings_updated' && msg.data) {
         setSettings(msg.data);
         if (msg.data.uiLanguage) setLang(msg.data.uiLanguage);
@@ -639,34 +638,60 @@ export default function App() {
     }
   };
 
-  const handleMarkNotInterested = async (id: string) => {
+  const handleMarkNotInterested = async (id: string, reason?: string) => {
     try {
-      const targetProspect = prospects.find((p) => p.id === id);
+      const targetProspect = prospects.find((p) => p.id === id) || (selectedProspect?.id === id ? selectedProspect : undefined);
+      const noteText = reason || 'Marked as not interested';
+
       apiFetch(`/api/prospects/${id}/not-interested`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          reason: 'Not interested (Deleted from research)',
+          reason: noteText,
           name: targetProspect?.name,
           phone: targetProspect?.phone
         })
       }).catch(() => {});
-      deleteProspectClient(id);
+
+      if (targetProspect) {
+        addExclusion(targetProspect.name, targetProspect.phone);
+      }
+
       setProspects((prev) => {
-        const next = prev.filter((p) => p.id !== id);
+        const exists = prev.some((p) => p.id === id);
+        const updatedRecord: Prospect = {
+          ...(targetProspect || {}),
+          id,
+          name: targetProspect?.name || 'Business',
+          category: targetProspect?.category || 'Business',
+          address: targetProspect?.address || '',
+          city: targetProspect?.city || '',
+          phone: targetProspect?.phone || '',
+          status: 'not_interested' as LeadStatus,
+          isContacted: true,
+          notes: noteText,
+          updatedAt: new Date().toISOString()
+        } as Prospect;
+
+        const next = exists
+          ? prev.map((p) => (p.id === id ? updatedRecord : p))
+          : [updatedRecord, ...prev];
+
         saveStoredProspects(next);
         setStats(computeStats(next));
         return next;
       });
+
       if (selectedProspect?.id === id) {
-        setSelectedProspect(null);
+        setSelectedProspect((prev) => (prev ? { ...prev, status: 'not_interested' as LeadStatus, isContacted: true, notes: noteText } : null));
       }
+
       setContactToast({
         businessName: targetProspect?.name || 'Business',
         status: 'not_interested',
-        title: lang === 'es' ? '❌ Descartado de la búsqueda' : '❌ Removed & Excluded',
-        message: lang === 'es' ? 'Negocio eliminado de las listas de prospección' : 'Business excluded from future research lists',
-        showCta: false
+        title: lang === 'es' ? '❌ Registrado como No Interesado' : '❌ Marked as Not Interested',
+        message: lang === 'es' ? 'Guardado en la pestaña de Contactados bajo la categoría "No Interesados".' : 'Saved in your Contacted list under the "Not Interested" category.',
+        showCta: true
       });
       setTimeout(() => setContactToast(null), 4000);
     } catch (err) {
@@ -829,14 +854,14 @@ export default function App() {
   const handleClearResearch = async (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true, keepStarred: true }) => {
     // CRITICAL USER REQUIREMENT:
     // When clicking clean, it ONLY cleans the uncontacted search results.
-    // Contacted, waiting, and signed leads are registered FOREVER and never deleted!
+    // Contacted, waiting, signed, and not-interested leads are registered FOREVER and never deleted!
     setProspects((prev) => {
       const next = prev.filter((p) => {
-        const isContactedLead = Boolean(
+        const isActionedLead = Boolean(
           p.isContacted ||
-          (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))
+          (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
         );
-        return isContactedLead || (options.keepStarred && p.isStarred);
+        return isActionedLead || (options.keepStarred && p.isStarred);
       });
       saveStoredProspects(next);
       setStats(computeStats(next));

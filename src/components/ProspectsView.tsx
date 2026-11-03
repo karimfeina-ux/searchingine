@@ -58,7 +58,7 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
   const tr = t[lang] || t.en;
   const [search, setSearch] = useState('');
   // Default to uncontacted so users don't see contacted businesses in their new search list
-  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'uncontacted' | 'contacted' | 'waiting' | 'client_signed' | 'clicked' | 'high_priority'>(initialFilter);
+  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'uncontacted' | 'contacted' | 'waiting' | 'client_signed' | 'clicked' | 'high_priority' | 'refused'>(initialFilter);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedWebsiteStatus, setSelectedWebsiteStatus] = useState<string>('all');
   const [selectedLeadStatus, setSelectedLeadStatus] = useState<string>('all');
@@ -95,8 +95,10 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
       if (pipelineFilter === 'contacted' && !isLeadContactedOrDone) return false;
       if (pipelineFilter === 'waiting' && p.status !== 'waiting') return false;
       if (pipelineFilter === 'client_signed' && p.status !== 'client_signed') return false;
-      if (pipelineFilter === 'clicked' && !p.isClicked) return false;
-      if (pipelineFilter === 'high_priority' && p.leadScore < 80) return false;
+      if (pipelineFilter === 'clicked' && (!p.isClicked || p.status === 'not_interested' || p.status === 'excluded')) return false;
+      if (pipelineFilter === 'high_priority' && (p.leadScore < 80 || isLeadContactedOrDone)) return false;
+      if (pipelineFilter === 'refused' && p.status !== 'not_interested' && p.status !== 'excluded') return false;
+      if (pipelineFilter === 'all' && (p.status === 'not_interested' || p.status === 'excluded')) return false;
 
       if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
       if (selectedWebsiteStatus !== 'all' && p.websiteStatus !== selectedWebsiteStatus) return false;
@@ -147,10 +149,15 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
     }
   };
 
-  const uncontactedCount = prospects.filter((p) => !p.isContacted && p.status !== 'contacted' && p.status !== 'waiting' && p.status !== 'client_signed').length;
-  const contactedCount = prospects.filter((p) => p.isContacted || p.status === 'contacted').length;
+  const isDoneOrContacted = (p: Prospect) => Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+  );
+  const uncontactedCount = prospects.filter((p) => !isDoneOrContacted(p)).length;
+  const contactedCount = prospects.filter((p) => p.isContacted || (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))).length;
   const waitingCount = prospects.filter((p) => p.status === 'waiting').length;
   const signedCount = prospects.filter((p) => p.status === 'client_signed').length;
+  const notInterestedCount = prospects.filter((p) => p.status === 'not_interested' || p.status === 'excluded').length;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
@@ -221,9 +228,10 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
             { id: 'contacted', label: tr.filterContactedOnly, count: contactedCount },
             { id: 'waiting', label: tr.filterWaiting, count: waitingCount, isAmber: true },
             { id: 'client_signed', label: tr.filterSignedClients, count: signedCount, isHighlight: true },
-            { id: 'all', label: tr.filterAll, count: prospects.length },
-            { id: 'high_priority', label: tr.filterHighScore, count: prospects.filter((p) => p.leadScore >= 80).length },
-            { id: 'clicked', label: tr.filterViewed, count: prospects.filter((p) => p.isClicked).length },
+            { id: 'refused', label: lang === 'es' ? '❌ No Interesados' : '❌ Not Interested', count: notInterestedCount, isRose: true },
+            { id: 'all', label: tr.filterAll, count: uncontactedCount },
+            { id: 'high_priority', label: tr.filterHighScore, count: prospects.filter((p) => p.leadScore >= 80 && !isDoneOrContacted(p)).length },
+            { id: 'clicked', label: tr.filterViewed, count: prospects.filter((p) => p.isClicked && !isDoneOrContacted(p)).length },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -234,6 +242,8 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-950 font-bold'
                     : (tab as any).isAmber
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm shadow-amber-950 font-bold'
+                    : (tab as any).isRose
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm shadow-rose-950 font-bold'
                     : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-950 font-bold'
                   : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
@@ -244,6 +254,8 @@ export const ProspectsView: React.FC<ProspectsViewProps> = ({
                   ? 'bg-emerald-500/30 text-emerald-200'
                   : pipelineFilter === tab.id && (tab as any).isAmber
                   ? 'bg-amber-500/30 text-amber-200'
+                  : pipelineFilter === tab.id && (tab as any).isRose
+                  ? 'bg-rose-500/30 text-rose-200'
                   : 'bg-slate-800/80 text-slate-300'
               }`}>
                 {tab.count}

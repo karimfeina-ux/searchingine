@@ -82,8 +82,15 @@ let store: StoreData = {
 
 // Load persistent data from JSON if present
 try {
+  let raw = '';
   if (fs.existsSync(STORE_PATH)) {
-    const raw = fs.readFileSync(STORE_PATH, 'utf-8');
+    raw = fs.readFileSync(STORE_PATH, 'utf-8');
+  }
+  const BACKUP_PATH = path.join(DATA_DIR, 'store.backup.json');
+  if ((!raw || raw.trim() === '' || raw.trim() === '{}') && fs.existsSync(BACKUP_PATH)) {
+    raw = fs.readFileSync(BACKUP_PATH, 'utf-8');
+  }
+  if (raw) {
     const parsed = JSON.parse(raw);
     store = {
       settings: parsed.settings || defaultSettings,
@@ -110,7 +117,10 @@ export const bumpStoreRevision = () => {
 function persistStore() {
   bumpStoreRevision();
   try {
-    fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), 'utf-8');
+    const serialized = JSON.stringify(store, null, 2);
+    fs.writeFileSync(STORE_PATH, serialized, 'utf-8');
+    const BACKUP_PATH = path.join(DATA_DIR, 'store.backup.json');
+    fs.writeFileSync(BACKUP_PATH, serialized, 'utf-8');
   } catch (err) {
     console.warn('Could not persist data store to disk:', err);
   }
@@ -158,7 +168,11 @@ export const isQualifiedProspect = (p: Prospect): boolean => {
   // STRICT RULE: MUST HAVE A PHONE NUMBER (DO NOT LIST OR SHOW WITHOUT PHONE)
   const cleanPhone = (p.phone || '').replace(/\D/g, '');
   const hasPhone = cleanPhone.length >= 6 || Boolean(p.phone && p.phone.trim().length >= 6);
-  if (!hasPhone) {
+  const isActionedDeal = Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+  );
+  if (!hasPhone && !isActionedDeal) {
     return false;
   }
 
@@ -169,7 +183,7 @@ export const isQualifiedProspect = (p: Prospect): boolean => {
     (Array.isArray(p.contactChannels) && p.contactChannels.some((c) => c.type === 'google_maps')) ||
     (Array.isArray(p.sources) && p.sources.some((s) => s.url && (s.url.includes('google.com/maps') || s.url.includes('maps.google.com'))))
   );
-  if (!hasGoogleMapsListing) {
+  if (!hasGoogleMapsListing && !isActionedDeal) {
     return false;
   }
 
@@ -344,8 +358,9 @@ export const updateProspectStatus = (id: string, status: string, notes?: string)
     p.contactedAt = p.contactedAt || new Date().toISOString();
   }
   if (status === 'not_interested') {
-    p.status = 'excluded';
-    p.excludedReason = 'Not interested after contact (Permanently excluded from research)';
+    p.status = 'not_interested';
+    p.isContacted = true;
+    p.excludedReason = notes || 'Not interested after contact';
     if (p.normalizedName) store.bannedNames.push(p.normalizedName.toLowerCase().trim());
     if (p.phone) {
       const clean = p.phone.replace(/\D/g, '');
@@ -391,10 +406,14 @@ export const deleteProspect = (id: string): { success: boolean; deleted?: Prospe
   return { success: true, deleted: p };
 };
 
-export const banAndExcludeProspect = (id: string, reason: string = 'Not interested / Deleted from research'): { success: boolean; name?: string } => {
+export const banAndExcludeProspect = (id: string, reason: string = 'Not interested'): { success: boolean; name?: string } => {
   const p = store.prospects[id];
   if (!p) return { success: false };
   const name = p.name;
+  p.status = 'not_interested';
+  p.isContacted = true;
+  p.excludedReason = reason;
+  p.updatedAt = new Date().toISOString();
   if (p.normalizedName) {
     store.bannedNames.push(p.normalizedName.toLowerCase().trim());
   }
@@ -402,10 +421,6 @@ export const banAndExcludeProspect = (id: string, reason: string = 'Not interest
     const cleanPhone = p.phone.replace(/\D/g, '');
     if (cleanPhone.length >= 6) store.bannedPhones.push(cleanPhone);
   }
-  delete store.prospects[id];
-  delete store.briefs[id];
-  delete store.verifications[id];
-  delete store.outreachDrafts[id];
   persistStore();
   return { success: true, name };
 };
@@ -474,12 +489,12 @@ export const toggleProspectStar = (id: string): boolean => {
 export const clearProspects = (options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true }): { deletedCount: number; remainingCount: number } => {
   let deletedCount = 0;
   for (const [id, p] of Object.entries(store.prospects)) {
-    const isContactedLead = Boolean(
+    const isActionedLead = Boolean(
       p.isContacted ||
-      (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))
+      (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
     );
-    // CRITICAL: Contacted clients are permanent records and must NEVER be deleted when clearing search results!
-    if (isContactedLead) {
+    // CRITICAL: Contacted and actioned leads are permanent records and must NEVER be deleted when clearing search results!
+    if (isActionedLead) {
       continue;
     }
     if (options.keepStarred && p.isStarred) {
@@ -541,22 +556,31 @@ export const getOutreachDrafts = (prospectId: string): OutreachDraft[] => {
 
 export const getStats = () => {
   const list = Object.values(store.prospects).filter(isQualifiedProspect);
-  const total = list.length;
-  const noWebsite = list.filter((p) => p.websiteStatus === 'no_website' || p.websiteStatus === 'possibly_no_website').length;
-  const highPriority = list.filter((p) => p.leadScore >= 70).length;
-  const readyToContact = list.filter((p) => p.status === 'ready_to_contact').length;
-  const clicked = list.filter((p) => p.isClicked).length;
-  const contacted = list.filter((p) => p.isContacted || p.status === 'contacted').length;
+  // USER REQUIREMENT: "dont show me total aspect numbers if the list is already marked as not interested, show only fresh ones i didnt mark as contacted"
+  const isDoneOrContacted = (p: Prospect) => Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+  );
+
+  const fresh = list.filter((p) => !isDoneOrContacted(p));
+  const total = fresh.length;
+  const noWebsite = fresh.filter((p) => p.websiteStatus === 'no_website' || p.websiteStatus === 'possibly_no_website').length;
+  const highPriority = fresh.filter((p) => p.status === 'high_priority' || p.leadScore >= 80).length;
+  const readyToContact = fresh.filter((p) => p.status === 'ready_to_contact').length;
+  const clicked = fresh.filter((p) => p.isClicked).length;
+  const contacted = list.filter((p) => p.isContacted || (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))).length;
+  const notInterested = list.filter((p) => p.status === 'not_interested' || p.status === 'excluded').length;
   const clientsWon = list.filter((p) => p.status === 'client_signed').length;
-  const avg = total > 0 ? list.reduce((acc, p) => acc + p.leadScore, 0) / total : 0;
+  const avg = total > 0 ? fresh.reduce((acc, p) => acc + p.leadScore, 0) / total : 0;
 
   return {
-    totalLeads: total,
+    totalLeads: total, // ONLY FRESH uncontacted, not-interested leads!
     noWebsiteCount: noWebsite,
     highPriorityCount: highPriority,
     readyToContactCount: readyToContact,
     clickedCount: clicked,
     contactedCount: contacted,
+    notInterestedCount: notInterested,
     clientsWonCount: clientsWon,
     avgScore: Math.round(avg * 10) / 10
   };

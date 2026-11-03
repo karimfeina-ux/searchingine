@@ -92,7 +92,11 @@ export function isQualifiedProspect(p: Prospect): boolean {
   // STRICT RULE: MUST HAVE A PHONE NUMBER (DO NOT LIST OR SHOW WITHOUT PHONE)
   const cleanPhone = (p.phone || '').replace(/\D/g, '');
   const hasPhone = cleanPhone.length >= 6 || Boolean(p.phone && p.phone.trim().length >= 6);
-  if (!hasPhone) {
+  const isActionedDeal = Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+  );
+  if (!hasPhone && !isActionedDeal) {
     return false;
   }
 
@@ -103,16 +107,70 @@ export function isQualifiedProspect(p: Prospect): boolean {
     (Array.isArray(p.contactChannels) && p.contactChannels.some((c) => c.type === 'google_maps')) ||
     (Array.isArray(p.sources) && p.sources.some((s) => s.url && (s.url.includes('google.com/maps') || s.url.includes('maps.google.com'))))
   );
-  if (!hasGoogleMapsListing) {
+  if (!hasGoogleMapsListing && !isActionedDeal) {
     return false;
   }
 
   return true;
 }
 
+const IDB_NAME = 'leadhunter_database_v2';
+const IDB_STORE = 'prospects_store';
+
+function openDb(): Promise<IDBDatabase | null> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.indexedDB) return resolve(null);
+    try {
+      const req = window.indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+export async function persistToIndexedDB(prospects: Prospect[]) {
+  const db = await openDb();
+  if (!db) return;
+  try {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_STORE);
+    store.clear();
+    for (const p of prospects) {
+      store.put(p);
+    }
+  } catch {}
+}
+
+export async function loadFromIndexedDB(): Promise<Prospect[]> {
+  const db = await openDb();
+  if (!db) return [];
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    } catch {
+      resolve([]);
+    }
+  });
+}
+
 export function getStoredProspects(): Prospect[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_PROSPECTS);
+    let raw = localStorage.getItem(STORAGE_KEY_PROSPECTS);
+    if (!raw || raw === '[]') {
+      raw = localStorage.getItem('leadhunter_backup_permanent');
+    }
     if (raw) {
       let parsed = JSON.parse(raw);
       // One-time cleanup: remove any demo leads created by earlier versions.
@@ -158,7 +216,12 @@ export function backupLocalData(): string | null {
 export function saveStoredProspects(prospects: Prospect[]) {
   try {
     const qualified = prospects.filter(isQualifiedProspect);
-    localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(qualified));
+    const serialized = JSON.stringify(qualified);
+    localStorage.setItem(STORAGE_KEY_PROSPECTS, serialized);
+    if (qualified.length > 0) {
+      localStorage.setItem('leadhunter_backup_permanent', serialized);
+    }
+    persistToIndexedDB(qualified).catch(() => {});
   } catch {}
 }
 
@@ -248,12 +311,12 @@ export function deleteProspectClient(prospectId: string): { remaining: Prospect[
 export function clearStoredProspects(options: { keepContacted?: boolean; keepStarred?: boolean; cleanAll?: boolean } = { keepContacted: true }): Prospect[] {
   const current = getStoredProspects();
   const kept = current.filter((p) => {
-    const isContactedLead = Boolean(
+    const isActionedLead = Boolean(
       p.isContacted ||
-      (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))
+      (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
     );
-    // Contacted leads are permanent and never deleted when clearing search results
-    if (isContactedLead) return true;
+    // Contacted and actioned leads are permanent and never deleted when clearing search results
+    if (isActionedLead) return true;
     if (options.keepStarred && p.isStarred) return true;
     return false;
   });
@@ -507,22 +570,31 @@ export function createClientBrief(prospect: Prospect, settings: AppSettings): We
 }
 
 export function computeStats(prospects: Prospect[]) {
-  const totalLeads = prospects.length;
-  const noWebsiteCount = prospects.filter((p) => p.websiteStatus === 'no_website' || p.websiteStatus === 'possibly_no_website').length;
-  const highPriorityCount = prospects.filter((p) => p.status === 'high_priority' || p.leadScore >= 80).length;
-  const readyToContactCount = prospects.filter((p) => p.status === 'ready_to_contact').length;
-  const clickedCount = prospects.filter((p) => p.isClicked).length;
-  const contactedCount = prospects.filter((p) => p.isContacted || p.status === 'contacted' || p.status === 'waiting' || p.status === 'client_signed').length;
+  // USER REQUIREMENT: "dont show me total aspect numbers if the list is already marked as not interested, show only fresh ones i didnt mark as contacted"
+  const isDoneOrContacted = (p: Prospect) => Boolean(
+    p.isContacted ||
+    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested', 'excluded'].includes(p.status))
+  );
+
+  const freshLeads = prospects.filter((p) => !isDoneOrContacted(p));
+  const totalLeads = freshLeads.length;
+  const noWebsiteCount = freshLeads.filter((p) => p.websiteStatus === 'no_website' || p.websiteStatus === 'possibly_no_website').length;
+  const highPriorityCount = freshLeads.filter((p) => p.status === 'high_priority' || p.leadScore >= 80).length;
+  const readyToContactCount = freshLeads.filter((p) => p.status === 'ready_to_contact').length;
+  const clickedCount = freshLeads.filter((p) => p.isClicked).length;
+  const contactedCount = prospects.filter((p) => p.isContacted || (p.status && ['contacted', 'waiting', 'client_signed'].includes(p.status))).length;
+  const notInterestedCount = prospects.filter((p) => p.status === 'not_interested' || p.status === 'excluded').length;
   const clientsWonCount = prospects.filter((p) => p.status === 'client_signed').length;
-  const avgScore = totalLeads > 0 ? Math.round((prospects.reduce((acc, p) => acc + p.leadScore, 0) / totalLeads) * 10) / 10 : 0;
+  const avgScore = totalLeads > 0 ? Math.round((freshLeads.reduce((acc, p) => acc + p.leadScore, 0) / totalLeads) * 10) / 10 : 0;
 
   return {
-    totalLeads,
+    totalLeads, // ONLY FRESH uncontacted, not-interested leads!
     noWebsiteCount,
     highPriorityCount,
     readyToContactCount,
     clickedCount,
     contactedCount,
+    notInterestedCount,
     clientsWonCount,
     avgScore
   };

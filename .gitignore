@@ -6,5 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
-data/store.json
+# Persistent store is tracked so user data stays preserved across GitHub commits & redeploys
+# data/store.json
 data/*.db*

@@ -128,7 +128,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return true;
   });
 
-  const uncontactedCount = topProspects.filter((p) => !p.isContacted && p.status !== 'contacted').length;
+  const uncontactedCount = topProspects.filter((p) => {
+    return !Boolean(
+      p.isContacted ||
+      p.status === 'contacted' ||
+      p.status === 'waiting' ||
+      p.status === 'client_signed' ||
+      p.status === 'not_interested' ||
+      p.status === 'excluded'
+    );
+  }).length;
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
