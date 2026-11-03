@@ -501,10 +501,701 @@
         "createdAt": "2026-11-02T22:54:30.881Z"
       },
       "contactedAt": "2026-11-02T22:54:49.583Z"
+    },
+    "gmp_ChIJ2UMaB10pQg0RRviGxwrjUaU": {
+      "id": "gmp_ChIJ2UMaB10pQg0RRviGxwrjUaU",
+      "name": "MVP Barber Studio",
+      "normalizedName": "mvp barber studio",
+      "category": "Barber shop",
+      "address": "C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain",
+      "city": "Madrid",
+      "region": "",
+      "country": "",
+      "postalCode": "",
+      "latitude": 40.423535,
+      "longitude": -3.7033732,
+      "phone": "635 70 81 12",
+      "email": "",
+      "websiteCandidate": "",
+      "websiteStatus": "no_website",
+      "status": "contacted",
+      "leadScore": 99,
+      "photoCount": 10,
+      "photos": [
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLenWY0IcD4lr0Av5oomv53JsqI7-TUlJkOS9gp8LFkQdOrstwW-RQnquq8mtbr16a6QqGWTuE1E_L-RhC-y9BTVnmUuKY2XbsB7s9CBJYnvL7dd9iKInfpszJn-BxroTjQpOiomW01MLX12J_0y39RGaVWgmb9h9gf75Cu1xdKDmL13R9uyYAnv4blNVNAgX5gekXFS5L6eaZrAi_qDLB_B4g-z1klfsWIXNO-hCkWMElm5QatfqV2HiD8wA1ovM8E2dPGSGoj50MKSErtPpa8PtmJ4zHAEX0CH1W2sxmVn2YM6BbW7x77HhxKlA-T7UvdM6tMn57YFSZbDrOIuTFK_8heEQm-odlYhjcOb880gaT-wz6ZzEJnhSM7h8aoY3c1mCaqFU09668olBnRO2COltN4",
+          "widthPx": 4032,
+          "heightPx": 2268,
+          "authorAttributions": [
+            {
+              "displayName": "MVP Barber Studio",
+              "uri": "https://maps.google.com/maps/contrib/113299064226496460294",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUrw1Mo01AM8Idaae1fM74CTtvRWS8ig6JsLpWfoZ-ZzGkR1tJJ=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIHM0ogKEICAgIDBn7y7QQ&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgIDBn7y7QQ!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        },
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLfbLGBIKl54xKcKKUBTjTudC1NhP7Oi7CbJHc_DsiR16SEu3pUgeEI8v6pcGASNR2FUG8ymySTxJTpC1OQ-0bZDQscjl2ZDuFawFTQArP5PLLf36lfTXhWeAtbWYbICO16V3WYNhKphskb_jjATH9TXXyzBDMigIKQ35wbRv98BPdsxA4-d_jFHnAgPBjJ_MIz5TCYVi2W2f9IIJ2AOCpnf-xBTZwteBMqMo5k1QBfGOAV1DOfwPatwuw4y3C3aglYBMy6T6IoV7Cx8ng8L1nBDZzxmPEI4_acoXlcUL6rUlER_nHivozKu_yEocbkywdXFz_WB0f9zyaoZ7_XMiQP-Q7c2Cp2qSDk6RvoRUTJxvT7dLuIxzok9Ekmw5iESK_sAmesnZqQZNMYW1SQ_ysI-dqCReUe_IW3IGw5gU6hF",
+          "widthPx": 3600,
+          "heightPx": 4800,
+          "authorAttributions": [
+            {
+              "displayName": "Jake Elmer",
+              "uri": "https://maps.google.com/maps/contrib/101061628824043931842",
+              "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocLPe46D_pscA-84kO-XBxUgKlhJJcZ7OPnSgfq2EZzpdSF5Fw=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhD2XrZzJzWyugE8B0e6Rxb0&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhD2XrZzJzWyugE8B0e6Rxb0!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        },
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLd1CnlhZWLpUPuXxCXwfMYdJAbhWKV52IG6uizjQ5pUY2cAeJoU55_NCJFk8y4BOvGJv7nHe_dxgm8uORSYYoS136ajEp5UY3WGsQAW6hVy-6c4y26OFG4EeUjfnwo545I9skN1fZVIwS7jv6-cUuub5MKhFO59hZBw6RlNQfInievMjQZIoBEfvxEIbkCkVej7Se71bVc9GPQoxXQEpIkp3JJQWvLdjafbN4McqOvbxa64fzyYGUVRZC071PAPf9oCbvWPNIZIUwHYBoJZ6m_MD0DcmLqwC3VeY8eNfB8J9aBGD6fQ-x1mpPsCGHgcxx8FFNiCvQ36pLKPttkNMAsXBRXRLZKjQUzzHIMWU4lNQRPHX30uEWsO452YbsNvYw58ZRMYnvhO7E3pW042HsJxTGo",
+          "widthPx": 4032,
+          "heightPx": 3024,
+          "authorAttributions": [
+            {
+              "displayName": "Julio G",
+              "uri": "https://maps.google.com/maps/contrib/107092624608949052884",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXFKsBju_LGH7YA80zoQQjOr1uHCystGx8rSONAIYPoVqi4UY0x=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIHM0ogKEICAgIDu8dfrZg&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgIDu8dfrZg!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        },
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLfkytZwlo9KyWmrE69EpK-XwL7EjFZFFtab1PBvxvYWZCgrvf-v5CmFx-JAjalnmt478_XsrykEdl-f9l5Nm2sr5MP0eud8Dv--4GHOtdhIgoMoLWSgD3FkPkwMFrHwQQ-mPZeakJuwFQ2e3rrRtG3tsqMz3cxlunMUGb52NjqfcriUWyGajsK-VAozQNglOquWbXnbph_nG49z-8OSWdfYyad7vFauqHDmr_l_1ogkL4YaaN6MIXRVfoEld4k_ML9he4SAtA0ng1U2Mo6ycxmiqnDrfNrm7FtW2JMa0OljM30bw5BvEXfs13uNRdwkKUtI7DWZ0pLl1UBJp1QUOUgZpqzaQLQz4Wh-RBTgsiXMds7nhfO6eocPaU0-OoouazSivjbJyTO_aD-UmELya4aMvk0rNhWKs2YsXs3_e6aCCg",
+          "widthPx": 1284,
+          "heightPx": 1597,
+          "authorAttributions": [
+            {
+              "displayName": "MVP Barber Studio",
+              "uri": "https://maps.google.com/maps/contrib/113299064226496460294",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUrw1Mo01AM8Idaae1fM74CTtvRWS8ig6JsLpWfoZ-ZzGkR1tJJ=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhA1Edsk0KQZP8d5QLAJuoHo&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhA1Edsk0KQZP8d5QLAJuoHo!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        },
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLfPZNHvWCm8lRpIUVMykqtFmFdOTWmm6xHuzEKGjGJmBzl_xL01uBJXaYJdgh8JMbUz4e5KbeuGo6sv7aQML0M1K3pp2K_Lb6DmWc7z8J8uZKIe5GlDMQwGbqSBCIWR-bMa3oTteno0gGQeIruAHTOHLavUUmeeobkrPSdoC5L1qsXQRzBTAhQLj4S4AIRlAzJUZ1LrGfGJuESMJ8KdZ601bmNhMBfnuedkfquL9xYUVBHePdH9CZO3asXkq-S3BeeGOMzbqC-ZCv0pMfLumURCd-pw3O1nFegvdV23ICIywOl2V4dJeC4l6DQVMimXGOMAXSRaJ3SY2Sou9CQXF4FkvwaKpWdbu6_NEVVjtyiq2kCn70AeMW0WzvXCtmWdQ0N91jOMcNt8sPEK6zMUbx7WemM",
+          "widthPx": 3024,
+          "heightPx": 4032,
+          "authorAttributions": [
+            {
+              "displayName": "Alex P",
+              "uri": "https://maps.google.com/maps/contrib/102155015040611530512",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVZtLd7622OUD85WBPSK0t2zUjXvhB60-sApeffVyQVjtTU2R3b=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIHM0ogKEICAgMDgnfGJCQ&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgMDgnfGJCQ!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        },
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLejWnvsu1oVifs73417pDFPHAK3F12vZePYNJCnqH91dMXK45qtASkAbWT-QSH5sH5I4I-Crf5wymxyy1xPq9wYGaQRr4HoHKWTxKUxG60ugynB9vZcTWT2q0ovdEpCPy6kCiKTJjhyGggixoi1Ce_X4zu7J2xt8Vamq-it3Hcya0OTm4dvZpXv8JJihtPViaI89zsNidebJ3Sb6_lNOiCj1E-O-Ynr_Kh_swMT8HdNDsAjX17BsqwNY5Z_mb7qCWUshjZaLWIKsd-DwaiEiYiczxy4_ms6tQconpR5A2bEdCZpIYEC8K7oyleCC8ErDQz40W4M4-kWnvwpZPTTZlE56Mc1AERTsyTKte2pEDdYFLeI94qur85Hh0MyCu22gbGbllbSSt7zSiDW0sZTJJ7ge_RVvAVDtVTogAtRIQ0j",
+          "widthPx": 3024,
+          "heightPx": 4032,
+          "authorAttributions": [
+            {
+              "displayName": "MVP Barber Studio",
+              "uri": "https://maps.google.com/maps/contrib/113299064226496460294",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUrw1Mo01AM8Idaae1fM74CTtvRWS8ig6JsLpWfoZ-ZzGkR1tJJ=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhBp3hgJStneg35D12IsC53K&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhBp3hgJStneg35D12IsC53K!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        },
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLceekhL4Zj20zF4lI6eIbeZYOYpzcvqJ-j6n5fWhSELmKAa6tR2iqs9JbeNzftmGbC5j9la2f1E0XxDJx5P-7oeLkfejb04FjkQPLDkmh9F_mycI-CMBoEWKDoSApeRrByLCzoaZyJVoi0UqAGzxl5Ha0nORnqFZUK_wB4kiQQeVobzA6dn77myfWQ4mNMcgssTmKlMQLiZCkP5iVOuql4Mw8giGLU9SuzAIB8Ls-xY7v_cTk1VHcy1vJ-Bdg_lDokHgqO5kU05aJtt_F3TDnTfJbd6wivfYPTTCAEdL3pHiR7dw6A-Lpr9eaeivEcCoVu5mIBYG-p9jitA1oBQdYCTo867ol9HJHB19UjGS1iQdbAEpc0j5zmbVmosK0AYpJh1p0iIJEt1ake9P89Ffx47cO4wzzg",
+          "widthPx": 2796,
+          "heightPx": 2795,
+          "authorAttributions": [
+            {
+              "displayName": "MVP Barber Studio",
+              "uri": "https://maps.google.com/maps/contrib/113299064226496460294",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUrw1Mo01AM8Idaae1fM74CTtvRWS8ig6JsLpWfoZ-ZzGkR1tJJ=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIHM0ogKEICAgIDK2uLM-wE&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgIDK2uLM-wE!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        },
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLd1Gpb03Of80u8HjxNWlmsCTp8DjFokmgAnvI1omEy2Q6ErylMzwiS4UmRIPg8Jk5RpFeNmY8njjAQ1WLk72uozQRpRQT80UuJVRV78AiDNuMCP8c0beLSoPOkxkIx3n2KuD08kKsgW8ndaVF6yhs_ug-Krp3O_FV4YBjkyMKdQSPCNQ-BuEzUZCw3FBenpBxe_D1EpTmg0gNsYk2-fdjsFAWwTKzZB9uX9oDOiM1Ca4dXST1FwOVmnU0dnHDJBMTrTmaUmLB1bUBi6FVqM5Wa-aQ5yzPTZOe7S8tIkr3oKMllqFuv76TyUD0lY95sq_dOtq7IEORpv9PfPx_CuKxN8eN3tXIzcs_peRDrTs7-1szQA3ydG_X69YViVmXTSJ2i4tp0z7slKLkYWUvn1axLu8iXUPNDWUHevakbsgt1O",
+          "widthPx": 2268,
+          "heightPx": 4032,
+          "authorAttributions": [
+            {
+              "displayName": "MVP Barber Studio",
+              "uri": "https://maps.google.com/maps/contrib/113299064226496460294",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUrw1Mo01AM8Idaae1fM74CTtvRWS8ig6JsLpWfoZ-ZzGkR1tJJ=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhDFOLm_N-yTZbnjw2pTKvE1&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhDFOLm_N-yTZbnjw2pTKvE1!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        },
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLftGXVP7OXreHz2eXSlDBJ468O4EqIxnq2vPep_Tzv_6-Mp9_tc7133yFr90ftv-x_OkJKbIJFtUKRvsUN_F3i6Kv6wCJ79rR6WM9qBnQnfdKwWBcmmmK8M5qcxci_hDbC1MdBcPltOY4lvYhvS7hk-qTZ_Hus3xBaKThBsY5TgZUBKlUkaosfAXBX9aeVDZgXo3lPWyh-S1-yXuhND7iDVaeq9NP05UmuuZSMP6Tuf0Iqs4BcQo_Zx0TjvDXlQo0HdjdHnju2OKfXV_BVL76cobJ3_GqWsOWg0rWmO5IsgWEcczON0PfQIQh4ymkvzcqwYhxeB8szamWnJ63ZR2k_TwWYHcsNSzQgzt1PJUBU9V7ZYnn8bo7UgTfO0sQEqG2vOszihIFosyu8pLuzZZrxy6IE93qDobPhqZ3IyenO5RA",
+          "widthPx": 3024,
+          "heightPx": 4032,
+          "authorAttributions": [
+            {
+              "displayName": "MVP Barber Studio",
+              "uri": "https://maps.google.com/maps/contrib/113299064226496460294",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUrw1Mo01AM8Idaae1fM74CTtvRWS8ig6JsLpWfoZ-ZzGkR1tJJ=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIABIhAbwwxl1JeJCmgniiAdPUb8&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhAbwwxl1JeJCmgniiAdPUb8!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        },
+        {
+          "name": "places/ChIJ2UMaB10pQg0RRviGxwrjUaU/photos/AV-0GLePkvRKFcatztiun7qN03Z5j5U1ErfHOE7qGyaQkJU3OYmFsr2xUqElnnrMQktrSdjIH8WZ0h-OojeAqdMRpTYhrLntdVtS3bp6LbGpE8hB56yTh8r3WStOSNkbLX-E8mBgT76NM6P8ASe48kZMdxjkciJiQHMr6UgSevcU1UTyrO7dJt2SJdOpomG3yIcyCzGpm_D6EJOaRA3kcid62ZcTCsXJQ0YvanLcDOXhg-YYu_Ej-vO2pzJSAISDMPlv-Snn7DYgZf8Ip3k0XV7Jv0lfFe6-37UnzvfP8PIjLp1YyCxoxGb1yWNOh25eWwbruF_DnRHgidYbf_daM9mJRgN1Lhl5N1vpiygR2XPPhN-TLnhjF4U5cy-d-TMlkM8ay8FpvBt2ZzCW9cph78i6OMQ1sY1C",
+          "widthPx": 828,
+          "heightPx": 1046,
+          "authorAttributions": [
+            {
+              "displayName": "LUIGI MEDIA",
+              "uri": "https://maps.google.com/maps/contrib/112284971462127267663",
+              "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVi8iT77em7ppPE0dRCf9WiYgTnCPPaL2LHKloCVpFaj0fWTXBK=s100-p-k-no-mo"
+            }
+          ],
+          "flagContentUri": "https://www.google.com/local/content/rap/report?postId=!1e10!2sCIHM0ogKEICAgICy_6_6rQE&t=27&cb_client=maps_api_places.places_api&hl=en-US",
+          "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgICy_6_6rQE!2e10!4m2!3m1!1s0xd42295d071a43d9:0xa551e30ac786f846"
+        }
+      ],
+      "subscores": {
+        "websiteOpportunity": 30,
+        "reputation": 20,
+        "activity": 15,
+        "categoryValue": 14,
+        "contactability": 10,
+        "evidenceQuality": 10
+      },
+      "scoreReasons": [
+        "No website detected on official Google Maps listing",
+        "Strong active local clientele: 1054 Google reviews with 4.9★ rating",
+        "Direct phone line available for outreach: 635 70 81 12"
+      ],
+      "strongestSignals": [
+        "Google Maps verified: 4.9★ across 1054 customer reviews",
+        "Missing dedicated web presence"
+      ],
+      "importantUncertainties": [
+        "Check if owner handles web inquiries directly via WhatsApp or Phone"
+      ],
+      "recommendedAction": "Pitch Barber shop custom website package (€500) via direct phone call",
+      "reviewRating": 4.9,
+      "reviewCount": 1054,
+      "reviewSentimentSummary": "Rated 4.9★ by 1054 customers on Google Maps.",
+      "positiveThemes": [
+        "Google Maps verified business",
+        "OPERATIONAL"
+      ],
+      "negativeThemes": [
+        "No online booking / custom website"
+      ],
+      "customerComplaints": [],
+      "stableOperationsEvidence": "Listed on Google Maps with operational status: OPERATIONAL",
+      "contactChannels": [
+        {
+          "type": "google_maps",
+          "value": "https://maps.google.com/?cid=11912552124808362054&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+          "confidence": 100,
+          "isBusinessContact": true,
+          "verifiedAt": "2026-11-03T15:15:47.800Z"
+        },
+        {
+          "type": "phone",
+          "value": "635 70 81 12",
+          "confidence": 98,
+          "isBusinessContact": true,
+          "verifiedAt": "2026-11-03T15:15:47.800Z"
+        },
+        {
+          "type": "address",
+          "value": "C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain",
+          "confidence": 95,
+          "isBusinessContact": true,
+          "verifiedAt": "2026-11-03T15:15:47.800Z"
+        }
+      ],
+      "sources": [
+        {
+          "name": "Google Maps Platform",
+          "url": "https://maps.google.com/?cid=11912552124808362054&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+          "checkedAt": "2026-11-03T15:15:47.800Z"
+        }
+      ],
+      "notes": "Called owner, interested in custom booking website",
+      "isStarred": true,
+      "isClicked": false,
+      "isContacted": true,
+      "searchQuery": "barber in Madrid",
+      "createdAt": "2026-11-03T15:15:47.800Z",
+      "updatedAt": "2026-11-03T15:15:50.413Z",
+      "lastVerifiedAt": "2026-11-03T15:15:47.800Z",
+      "verifications": [
+        {
+          "id": "ver_1793718947801_msh3",
+          "prospectId": "gmp_ChIJ2UMaB10pQg0RRviGxwrjUaU",
+          "checkType": "business_listing",
+          "status": "no_website",
+          "evidenceUrls": [
+            "https://maps.google.com/?cid=11912552124808362054&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+          ],
+          "searchQueries": [
+            "barber in Madrid"
+          ],
+          "explanation": "Verified via Google Maps Places API (New): Business is actively operational with 1054 reviews (4.9★) but lists NO website.",
+          "counterEvidence": "No website URI provided in Google Maps metadata.",
+          "recommendedNextStep": "Call business or direct message offering modern responsive website.",
+          "confidenceScore": 98,
+          "checkedAt": "2026-11-03T15:15:47.800Z"
+        }
+      ],
+      "brief": {
+        "id": "brief_1793718949924_f92ed",
+        "prospectId": "gmp_ChIJ2UMaB10pQg0RRviGxwrjUaU",
+        "businessOverview": "MVP Barber Studio is an established barber shop in Madrid (, ). Despite having a strong local reputation (4.9★ across 1054 reviews), the business currently has no independent digital presence, resulting in lost client bookings and zero local search visibility.",
+        "targetAudiences": [
+          "Local residents and neighbors in Madrid seeking reliable, top-rated barber shop",
+          "Mobile searchers looking for immediate opening hours, location map, and direct booking/quote options",
+          "High-value clients who compare professional reputations before booking services"
+        ],
+        "verifiedStrengths": [
+          "Strong public feedback: 4.9★ rating",
+          "Convenient physical location: C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain, Madrid",
+          "Proven hands-on craftmanship and established customer loyalty"
+        ],
+        "reviewInsights": [
+          "Recurring customer praise: Google Maps verified business, OPERATIONAL",
+          "Customers frequently recommend the business via word-of-mouth"
+        ],
+        "missingCapabilities": [
+          "No independent domain to showcase full services, pricing transparency, and verified customer testimonials",
+          "No direct WhatsApp or mobile click-to-book inquiry pipeline, losing leads to competitors with modern websites",
+          "Absence of Google Local Search Schema markup to capture \"near me\" inquiries"
+        ],
+        "websiteOpportunities": [
+          "Capture high-intent \"Barber shop in Madrid\" Google search traffic",
+          "Establish a 24/7 digital storefront that accepts booking inquiries and answers FAQs automatically",
+          "Provide clear, upfront service packages and pricing, increasing average client order value"
+        ],
+        "assumptionsToConfirm": [
+          "Confirm current official list of services, prices, and special packages",
+          "Confirm preferred contact method for booking confirmations (WhatsApp, Phone, or Email)"
+        ],
+        "direction1": {
+          "title": "Modern Craft & Quiet Luxury",
+          "tagline": "Refined, timeless aesthetic emphasizing artisanal mastery and premium customer care.",
+          "designPhilosophy": "Clean generous whitespace, subtle warm stone and slate tones, editorial typography, and high-contrast hero photography highlighting meticulous attention to detail.",
+          "colorPalette": {
+            "primary": "#0f172a",
+            "secondary": "#334155",
+            "accent": "#0284c7",
+            "background": "#090d16",
+            "surface": "#111827",
+            "text": "#f8fafc"
+          },
+          "typography": {
+            "headingFont": "Playfair Display / Serif",
+            "bodyFont": "Plus Jakarta Sans / Inter",
+            "rationale": "The serif headline evokes established prestige and artisanal heritage, balanced with a hyper-legible modern sans-serif body."
+          },
+          "layoutPhilosophy": "Asymmetric editorial grid with prominent full-width visual banner, floating quote cards, and clear sticky navigation.",
+          "heroConcept": "Atmospheric imagery of MVP Barber Studio's craft with an elegant headline: \"The Art of Barber shop in Madrid.\"",
+          "imageTreatment": "Rich, natural lighting, duotone micro-accents, deep blacks with subtle warm highlights.",
+          "conversionStrategy": "Low-friction \"Reserve an Experience\" primary CTA paired with immediate WhatsApp quick-chat inquiry.",
+          "keyComponents": [
+            "Signature Experience Grid",
+            "Curated Testimonial Showcase",
+            "Interactive Hours & Neighborhood Map",
+            "Direct WhatsApp Reservation Float"
+          ]
+        },
+        "direction2": {
+          "title": "Dynamic, High-Conversion Urban",
+          "tagline": "Energetic, direct, and mobile-optimized for swift client acquisition and fast booking.",
+          "designPhilosophy": "Bold high-contrast accents, electric blue and emerald trust indicators, quick-glance pricing chips, and instant touch-first interactions.",
+          "colorPalette": {
+            "primary": "#0284c7",
+            "secondary": "#0f766e",
+            "accent": "#38bdf8",
+            "background": "#030712",
+            "surface": "#0f172a",
+            "text": "#ffffff"
+          },
+          "typography": {
+            "headingFont": "Syne / Space Grotesk",
+            "bodyFont": "Inter",
+            "rationale": "Geometric, contemporary sans-serif with strong horizontal rhythm that drives immediate visual confidence."
+          },
+          "layoutPhilosophy": "Single-page fluid landing page with modular cards, prominent pricing pill badges, and sticky bottom booking drawer on mobile.",
+          "heroConcept": "\"Top-Rated Barber shop in Madrid — Book in 30 Seconds.\" Instant calendar and call buttons.",
+          "imageTreatment": "Crisp action photography, vibrant saturation, subtle radial glow accents behind hero cards.",
+          "conversionStrategy": "Instant mobile click-to-call, tap-to-WhatsApp, and automated availability inquiry form.",
+          "keyComponents": [
+            "3-Step Simple Booking Flow",
+            "Live Rating & Google Review Strip",
+            "Package Comparison Pricing Table",
+            "FAQ Accordion"
+          ]
+        },
+        "direction3": {
+          "title": "Warm Community & Local Heritage",
+          "tagline": "Approachable, warm, authentic local business storytelling that builds instant trust.",
+          "designPhilosophy": "Warm terracotta, sage, and deep espresso tones. Rounded friendly card borders, handwritten badge accents, and warm welcoming customer photography.",
+          "colorPalette": {
+            "primary": "#b45309",
+            "secondary": "#15803d",
+            "accent": "#f59e0b",
+            "background": "#0c0a09",
+            "surface": "#1c1917",
+            "text": "#fafaf9"
+          },
+          "typography": {
+            "headingFont": "Outfit / Fraunces",
+            "bodyFont": "DM Sans",
+            "rationale": "Friendly, organic geometric curves that feel human, welcoming, and deeply rooted in the local neighborhood."
+          },
+          "layoutPhilosophy": "Warm storytelling narrative layout guiding the visitor from the founders story to the services, testimonials, and neighborhood map.",
+          "heroConcept": "\"Your Neighborhood Barber shop in Madrid.\" Welcoming photography of the storefront and team.",
+          "imageTreatment": "Warm golden hour tones, candid smiles, authentic unposed moments of service.",
+          "conversionStrategy": "Personalized \"Stop by or Say Hello\" invitation with instant directions and 1-tap WhatsApp consultation.",
+          "keyComponents": [
+            "Neighborhood Story & Team Banner",
+            "Photo Gallery of Real Work",
+            "Google Reviews Carousel",
+            "Interactive Directions & Transit Guide"
+          ]
+        },
+        "suggestedPages": [
+          {
+            "name": "Home",
+            "purpose": "Establish immediate brand authority, showcase customer reviews, and provide frictionless booking CTAs.",
+            "sections": [
+              "Hero Value Proposition",
+              "Signature Services Highlight",
+              "Social Proof & Rating Strip",
+              "Interactive Location Map & Opening Hours"
+            ],
+            "callToAction": "Book Appointment / Request Quotation"
+          },
+          {
+            "name": "Services & Pricing",
+            "purpose": "Complete transparency on service packages, what is included, and realistic timeframes to qualify inbound leads.",
+            "sections": [
+              "Package Cards with Clear Pricing",
+              "Add-on Options",
+              "Preparation & Consultation Guide"
+            ],
+            "callToAction": "Select Package & Inquire"
+          },
+          {
+            "name": "About & Our Craft",
+            "purpose": "Build personal connection, highlight professional experience and local roots in the city.",
+            "sections": [
+              "Founder Story",
+              "Our Values & Standards",
+              "Behind the Scenes Photography"
+            ],
+            "callToAction": "Meet the Team"
+          },
+          {
+            "name": "Location & Contact",
+            "purpose": "Eliminate friction for visits: directions, parking advice, exact opening hours, phone, and direct WhatsApp chat.",
+            "sections": [
+              "Interactive Map with Transit Tips",
+              "Direct Dial Button",
+              "Contact & Booking Request Form"
+            ],
+            "callToAction": "Get Directions / Call Now"
+          }
+        ],
+        "visualDirection": {
+          "exactColorsHex": {
+            "Dark Canvas": "#0b1120",
+            "Surface Card": "#111827",
+            "Electric Accent": "#06b6d4",
+            "Primary Accent": "#3b82f6",
+            "Warm Gold": "#f59e0b",
+            "Text Crisp": "#f8fafc",
+            "Text Muted": "#94a3b8"
+          },
+          "fontPairing": "Primary Heading: \"Space Grotesk\" or \"Playfair Display\" | Body: \"Plus Jakarta Sans\" | Monospace Accents: \"JetBrains Mono\"",
+          "spacingSystem": "8px modular grid: 8px (xs), 16px (sm), 24px (md), 32px (lg), 48px (xl), 64px (2xl), 96px (section padding)",
+          "componentDesign": "Subtle 1px border highlights (border-white/10), 16px rounded corners (rounded-2xl), soft backdrop blur (backdrop-blur-md), micro-elevation on hover.",
+          "mobileBehavior": "Sticky bottom CTA bar with \"Call Business\" and \"WhatsApp Chat\" buttons. Collapsible hamburger navigation, thumb-zone optimized interactive cards.",
+          "animationIdeas": "Smooth stagger fade-in on scroll (IntersectionObserver), gentle pill pulse on CTA buttons, smooth accordion transitions for FAQs.",
+          "accessibilityGuidelines": "Compliant with WCAG 2.1 AA standards: minimum 4.5:1 text contrast ratio, keyboard focus rings, alt descriptions for all imagery, ARIA expanded states.",
+          "seoConsiderations": "LocalBusiness Schema.org JSON-LD markup with exact coordinates (40.423535, -3.7033732), addressLocality: \"Madrid\", addressCountry: \"\", openingHoursSpecification, telephone, and aggregateRating.",
+          "performanceRequirements": "Sub-1.2s Largest Contentful Paint (LCP), 100% WebP optimized images with native loading=\"lazy\", zero cumulative layout shift (CLS).",
+          "relevantIntegrations": [
+            "WhatsApp Click-to-Chat API",
+            "Google Maps Embed API",
+            "Direct Email / SMS Booking Notification Webhook",
+            "Cal.com / Google Calendar or Calendly Appointment Embed"
+          ]
+        },
+        "conversionUx": {
+          "trustBuilders": [
+            "Prominent Google Review verification badge (4.9★ rating)",
+            "Exact physical address (C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain) and guaranteed response time within 2 business hours",
+            "Transparent service guarantee with no hidden extras"
+          ],
+          "callToActions": [
+            "Primary CTA: \"Book an Appointment / Request Quotation\"",
+            "Secondary CTA: \"Chat on WhatsApp with Us Today\""
+          ],
+          "inquiryFlow": "Frictionless 3-step form: 1. Select Service -> 2. Choose Preferred Date/Time -> 3. Enter Name & Mobile Number. Instant confirmation sent via WhatsApp/SMS.",
+          "bookingStrategy": "Dual path: Direct phone dial for traditional customers + WhatsApp / interactive modal for digital mobile clients."
+        },
+        "aiStudioPrompt": "# COMPLETE WEBSITE BUILD SPECIFICATION: MVP BARBER STUDIO\n\n## 1. PROJECT OVERVIEW\n- **Business Name**: MVP Barber Studio\n- **Industry / Category**: Barber shop\n- **Location**: C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain, Madrid, , \n- **Target Audience**: Local residents, discerning neighborhood clients, and mobile searchers in Madrid.\n- **Reputation Status**: 4.9 Stars across 1054 customer reviews.\n- **Core Value Proposition**: Premier artisanal craftsmanship, personal customer care, transparent service packages, and effortless mobile booking.\n- **Service Package Tier**: Starting at €500 with optional €40/mo managed hosting and high-speed local CDN.\n\n---\n\n## 2. DESIGN PHILOSOPHY & VISUAL SYSTEM\n- **Aesthetic**: Premium dark navy and charcoal interface with subtle electric-cyan accents and warm gold trust badges.\n- **Palette**:\n  - Primary Background: `#0b1120`\n  - Card & Surface: `#111827`\n  - Accent / Primary CTA: `#0284c7` (Electric Sky Blue)\n  - Secondary Accent: `#06b6d4` (Cyan Glow)\n  - Text Primary: `#f8fafc`\n  - Text Muted: `#94a3b8`\n  - Border Highlights: `rgba(255, 255, 255, 0.08)`\n- **Typography**:\n  - Headings: Modern geometric sans-serif or refined modern serif (`Plus Jakarta Sans`, `Space Grotesk`, or `Playfair Display`).\n  - Body: Crisp, highly legible sans-serif (`Inter`, 16px base, 1.6 line-height).\n- **Component Styling**:\n  - Border radius: `rounded-2xl` (16px) for cards, `rounded-xl` for inputs and buttons.\n  - Micro-interactions: Subtle scale-up on hover (`hover:scale-[1.02]`), gentle glowing border transitions.\n  - Backdrop blur: Glassmorphism (`backdrop-blur-md bg-slate-900/80`) for sticky navbar and modals.\n\n---\n\n## 3. PAGE STRUCTURE & SECTIONS\n\n### Page 1: Home (Hero & Conversion Hub)\n1. **Sticky Header**:\n   - MVP Barber Studio logo / brand mark\n   - Nav links: Services, About, Reviews, Location, FAQ\n   - Action Button: \"Book Now\" + Direct Call icon (635 70 81 12)\n2. **Hero Section**:\n   - Headline: \"Experience Barber shop at its Finest in Madrid\"\n   - Subheadline: \"Dedicated service, uncompromising quality, and warm neighborhood hospitality tailored to you.\"\n   - Dual CTA Buttons: [Book Appointment / Request Quote] & [Chat on WhatsApp]\n   - Trust Badge: \"Rated 4.9/5 Stars by local clients in Madrid\"\n3. **Featured Services Grid**:\n   - 3 to 4 core service cards with icons, realistic pricing indications, time duration, and a \"Select\" button.\n4. **Why Choose MVP Barber Studio**:\n   - 3 value pillars: Artisanal expertise, transparent pricing, guaranteed customer satisfaction.\n5. **Interactive Reviews Carousel**:\n   - Authentic customer quotes highlighting craft, punctuality, and friendly atmosphere.\n6. **Location, Map & Opening Hours**:\n   - Address: C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain, Madrid\n   - Interactive OpenStreetMap/Google Maps embed\n   - Weekly opening hours table with live \"Open Now / Closed\" indicator\n   - Transit and parking tips\n7. **Lead Capture & Booking Modal / Form**:\n   - Frictionless 3-step booking inquiry: Select Service -> Choose Date/Time -> Contact Details.\n\n---\n\n## 4. FUNCTIONAL REQUIREMENTS & INTEGRATIONS\n- **Click-to-Call**: Immediate `tel:635 70 81 12` trigger for mobile visitors.\n- **Direct WhatsApp Chat**: `https://wa.me/...` pre-filled message (\"Hi MVP Barber Studio, I would like to inquire about...\").\n- **LocalBusiness Schema (JSON-LD)**:\n```json\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"LocalBusiness\",\n  \"name\": \"MVP Barber Studio\",\n  \"address\": {\n    \"@type\": \"PostalAddress\",\n    \"streetAddress\": \"C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain\",\n    \"addressLocality\": \"Madrid\",\n    \"addressRegion\": \"\",\n    \"addressCountry\": \"\"\n  },\n  \"telephone\": \"635 70 81 12\",\n  \"priceRange\": \"€€\"\n}\n```\n- **Mobile Sticky CTA Bar**: On mobile viewports (`<768px`), fixed bottom bar with [Call Now] and [Book Appointment] buttons.\n- **Fast Load Performance**: 0 render-blocking assets, responsive `srcset` images, accessible ARIA attributes.\n",
+        "createdAt": "2026-11-03T15:15:49.924Z"
+      },
+      "contactedAt": "2026-11-03T15:15:50.413Z"
     }
   },
-  "verifications": {},
-  "briefs": {},
+  "verifications": {
+    "gmp_ChIJ2UMaB10pQg0RRviGxwrjUaU": [
+      {
+        "id": "ver_1793718947801_msh3",
+        "prospectId": "gmp_ChIJ2UMaB10pQg0RRviGxwrjUaU",
+        "checkType": "business_listing",
+        "status": "no_website",
+        "evidenceUrls": [
+          "https://maps.google.com/?cid=11912552124808362054&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        ],
+        "searchQueries": [
+          "barber in Madrid"
+        ],
+        "explanation": "Verified via Google Maps Places API (New): Business is actively operational with 1054 reviews (4.9★) but lists NO website.",
+        "counterEvidence": "No website URI provided in Google Maps metadata.",
+        "recommendedNextStep": "Call business or direct message offering modern responsive website.",
+        "confidenceScore": 98,
+        "checkedAt": "2026-11-03T15:15:47.800Z"
+      },
+      {
+        "id": "ver_1793718949651_uxsu",
+        "prospectId": "gmp_ChIJ2UMaB10pQg0RRviGxwrjUaU",
+        "checkType": "business_listing",
+        "status": "no_website",
+        "evidenceUrls": [
+          "https://maps.google.com/?cid=11912552124808362054&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        ],
+        "searchQueries": [
+          "barber in Madrid"
+        ],
+        "explanation": "Verified via Google Maps Places API (New): Business is actively operational with 1054 reviews (4.9★) but lists NO website.",
+        "counterEvidence": "No website URI provided in Google Maps metadata.",
+        "recommendedNextStep": "Call business or direct message offering modern responsive website.",
+        "confidenceScore": 98,
+        "checkedAt": "2026-11-03T15:15:49.651Z"
+      }
+    ]
+  },
+  "briefs": {
+    "gmp_ChIJ2UMaB10pQg0RRviGxwrjUaU": {
+      "id": "brief_1793718949924_f92ed",
+      "prospectId": "gmp_ChIJ2UMaB10pQg0RRviGxwrjUaU",
+      "businessOverview": "MVP Barber Studio is an established barber shop in Madrid (, ). Despite having a strong local reputation (4.9★ across 1054 reviews), the business currently has no independent digital presence, resulting in lost client bookings and zero local search visibility.",
+      "targetAudiences": [
+        "Local residents and neighbors in Madrid seeking reliable, top-rated barber shop",
+        "Mobile searchers looking for immediate opening hours, location map, and direct booking/quote options",
+        "High-value clients who compare professional reputations before booking services"
+      ],
+      "verifiedStrengths": [
+        "Strong public feedback: 4.9★ rating",
+        "Convenient physical location: C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain, Madrid",
+        "Proven hands-on craftmanship and established customer loyalty"
+      ],
+      "reviewInsights": [
+        "Recurring customer praise: Google Maps verified business, OPERATIONAL",
+        "Customers frequently recommend the business via word-of-mouth"
+      ],
+      "missingCapabilities": [
+        "No independent domain to showcase full services, pricing transparency, and verified customer testimonials",
+        "No direct WhatsApp or mobile click-to-book inquiry pipeline, losing leads to competitors with modern websites",
+        "Absence of Google Local Search Schema markup to capture \"near me\" inquiries"
+      ],
+      "websiteOpportunities": [
+        "Capture high-intent \"Barber shop in Madrid\" Google search traffic",
+        "Establish a 24/7 digital storefront that accepts booking inquiries and answers FAQs automatically",
+        "Provide clear, upfront service packages and pricing, increasing average client order value"
+      ],
+      "assumptionsToConfirm": [
+        "Confirm current official list of services, prices, and special packages",
+        "Confirm preferred contact method for booking confirmations (WhatsApp, Phone, or Email)"
+      ],
+      "direction1": {
+        "title": "Modern Craft & Quiet Luxury",
+        "tagline": "Refined, timeless aesthetic emphasizing artisanal mastery and premium customer care.",
+        "designPhilosophy": "Clean generous whitespace, subtle warm stone and slate tones, editorial typography, and high-contrast hero photography highlighting meticulous attention to detail.",
+        "colorPalette": {
+          "primary": "#0f172a",
+          "secondary": "#334155",
+          "accent": "#0284c7",
+          "background": "#090d16",
+          "surface": "#111827",
+          "text": "#f8fafc"
+        },
+        "typography": {
+          "headingFont": "Playfair Display / Serif",
+          "bodyFont": "Plus Jakarta Sans / Inter",
+          "rationale": "The serif headline evokes established prestige and artisanal heritage, balanced with a hyper-legible modern sans-serif body."
+        },
+        "layoutPhilosophy": "Asymmetric editorial grid with prominent full-width visual banner, floating quote cards, and clear sticky navigation.",
+        "heroConcept": "Atmospheric imagery of MVP Barber Studio's craft with an elegant headline: \"The Art of Barber shop in Madrid.\"",
+        "imageTreatment": "Rich, natural lighting, duotone micro-accents, deep blacks with subtle warm highlights.",
+        "conversionStrategy": "Low-friction \"Reserve an Experience\" primary CTA paired with immediate WhatsApp quick-chat inquiry.",
+        "keyComponents": [
+          "Signature Experience Grid",
+          "Curated Testimonial Showcase",
+          "Interactive Hours & Neighborhood Map",
+          "Direct WhatsApp Reservation Float"
+        ]
+      },
+      "direction2": {
+        "title": "Dynamic, High-Conversion Urban",
+        "tagline": "Energetic, direct, and mobile-optimized for swift client acquisition and fast booking.",
+        "designPhilosophy": "Bold high-contrast accents, electric blue and emerald trust indicators, quick-glance pricing chips, and instant touch-first interactions.",
+        "colorPalette": {
+          "primary": "#0284c7",
+          "secondary": "#0f766e",
+          "accent": "#38bdf8",
+          "background": "#030712",
+          "surface": "#0f172a",
+          "text": "#ffffff"
+        },
+        "typography": {
+          "headingFont": "Syne / Space Grotesk",
+          "bodyFont": "Inter",
+          "rationale": "Geometric, contemporary sans-serif with strong horizontal rhythm that drives immediate visual confidence."
+        },
+        "layoutPhilosophy": "Single-page fluid landing page with modular cards, prominent pricing pill badges, and sticky bottom booking drawer on mobile.",
+        "heroConcept": "\"Top-Rated Barber shop in Madrid — Book in 30 Seconds.\" Instant calendar and call buttons.",
+        "imageTreatment": "Crisp action photography, vibrant saturation, subtle radial glow accents behind hero cards.",
+        "conversionStrategy": "Instant mobile click-to-call, tap-to-WhatsApp, and automated availability inquiry form.",
+        "keyComponents": [
+          "3-Step Simple Booking Flow",
+          "Live Rating & Google Review Strip",
+          "Package Comparison Pricing Table",
+          "FAQ Accordion"
+        ]
+      },
+      "direction3": {
+        "title": "Warm Community & Local Heritage",
+        "tagline": "Approachable, warm, authentic local business storytelling that builds instant trust.",
+        "designPhilosophy": "Warm terracotta, sage, and deep espresso tones. Rounded friendly card borders, handwritten badge accents, and warm welcoming customer photography.",
+        "colorPalette": {
+          "primary": "#b45309",
+          "secondary": "#15803d",
+          "accent": "#f59e0b",
+          "background": "#0c0a09",
+          "surface": "#1c1917",
+          "text": "#fafaf9"
+        },
+        "typography": {
+          "headingFont": "Outfit / Fraunces",
+          "bodyFont": "DM Sans",
+          "rationale": "Friendly, organic geometric curves that feel human, welcoming, and deeply rooted in the local neighborhood."
+        },
+        "layoutPhilosophy": "Warm storytelling narrative layout guiding the visitor from the founders story to the services, testimonials, and neighborhood map.",
+        "heroConcept": "\"Your Neighborhood Barber shop in Madrid.\" Welcoming photography of the storefront and team.",
+        "imageTreatment": "Warm golden hour tones, candid smiles, authentic unposed moments of service.",
+        "conversionStrategy": "Personalized \"Stop by or Say Hello\" invitation with instant directions and 1-tap WhatsApp consultation.",
+        "keyComponents": [
+          "Neighborhood Story & Team Banner",
+          "Photo Gallery of Real Work",
+          "Google Reviews Carousel",
+          "Interactive Directions & Transit Guide"
+        ]
+      },
+      "suggestedPages": [
+        {
+          "name": "Home",
+          "purpose": "Establish immediate brand authority, showcase customer reviews, and provide frictionless booking CTAs.",
+          "sections": [
+            "Hero Value Proposition",
+            "Signature Services Highlight",
+            "Social Proof & Rating Strip",
+            "Interactive Location Map & Opening Hours"
+          ],
+          "callToAction": "Book Appointment / Request Quotation"
+        },
+        {
+          "name": "Services & Pricing",
+          "purpose": "Complete transparency on service packages, what is included, and realistic timeframes to qualify inbound leads.",
+          "sections": [
+            "Package Cards with Clear Pricing",
+            "Add-on Options",
+            "Preparation & Consultation Guide"
+          ],
+          "callToAction": "Select Package & Inquire"
+        },
+        {
+          "name": "About & Our Craft",
+          "purpose": "Build personal connection, highlight professional experience and local roots in the city.",
+          "sections": [
+            "Founder Story",
+            "Our Values & Standards",
+            "Behind the Scenes Photography"
+          ],
+          "callToAction": "Meet the Team"
+        },
+        {
+          "name": "Location & Contact",
+          "purpose": "Eliminate friction for visits: directions, parking advice, exact opening hours, phone, and direct WhatsApp chat.",
+          "sections": [
+            "Interactive Map with Transit Tips",
+            "Direct Dial Button",
+            "Contact & Booking Request Form"
+          ],
+          "callToAction": "Get Directions / Call Now"
+        }
+      ],
+      "visualDirection": {
+        "exactColorsHex": {
+          "Dark Canvas": "#0b1120",
+          "Surface Card": "#111827",
+          "Electric Accent": "#06b6d4",
+          "Primary Accent": "#3b82f6",
+          "Warm Gold": "#f59e0b",
+          "Text Crisp": "#f8fafc",
+          "Text Muted": "#94a3b8"
+        },
+        "fontPairing": "Primary Heading: \"Space Grotesk\" or \"Playfair Display\" | Body: \"Plus Jakarta Sans\" | Monospace Accents: \"JetBrains Mono\"",
+        "spacingSystem": "8px modular grid: 8px (xs), 16px (sm), 24px (md), 32px (lg), 48px (xl), 64px (2xl), 96px (section padding)",
+        "componentDesign": "Subtle 1px border highlights (border-white/10), 16px rounded corners (rounded-2xl), soft backdrop blur (backdrop-blur-md), micro-elevation on hover.",
+        "mobileBehavior": "Sticky bottom CTA bar with \"Call Business\" and \"WhatsApp Chat\" buttons. Collapsible hamburger navigation, thumb-zone optimized interactive cards.",
+        "animationIdeas": "Smooth stagger fade-in on scroll (IntersectionObserver), gentle pill pulse on CTA buttons, smooth accordion transitions for FAQs.",
+        "accessibilityGuidelines": "Compliant with WCAG 2.1 AA standards: minimum 4.5:1 text contrast ratio, keyboard focus rings, alt descriptions for all imagery, ARIA expanded states.",
+        "seoConsiderations": "LocalBusiness Schema.org JSON-LD markup with exact coordinates (40.423535, -3.7033732), addressLocality: \"Madrid\", addressCountry: \"\", openingHoursSpecification, telephone, and aggregateRating.",
+        "performanceRequirements": "Sub-1.2s Largest Contentful Paint (LCP), 100% WebP optimized images with native loading=\"lazy\", zero cumulative layout shift (CLS).",
+        "relevantIntegrations": [
+          "WhatsApp Click-to-Chat API",
+          "Google Maps Embed API",
+          "Direct Email / SMS Booking Notification Webhook",
+          "Cal.com / Google Calendar or Calendly Appointment Embed"
+        ]
+      },
+      "conversionUx": {
+        "trustBuilders": [
+          "Prominent Google Review verification badge (4.9★ rating)",
+          "Exact physical address (C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain) and guaranteed response time within 2 business hours",
+          "Transparent service guarantee with no hidden extras"
+        ],
+        "callToActions": [
+          "Primary CTA: \"Book an Appointment / Request Quotation\"",
+          "Secondary CTA: \"Chat on WhatsApp with Us Today\""
+        ],
+        "inquiryFlow": "Frictionless 3-step form: 1. Select Service -> 2. Choose Preferred Date/Time -> 3. Enter Name & Mobile Number. Instant confirmation sent via WhatsApp/SMS.",
+        "bookingStrategy": "Dual path: Direct phone dial for traditional customers + WhatsApp / interactive modal for digital mobile clients."
+      },
+      "aiStudioPrompt": "# COMPLETE WEBSITE BUILD SPECIFICATION: MVP BARBER STUDIO\n\n## 1. PROJECT OVERVIEW\n- **Business Name**: MVP Barber Studio\n- **Industry / Category**: Barber shop\n- **Location**: C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain, Madrid, , \n- **Target Audience**: Local residents, discerning neighborhood clients, and mobile searchers in Madrid.\n- **Reputation Status**: 4.9 Stars across 1054 customer reviews.\n- **Core Value Proposition**: Premier artisanal craftsmanship, personal customer care, transparent service packages, and effortless mobile booking.\n- **Service Package Tier**: Starting at €500 with optional €40/mo managed hosting and high-speed local CDN.\n\n---\n\n## 2. DESIGN PHILOSOPHY & VISUAL SYSTEM\n- **Aesthetic**: Premium dark navy and charcoal interface with subtle electric-cyan accents and warm gold trust badges.\n- **Palette**:\n  - Primary Background: `#0b1120`\n  - Card & Surface: `#111827`\n  - Accent / Primary CTA: `#0284c7` (Electric Sky Blue)\n  - Secondary Accent: `#06b6d4` (Cyan Glow)\n  - Text Primary: `#f8fafc`\n  - Text Muted: `#94a3b8`\n  - Border Highlights: `rgba(255, 255, 255, 0.08)`\n- **Typography**:\n  - Headings: Modern geometric sans-serif or refined modern serif (`Plus Jakarta Sans`, `Space Grotesk`, or `Playfair Display`).\n  - Body: Crisp, highly legible sans-serif (`Inter`, 16px base, 1.6 line-height).\n- **Component Styling**:\n  - Border radius: `rounded-2xl` (16px) for cards, `rounded-xl` for inputs and buttons.\n  - Micro-interactions: Subtle scale-up on hover (`hover:scale-[1.02]`), gentle glowing border transitions.\n  - Backdrop blur: Glassmorphism (`backdrop-blur-md bg-slate-900/80`) for sticky navbar and modals.\n\n---\n\n## 3. PAGE STRUCTURE & SECTIONS\n\n### Page 1: Home (Hero & Conversion Hub)\n1. **Sticky Header**:\n   - MVP Barber Studio logo / brand mark\n   - Nav links: Services, About, Reviews, Location, FAQ\n   - Action Button: \"Book Now\" + Direct Call icon (635 70 81 12)\n2. **Hero Section**:\n   - Headline: \"Experience Barber shop at its Finest in Madrid\"\n   - Subheadline: \"Dedicated service, uncompromising quality, and warm neighborhood hospitality tailored to you.\"\n   - Dual CTA Buttons: [Book Appointment / Request Quote] & [Chat on WhatsApp]\n   - Trust Badge: \"Rated 4.9/5 Stars by local clients in Madrid\"\n3. **Featured Services Grid**:\n   - 3 to 4 core service cards with icons, realistic pricing indications, time duration, and a \"Select\" button.\n4. **Why Choose MVP Barber Studio**:\n   - 3 value pillars: Artisanal expertise, transparent pricing, guaranteed customer satisfaction.\n5. **Interactive Reviews Carousel**:\n   - Authentic customer quotes highlighting craft, punctuality, and friendly atmosphere.\n6. **Location, Map & Opening Hours**:\n   - Address: C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain, Madrid\n   - Interactive OpenStreetMap/Google Maps embed\n   - Weekly opening hours table with live \"Open Now / Closed\" indicator\n   - Transit and parking tips\n7. **Lead Capture & Booking Modal / Form**:\n   - Frictionless 3-step booking inquiry: Select Service -> Choose Date/Time -> Contact Details.\n\n---\n\n## 4. FUNCTIONAL REQUIREMENTS & INTEGRATIONS\n- **Click-to-Call**: Immediate `tel:635 70 81 12` trigger for mobile visitors.\n- **Direct WhatsApp Chat**: `https://wa.me/...` pre-filled message (\"Hi MVP Barber Studio, I would like to inquire about...\").\n- **LocalBusiness Schema (JSON-LD)**:\n```json\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"LocalBusiness\",\n  \"name\": \"MVP Barber Studio\",\n  \"address\": {\n    \"@type\": \"PostalAddress\",\n    \"streetAddress\": \"C. del Molino de Viento, 10, Centro, 28004 Madrid, Spain\",\n    \"addressLocality\": \"Madrid\",\n    \"addressRegion\": \"\",\n    \"addressCountry\": \"\"\n  },\n  \"telephone\": \"635 70 81 12\",\n  \"priceRange\": \"€€\"\n}\n```\n- **Mobile Sticky CTA Bar**: On mobile viewports (`<768px`), fixed bottom bar with [Call Now] and [Book Appointment] buttons.\n- **Fast Load Performance**: 0 render-blocking assets, responsive `srcset` images, accessible ARIA attributes.\n",
+      "createdAt": "2026-11-03T15:15:49.924Z"
+    }
+  },
   "jobs": [],
   "outreachDrafts": {},
   "bannedNames": [],
