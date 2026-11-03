@@ -247,11 +247,15 @@ class LiveSyncEngine {
 
     try {
       const syncUrl = getSyncApiUrl();
-      await window.fetch(syncUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: qualified })
-      });
+      const chunkSize = 50;
+      for (let i = 0; i < qualified.length; i += chunkSize) {
+        const chunk = qualified.slice(i, i + chunkSize);
+        await window.fetch(syncUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: chunk })
+        });
+      }
       this.lastSyncedAt = new Date();
       this.status = 'connected';
       this.notifyStatusChange();

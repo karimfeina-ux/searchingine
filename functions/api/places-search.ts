@@ -157,14 +157,19 @@ async function handle(request: Request): Promise<Response> {
       )
     );
 
-    // Skip if business has an existing real independent website
+    // USER RULE: Has no website listed on Google Maps or any platform
     if (rawWeb && !isSocialOnly) return null;
+
+    const phone = xt.phone || xt['contact:phone'] || xt.mobile || xt['contact:mobile'] || '';
+    const email = xt.email || xt['contact:email'] || '';
+
+    // USER RULE: Must have a phone number or email to contact it
+    if (!phone.trim() && !email.trim()) return null;
 
     const name = item.name || addr.shop || addr.amenity || addr.craft || item.display_name.split(',')[0];
     if (!name || name.trim().length === 0) return null;
 
     const street = [addr.road, addr.house_number].filter(Boolean).join(' ') || item.display_name.split(',')[1]?.trim() || '';
-    const phone = xt.phone || xt['contact:phone'] || xt.mobile || xt['contact:mobile'] || '';
     const city = addr.city || addr.town || addr.village || addr.municipality || location;
 
     return {

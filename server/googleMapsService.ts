@@ -162,6 +162,12 @@ export async function searchGoogleMapsBusinesses(params: {
     const normName = normalizeBusinessName(name);
     const rawPhone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
     const cleanPhone = rawPhone.replace(/\D/g, '');
+    const rawEmail = (place as any).email || '';
+
+    // USER RULE: Must have a phone number or email to contact it
+    if ((!rawPhone || cleanPhone.length < 6) && (!rawEmail || !rawEmail.includes('@'))) {
+      continue;
+    }
 
     // Skip businesses previously contacted or excluded
     if (cleanPhone.length >= 6 && excludedPhones.has(cleanPhone)) {
@@ -173,12 +179,12 @@ export async function searchGoogleMapsBusinesses(params: {
 
     const rawWebsite = (place.websiteUri || '').trim();
     let isSocialOnly = false;
-    let hasWebsite = false;
     let websiteStatus: Prospect['websiteStatus'] = 'no_website';
 
+    // USER RULE: Has no website listed on Google Maps or any platform
     if (rawWebsite) {
       const lowerWeb = rawWebsite.toLowerCase();
-      const isSocial =
+      const isSocialContactOnly =
         lowerWeb.includes('instagram.com') ||
         lowerWeb.includes('facebook.com') ||
         lowerWeb.includes('linktr.ee') ||
@@ -187,20 +193,12 @@ export async function searchGoogleMapsBusinesses(params: {
         lowerWeb.includes('bio.link') ||
         lowerWeb.includes('taplink.cc');
 
-      if (isSocial) {
-        isSocialOnly = true;
-        websiteStatus = 'possibly_no_website';
-      } else {
-        hasWebsite = true;
-        websiteStatus = 'website_exists';
+      // If it has ANY website listed on Google Maps, reject immediately
+      if (!isSocialContactOnly) {
+        continue;
       }
-    } else {
-      websiteStatus = 'no_website';
-    }
-
-    // STRICT REQUIREMENT: Never show businesses that have websites
-    if (hasWebsite) {
-      continue;
+      isSocialOnly = true;
+      websiteStatus = 'possibly_no_website';
     }
 
     // STRICT REQUIREMENT: Never show businesses with less than 2 pictures in Google Maps
@@ -260,14 +258,6 @@ export async function searchGoogleMapsBusinesses(params: {
         isBusinessContact: true,
         verifiedAt: now,
       });
-    } else if (hasWebsite && rawWebsite) {
-      contactChannels.push({
-        type: 'website',
-        value: rawWebsite,
-        confidence: 95,
-        isBusinessContact: true,
-        verifiedAt: now,
-      });
     }
 
     // Lead Scoring Engine (Calculates high scores for busy businesses with no web)
@@ -322,7 +312,7 @@ export async function searchGoogleMapsBusinesses(params: {
         : isSocialOnly
         ? `Google Maps lists social media link (${rawWebsite}) but no dedicated domain.`
         : `Google Maps lists existing website ${rawWebsite}.`,
-      counterEvidence: hasWebsite ? 'Business has an active registered URL.' : 'No website URI provided in Google Maps metadata.',
+      counterEvidence: 'No website URI provided in Google Maps metadata.',
       recommendedNextStep: websiteStatus === 'no_website'
         ? 'Call business or direct message offering modern responsive website.'
         : isSocialOnly

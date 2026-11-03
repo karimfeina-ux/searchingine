@@ -53,8 +53,12 @@ export const ContactedListView: React.FC<ContactedListViewProps> = ({
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Filter only prospects that have been contacted or progressed
+  // Filter only prospects that have been contacted or progressed AND strictly have NO website
   const contactedPool = prospects.filter((p) => {
+    if ((p as any).hasWebsite) return false;
+    if (p.websiteStatus && ['website_exists', 'website_broken', 'website_outdated'].includes(p.websiteStatus)) {
+      return false;
+    }
     return Boolean(
       p.isContacted ||
       p.status === 'contacted' ||

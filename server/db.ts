@@ -131,22 +131,17 @@ export const updateSettings = (partial: Partial<AppSettings>): AppSettings => {
 };
 
 export const isQualifiedProspect = (p: Prospect): boolean => {
-  if (!p) return false;
-  // Contacted clients and leads with any contact state must NEVER be disqualified or discarded
-  const isContactedLead = Boolean(
-    p.isContacted ||
-    (p.status && ['contacted', 'waiting', 'client_signed', 'not_interested'].includes(p.status))
-  );
-  if (isContactedLead) {
-    return true;
-  }
+  if (!p || !p.name || p.name.trim().length === 0) return false;
+
+  // RULE 1: STRICTLY NO WEBSITE ON GOOGLE MAPS OR ANY PLATFORM
+  // If it has any website, DO NOT SHOW IT AT ALL in the website.
   if ((p as any).hasWebsite) return false;
   if (p.websiteStatus && ['website_exists', 'website_broken', 'website_outdated'].includes(p.websiteStatus)) {
     return false;
   }
   if (p.websiteCandidate && p.websiteCandidate.trim() !== '') {
     const lower = p.websiteCandidate.toLowerCase().trim();
-    const isSocialOnly =
+    const isSocialContactOnly =
       lower.includes('instagram.com') ||
       lower.includes('facebook.com') ||
       lower.includes('linktr.ee') ||
@@ -154,15 +149,31 @@ export const isQualifiedProspect = (p: Prospect): boolean => {
       lower.includes('tiktok.com') ||
       lower.includes('bio.link') ||
       lower.includes('taplink.cc');
-    if (!isSocialOnly) return false;
+    if (!isSocialContactOnly) return false;
   }
-  // For Google Maps places with photo tracking, require at least 2 pictures
-  if (p.id.startsWith('gmp_') && (typeof p.photoCount === 'number' || Array.isArray(p.photos))) {
-    const photoCount = typeof p.photoCount === 'number'
-      ? p.photoCount
-      : (Array.isArray(p.photos) ? p.photos.length : 0);
-    if (photoCount < 2) return false;
+  if (Array.isArray(p.contactChannels) && p.contactChannels.some((c) => c.type === 'website')) {
+    return false;
   }
+
+  // RULE 2: MUST HAVE A PHONE NUMBER OR EMAIL TO CONTACT IT
+  const cleanPhone = (p.phone || '').replace(/\D/g, '');
+  const hasPhone = cleanPhone.length >= 6 || Boolean(p.phone && p.phone.trim().length >= 6);
+  const hasEmail = Boolean(p.email && p.email.trim().length >= 5 && p.email.includes('@'));
+  if (!hasPhone && !hasEmail) {
+    return false;
+  }
+
+  // RULE 3: HAS TO BE A REAL BUSINESS LISTED IN GOOGLE MAPS
+  const hasGoogleMapsListing = Boolean(
+    p.id.startsWith('gmp_') ||
+    (typeof p.latitude === 'number' && typeof p.longitude === 'number' && !isNaN(p.latitude) && !isNaN(p.longitude)) ||
+    (Array.isArray(p.contactChannels) && p.contactChannels.some((c) => c.type === 'google_maps')) ||
+    (Array.isArray(p.sources) && p.sources.some((s) => s.url && (s.url.includes('google.com/maps') || s.url.includes('maps.google.com'))))
+  );
+  if (!hasGoogleMapsListing) {
+    return false;
+  }
+
   return true;
 };
 

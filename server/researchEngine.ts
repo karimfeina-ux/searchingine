@@ -203,6 +203,19 @@ export const deepSearchProspects = async (params: {
 
   for (const place of places) {
     if (!place || !place.name) continue;
+
+    // USER RULE: Must have a phone number or email to contact it
+    const hasPhone = Boolean(place.phone && place.phone.trim().length >= 6);
+    const hasEmail = Boolean(place.email && place.email.trim().length >= 5 && place.email.includes('@'));
+    if (!hasPhone && !hasEmail) {
+      continue;
+    }
+
+    // USER RULE: Has no website listed on Google Maps or any platform
+    if (place.website || place.url || (place as any).hasWebsite) {
+      continue;
+    }
+
     const normName = normalizeBusinessName(place.name);
     const cleanPhone = place.phone ? place.phone.replace(/\D/g, '') : '';
     const genericNames = ['peluqueria', 'barberia', 'restaurante', 'bar', 'cafeteria', 'panaderia', 'taller', 'clinica', 'farmacia', 'dentista'];

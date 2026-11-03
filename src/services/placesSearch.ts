@@ -83,6 +83,10 @@ export async function runRealSearch(params: { location?: string; query?: string 
     const id = `gp_${p.id.replace('/', '_')}`;
     const normName = normalizeBusinessName(p.name);
     const cleanPhone = p.phone.replace(/\D/g, '');
+    if (!p.phone && !p.email) {
+      continue;
+    }
+
     if (knownIds.has(id) || excludedNames.has(normName) || (cleanPhone && excludedPhones.has(cleanPhone))) {
       skippedDuplicates++;
       continue;
